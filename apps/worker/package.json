@@ -1,0 +1,16 @@
+{
+  "name": "@little-brain/worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --local",
+    "typecheck": "tsc -p tsconfig.json",
+    "dry-run": "wrangler deploy --dry-run --outdir dist",
+    "test": "vitest run --config vitest.config.ts"
+  },
+  "devDependencies": {
+    "wrangler": "4.129.0",
+    "@cloudflare/workers-types": "5.20260905.1"
+  }
+}
