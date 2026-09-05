@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ExternalLink, FileText, Github, HardDrive, LoaderCircle, Unplug } from 'lucide-react';
+import { ExternalLink, LoaderCircle, Unplug } from 'lucide-react';
 import {
   accountNames,
   accountProviders,
@@ -8,6 +8,7 @@ import {
 } from './runtime';
 import type { Accounts } from './useAccounts';
 import './accounts.css';
+import { IntegrationIcon } from '../IntegrationIcon';
 const guides = {
   notion: {
     label: 'Integration token',
@@ -82,7 +83,6 @@ function AccountCard({
     guide = guides[provider],
     connected = connection.status === 'connected',
     busy = connection.busy || connection.status === 'connecting';
-  const Icon = provider === 'notion' ? FileText : provider === 'google' ? HardDrive : Github;
   const perform = async (operation: 'search' | 'read', id?: string) => {
     setError('');
     setNotice('');
@@ -102,7 +102,7 @@ function AccountCard({
     <section className="plugin-card account-card">
       <div className="plugin-title">
         <span>
-          <Icon size={21} />
+          <IntegrationIcon id={provider} size={24} />
         </span>
         <h3>{accountNames[provider]}</h3>
         <small>{busy ? 'Working…' : connected ? 'Connected' : 'Disconnected'}</small>

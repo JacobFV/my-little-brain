@@ -45,3 +45,9 @@ See the desktop/mobile READMEs for packaging commands. Release signing, macOS no
 - Portal tests cover continuous exchanges, direct message routing, real image input, cancellation, foreground contention, participant deletion, endpoint changes and back/forward-cache reopen.
 - A live Chrome portal between Pip and Moss rendered both scenes and exchanged real OpenAI replies. Asked to describe the image, the peer identified a light pink brain, creamy white eyes and a pale background. Direct message input and Close portal worked. The focused portal was inspected at 390×844; viewport was restored afterward.
 - Notion/Google OAuth client values were copied into the ignored local environment under the existing user authorization. Their exact callback URLs still need to be allowed by the provider configuration; no external registration or Cloudflare deployment was performed.
+
+## Interface refinement
+
+- Verified a draft moves from the main prompt into the open chat pane and back without duplication or loss. The phone-sized chat uses the same single prompt.
+- Inspected the selected-brain highlight, tighter sidebar, round eyes even at zero focus, minimal chat text, actual locally served integration logos, and concise settings with a working Privacy & terms view.
+- All 168 tests, seven workspace typechecks, production build and Cloudflare dry run pass. No deployment was performed.

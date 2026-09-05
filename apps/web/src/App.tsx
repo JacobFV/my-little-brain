@@ -4,7 +4,6 @@ import { createTwin } from '@little-brain/core';
 import {
   Brain,
   Plug,
-  ShieldCheck,
   Battery,
   Download,
   Eye,
@@ -39,6 +38,7 @@ import { useBrainPortals } from './plugins/portal/useBrainPortals';
 import { useAccounts } from './plugins/accounts/useAccounts';
 import { AccountConnections } from './plugins/accounts/AccountConnections';
 import { connectedAccountTool, portalSendTool } from './plugins/connectionTools';
+import { PrivacyTerms } from './PrivacyTerms';
 import LocalDataPanel from './LocalDataPanel';
 
 declare global {
@@ -67,6 +67,7 @@ export default function App() {
   const [chatOpen, setChatOpen] = useState(false);
   const [inside, setInside] = useState(false);
   const [query, setQuery] = useState('');
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [compact, setCompact] = useState(() => matchMedia('(max-width: 900px)').matches);
   useEffect(() => {
     if (focusedPluginId && compact) {
@@ -74,7 +75,9 @@ export default function App() {
       setChatOpen(false);
     }
   }, [focusedPluginId, compact]);
-  const [dialog, setDialog] = useState<'settings' | 'create' | 'edit' | 'delete' | null>(null);
+  const [dialog, setDialog] = useState<'settings' | 'terms' | 'create' | 'edit' | 'delete' | null>(
+    null,
+  );
   const [name, setName] = useState('');
   const [personality, setPersonality] = useState('');
   const [endpoint, setEndpoint] = useState(settings.endpoint);
@@ -572,6 +575,8 @@ export default function App() {
     }
   };
   const composerProps = {
+    draft: drafts[twin.id] || '',
+    onDraftChange: (text: string) => setDrafts((values) => ({ ...values, [twin.id]: text })),
     onSend: brain.send,
     onVoice: () => {
       setView('brain');
@@ -682,6 +687,7 @@ export default function App() {
                 {workspace.twins.map((current) => (
                   <button
                     className={`pane-brain ${current.id === twin.id ? 'selected' : ''}`}
+                    aria-pressed={current.id === twin.id}
                     key={current.id}
                     onClick={() => {
                       selectTwin(current.id);
@@ -743,13 +749,6 @@ export default function App() {
                 </button>
               </div>
               <div className="pane-bottom">
-                <span
-                  className="local-save-badge"
-                  title="Local journal; selected context is sent to OpenAI for replies"
-                >
-                  <ShieldCheck size={12} />
-                  Saved on this device
-                </span>
                 <button onClick={() => openEditor('edit')}>About {twin.name}</button>
                 <button onClick={() => setDialog('settings')}>
                   <SettingsIcon size={17} />
@@ -1165,7 +1164,13 @@ export default function App() {
                   {portals.error && <p>{portals.error}</p>}
                 </div>
               )}
-            {!(compact && chatOpen) && !focusedInteraction && (
+            {chatOpen && pluginError && !focusedInteraction && (
+              <div className="connection-feedback" role="alert">
+                {pluginError}
+                <button onClick={() => setPluginError('')}>Dismiss</button>
+              </div>
+            )}
+            {!chatOpen && !focusedInteraction && (
               <div className="floating-compose">
                 <Composer {...composerProps} />
                 {pluginError && (
@@ -1205,7 +1210,7 @@ export default function App() {
                 status={brain.status}
                 error={brain.error}
                 onDismissError={() => brain.setError('')}
-                composer={compact ? <Composer {...composerProps} compact /> : null}
+                composer={<Composer {...composerProps} compact />}
                 onExport={exportTwin}
               />
             </WorkspacePane>
@@ -1235,11 +1240,13 @@ export default function App() {
           <h2>
             {dialog === 'settings'
               ? 'Settings'
-              : dialog === 'create'
-                ? 'A new brain'
-                : dialog === 'delete'
-                  ? `Delete ${twin.name}?`
-                  : `About ${twin.name}`}
+              : dialog === 'terms'
+                ? 'Privacy & terms'
+                : dialog === 'create'
+                  ? 'A new brain'
+                  : dialog === 'delete'
+                    ? `Delete ${twin.name}?`
+                    : `About ${twin.name}`}
           </h2>
           <IconButton label="Close dialog" onClick={() => setDialog(null)}>
             <X size={19} />
@@ -1327,9 +1334,6 @@ export default function App() {
                     onChange={(event) => setToken(event.target.value)}
                   />
                 </label>
-                <p className="field-help">
-                  Your OpenAI key stays on the server. This access token is kept for this session.
-                </p>
                 {connectionError && (
                   <p className="form-error" role="alert">
                     {connectionError}
@@ -1345,13 +1349,12 @@ export default function App() {
               setWorkspace={setWorkspace}
               storageError={storageError}
             />
-            <section className="settings-note">
-              Your journal is stored locally, without cloud sync. OpenAI receives conversation
-              context, portal conversations, and anything you explicitly share for a reply. Camera
-              frames stay here; detected labels are sent when connected. Local storage is not
-              encrypted by this app.
-            </section>
+            <button className="settings-terms-link" onClick={() => setDialog('terms')}>
+              Privacy & terms ↗
+            </button>
           </div>
+        ) : dialog === 'terms' ? (
+          <PrivacyTerms onBack={() => setDialog('settings')} />
         ) : dialog === 'delete' ? (
           <>
             <p>

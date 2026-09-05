@@ -310,9 +310,10 @@ export function BrainScene(props: BrainSceneProps) {
             clamp(Math.atan2(direction.x, direction.z), -0.58, 0.58),
             0,
           );
-          eyes[i].scale.y = blink * (0.62 + 0.38 * energy);
+          eyes[i].scale.y = blink;
         }
       }
+      if (p.paused) for (const eye of eyes) eye.scale.y = 1;
       if (!contextLost) {
         if (p.onFrame && group.visible && snapshotContext && now - lastSnapshot >= 250) {
           lastSnapshot = now;
