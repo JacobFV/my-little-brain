@@ -8,6 +8,7 @@ export type ProviderOptions = {
   onEvent: (event: RealtimeEvent) => void;
   onStatus: (status: ConnectionStatus) => void;
   onError: (message: string) => void;
+  onProgress?: (message: string) => void;
 };
 // UI depends on this boundary; another model can implement the same contract later.
 export interface BrainProvider {
@@ -42,9 +43,32 @@ export class OpenAIRealtimeProvider implements BrainProvider {
       throw new Error(message);
     };
     try {
-      if (options.mode === 'text') await this.connectText(options, generation);
-      else await this.connectVoice(options, generation);
+      const interrupted = new Promise<never>((_, reject) => {
+        this.connectingReject = reject;
+        this.timer = setTimeout(
+          () =>
+            reject(
+              new Error(
+                options.mode === 'audio'
+                  ? this.stream
+                    ? 'Voice connection timed out. Check the connection in Settings and try again.'
+                    : 'Microphone permission request timed out. Check the browser permission prompt, then try again.'
+                  : 'Connection timed out. Check your server and try again.',
+              ),
+            ),
+          30000,
+        );
+      });
+      await Promise.race([
+        options.mode === 'text'
+          ? this.connectText(options, generation)
+          : this.connectVoice(options, generation),
+        interrupted,
+      ]);
       if (generation !== this.generation) throw new Error('Connection cancelled.');
+      if (this.timer) clearTimeout(this.timer);
+      this.timer = null;
+      this.connectingReject = null;
       // Replay a bounded recent history when reconnecting or switching voice/text.
       let budget = 48000;
       const history: Message[] = [];
@@ -68,6 +92,7 @@ export class OpenAIRealtimeProvider implements BrainProvider {
             ],
           },
         });
+      options.onProgress?.('');
       options.onStatus('connected');
     } catch (error) {
       return onError(error);
@@ -75,15 +100,10 @@ export class OpenAIRealtimeProvider implements BrainProvider {
   }
   private connectText(options: ProviderOptions, generation: number): Promise<void> {
     return new Promise((resolve, reject) => {
-      this.connectingReject = reject;
       const url = new URL('/api/realtime', options.endpoint || location.origin);
       url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
       const socket = new WebSocket(url);
       this.socket = socket;
-      this.timer = setTimeout(
-        () => reject(new Error('Connection timed out. Check your server and try again.')),
-        25000,
-      );
       socket.onopen = () => {
         if (generation !== this.generation) return;
         socket.send(
@@ -103,8 +123,6 @@ export class OpenAIRealtimeProvider implements BrainProvider {
           return;
         }
         if (event.type === 'brain.ready') {
-          if (this.timer) clearTimeout(this.timer);
-          this.connectingReject = null;
           resolve();
           return;
         }
@@ -138,14 +156,32 @@ export class OpenAIRealtimeProvider implements BrainProvider {
   private async connectVoice(options: ProviderOptions, generation: number): Promise<void> {
     if (!navigator.mediaDevices?.getUserMedia || !globalThis.RTCPeerConnection)
       throw new Error('Voice needs microphone access in a secure browser or the desktop app.');
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio: { echoCancellation: true, noiseSuppression: true },
-    });
+    options.onProgress?.('Requesting microphone permission… Check your browser permission prompt.');
+    let stream: MediaStream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true },
+      });
+    } catch (failure) {
+      const name = failure && typeof failure === 'object' && 'name' in failure ? failure.name : '';
+      if (name === 'NotAllowedError' || name === 'SecurityError')
+        throw new Error(
+          'Microphone permission was denied. Allow microphone access in your browser or system settings, then retry.',
+        );
+      if (name === 'NotFoundError')
+        throw new Error('No microphone was found. Connect a microphone and try again.');
+      if (name === 'NotReadableError' || name === 'AbortError')
+        throw new Error(
+          'The microphone is unavailable or in use by another app. Check system microphone access and try again.',
+        );
+      throw failure;
+    }
     if (generation !== this.generation) {
       stream.getTracks().forEach((t) => t.stop());
       throw new Error('Connection cancelled.');
     }
     this.stream = stream;
+    options.onProgress?.('Connecting voice to your brain…');
     const peer = new RTCPeerConnection();
     this.peer = peer;
     stream.getTracks().forEach((track) => peer.addTrack(track, stream));
@@ -183,21 +219,17 @@ export class OpenAIRealtimeProvider implements BrainProvider {
       }
     };
     const opened = new Promise<void>((resolve, reject) => {
-      this.connectingReject = reject;
-      this.timer = setTimeout(
-        () => reject(new Error('Voice connection timed out. Please try again.')),
-        25000,
-      );
       channel.onopen = () => {
         if (generation !== this.generation) return;
-        if (this.timer) clearTimeout(this.timer);
-        this.connectingReject = null;
         resolve();
       };
       channel.onclose = () => {
         if (generation === this.generation) {
-          if (this.connectingReject) reject(new Error('Voice channel closed.'));
-          else {
+          if (this.connectingReject) {
+            const error = new Error('Voice channel closed.');
+            reject(error);
+            this.connectingReject(error);
+          } else {
             this.disconnect();
             options.onError('Voice session ended. Tap the microphone to reconnect.');
           }
@@ -280,6 +312,7 @@ export class OpenAIRealtimeProvider implements BrainProvider {
       this.audio.srcObject = null;
       this.audio = null;
     }
+    this.options?.onProgress?.('');
     this.options?.onStatus('disconnected');
     this.options = null;
   }

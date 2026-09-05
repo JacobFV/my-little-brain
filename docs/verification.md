@@ -2,7 +2,7 @@
 
 Final source checks:
 
-- `npm test`: 114 passing tests across 27 files. Includes camera permission/cancellation/cleanup, tracked observation expiry, bounded visual context replacement, attention IDs, voice interruption, stale connections, persistence validation, server origin/auth checks, and anatomy mesh hashes/topology. Local server tests require permission to bind loopback ports in this managed environment.
+- `npm test`: 168 passing tests across 35 files. Includes camera permission/cancellation/cleanup, tracked observation expiry, bounded visual context replacement, attention IDs, voice interruption, stale connections, persistence validation, server origin/auth checks, and anatomy mesh hashes/topology. Local server tests require permission to bind loopback ports in this managed environment.
 - `npm run typecheck`: all seven workspaces pass.
 - `npm run build`: web, server and Electron builds pass.
 - Linux ARM64 `package:smoke` and the packaged Electron runtime smoke pass: API health, isolated preload, all 28 anatomy assets, and workspace restoration across two launches. The executable is `apps/desktop/release/linux-arm64-unpacked/@little-braindesktop`. The virtual-display smoke uses `--no-sandbox`; normal application configuration enables the renderer sandbox.
@@ -37,3 +37,11 @@ See the desktop/mobile READMEs for packaging commands. Release signing, macOS no
 - Packaged Electron UI smoke opened an isolated browser, dragged its 3D tablet, focused it, typed into the actual page, toggled audio, returned the tablet and closed the session. Backend smoke covers manual/model control separation and media policy.
 - The 390×844 focused interaction view was inspected in Chrome. Its Stop control stopped a real test circle. Physical mobile devices and hardware media sharing remain untested.
 - Cloudflare Worker tests cover HTTP/auth/relay boundaries. Local dry-run packaging is supported; no Cloudflare deployment or remote secret configuration was performed.
+
+## Account connections and portals
+
+- Camera and voice tests cover pending permission/play/negotiation timeouts, immediate cancellation, late-track cleanup, StrictMode preview mounting and visible action feedback.
+- Account adapter tests cover fixed endpoints, identity verification, read-only operations, byte limits, OAuth state/callback checks, native fetch binding, and Express/Worker authentication. No personal account authorization was performed during verification.
+- Portal tests cover continuous exchanges, direct message routing, real image input, cancellation, foreground contention, participant deletion, endpoint changes and back/forward-cache reopen.
+- A live Chrome portal between Pip and Moss rendered both scenes and exchanged real OpenAI replies. Asked to describe the image, the peer identified a light pink brain, creamy white eyes and a pale background. Direct message input and Close portal worked. The focused portal was inspected at 390×844; viewport was restored afterward.
+- Notion/Google OAuth client values were copied into the ignored local environment under the existing user authorization. Their exact callback URLs still need to be allowed by the provider configuration; no external registration or Cloudflare deployment was performed.

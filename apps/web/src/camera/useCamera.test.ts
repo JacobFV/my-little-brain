@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
-import { act, renderHook, cleanup } from '@testing-library/react';
+import { createElement, StrictMode } from 'react';
+import { CameraPreview } from './CameraPreview';
+import { act, render, renderHook, cleanup } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { useCamera } from './useCamera';
 const detector = vi.hoisted(() => ({ load: vi.fn(), detect: vi.fn() }));
@@ -106,5 +108,106 @@ describe('camera lifecycle', () => {
     });
     hook.unmount();
     expect(stop).toHaveBeenCalledOnce();
+  });
+});
+
+describe('camera startup feedback', () => {
+  it('times out an unanswered permission request and releases any late stream', async () => {
+    vi.useFakeTimers();
+    const { hook, getUserMedia, media, stop } = setup();
+    let grant!: (value: unknown) => void;
+    getUserMedia.mockReturnValue(
+      new Promise((resolve) => {
+        grant = resolve;
+      }),
+    );
+    let settled = false;
+    act(() => {
+      void hook.result.current.start().then(() => {
+        settled = true;
+      });
+    });
+    expect(hook.result.current.status).toBe('loading');
+    expect(hook.result.current.progress).toMatch(/permission/i);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(30001);
+    });
+    expect(hook.result.current.status).toBe('error');
+    expect(hook.result.current.error).toMatch(/permission.*timed out/i);
+    expect(settled).toBe(true);
+    await act(async () => {
+      grant(media);
+    });
+    expect(stop).toHaveBeenCalledOnce();
+    expect(hook.result.current.status).toBe('error');
+  });
+  it('settles a cancelled camera request before the permission prompt is answered', async () => {
+    const { hook, getUserMedia } = setup();
+    getUserMedia.mockReturnValue(new Promise(() => {}));
+    let settled = false;
+    act(() => {
+      void hook.result.current.start().then(() => {
+        settled = true;
+      });
+    });
+    await act(async () => {
+      hook.result.current.stop();
+    });
+    expect(settled).toBe(true);
+    expect(hook.result.current.status).toBe('off');
+  });
+  it('times out a stalled video preview and releases the camera', async () => {
+    vi.useFakeTimers();
+    const { hook, video, stop } = setup();
+    vi.mocked(video.play).mockReturnValue(new Promise(() => {}));
+    await act(async () => {
+      void hook.result.current.start();
+    });
+    expect(hook.result.current.progress).toMatch(/preview/i);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(15001);
+    });
+    expect(hook.result.current.status).toBe('error');
+    expect(hook.result.current.error).toMatch(/preview.*timed out/i);
+    expect(stop).toHaveBeenCalledOnce();
+  });
+  it.each([
+    ['NotAllowedError', /permission was denied/i],
+    ['NotFoundError', /no camera/i],
+    ['NotReadableError', /another app|in use/i],
+  ])('explains camera %s failures', async (name, message) => {
+    const { hook, getUserMedia } = setup();
+    getUserMedia.mockRejectedValue(new DOMException('Opaque browser error', name));
+    await act(async () => {
+      await hook.result.current.start();
+    });
+    expect(hook.result.current.status).toBe('error');
+    expect(hook.result.current.error).toMatch(message);
+  });
+  it('does not stop capture when the preview mounts in StrictMode', async () => {
+    detector.load.mockReturnValue(new Promise(() => {}));
+    const { hook, stop } = setup();
+    await act(async () => {
+      void hook.result.current.start();
+    });
+    render(
+      createElement(
+        StrictMode,
+        null,
+        createElement(CameraPreview, { camera: hook.result.current }),
+      ),
+    );
+    expect(stop).not.toHaveBeenCalled();
+    expect(hook.result.current.status).toBe('loading');
+  });
+  it('explains unavailable camera capture without leaving startup pending', async () => {
+    const { hook } = setup();
+    Object.defineProperty(navigator, 'mediaDevices', { configurable: true, value: undefined });
+    await act(async () => {
+      await hook.result.current.start();
+    });
+    expect(hook.result.current.status).toBe('error');
+    expect(hook.result.current.error).toMatch(/HTTPS|desktop app/i);
+    expect(hook.result.current.progress).toBe('');
   });
 });

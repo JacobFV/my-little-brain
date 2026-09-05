@@ -83,6 +83,8 @@ describe('Realtime provider lifecycle', () => {
   afterEach(() => {
     provider.disconnect();
     vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+    vi.useRealTimers();
   });
   it('rejects an interrupted text connection without reporting an error for intentional cancellation', async () => {
     const opts = options();
@@ -173,5 +175,110 @@ describe('Realtime provider lifecycle', () => {
     expect(stop).toHaveBeenCalledOnce();
     expect(opts.onError).not.toHaveBeenCalled();
     expect(Peer.instances).toHaveLength(0);
+  });
+  it('times out unanswered microphone permission and releases a later grant', async () => {
+    vi.useFakeTimers();
+    let grant!: (stream: unknown) => void;
+    const stop = vi.fn();
+    vi.stubGlobal('navigator', {
+      mediaDevices: {
+        getUserMedia: () =>
+          new Promise((resolve) => {
+            grant = resolve;
+          }),
+      },
+    });
+    vi.stubGlobal('RTCPeerConnection', Peer);
+    const opts = { ...options('audio'), onProgress: vi.fn() };
+    const connection = provider.connect(opts);
+    const rejected = expect(connection).rejects.toThrow(/microphone permission.*timed out/i);
+    expect(opts.onStatus).toHaveBeenLastCalledWith('connecting');
+    expect(opts.onProgress).toHaveBeenCalledWith(expect.stringMatching(/microphone permission/i));
+    await vi.advanceTimersByTimeAsync(30001);
+    await rejected;
+    expect(opts.onStatus).toHaveBeenLastCalledWith('disconnected');
+    expect(opts.onError).toHaveBeenCalledOnce();
+    grant({ getTracks: () => [{ stop }] });
+    await Promise.resolve();
+    expect(stop).toHaveBeenCalledOnce();
+    expect(Peer.instances).toHaveLength(0);
+  });
+  it('settles cancellation without waiting for microphone permission', async () => {
+    vi.stubGlobal('navigator', { mediaDevices: { getUserMedia: () => new Promise(() => {}) } });
+    vi.stubGlobal('RTCPeerConnection', Peer);
+    const opts = options('audio');
+    let settled = false;
+    const connection = provider.connect(opts).catch(() => {
+      settled = true;
+    });
+    provider.disconnect();
+    await connection;
+    expect(settled).toBe(true);
+    expect(opts.onError).not.toHaveBeenCalled();
+  });
+  it('times out stalled voice negotiation and stops microphone capture', async () => {
+    vi.useFakeTimers();
+    const stop = vi.fn();
+    vi.stubGlobal('navigator', {
+      mediaDevices: { getUserMedia: async () => ({ getTracks: () => [{ stop }] }) },
+    });
+    vi.stubGlobal('RTCPeerConnection', Peer);
+    vi.stubGlobal('Audio', AudioElement);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => new Promise(() => {})),
+    );
+    const opts = options('audio');
+    const rejected = expect(provider.connect(opts)).rejects.toThrow(/voice connection timed out/i);
+    await vi.advanceTimersByTimeAsync(30001);
+    await rejected;
+    expect(stop).toHaveBeenCalledOnce();
+    expect(opts.onStatus).toHaveBeenLastCalledWith('disconnected');
+  });
+  it.each([
+    ['NotAllowedError', /microphone permission was denied/i],
+    ['NotFoundError', /no microphone/i],
+    ['NotReadableError', /another app|in use/i],
+  ])('explains microphone %s failures', async (name, message) => {
+    vi.stubGlobal('navigator', {
+      mediaDevices: {
+        getUserMedia: async () => {
+          throw new DOMException('Opaque browser error', name);
+        },
+      },
+    });
+    vi.stubGlobal('RTCPeerConnection', Peer);
+    const opts = options('audio');
+    await expect(provider.connect(opts)).rejects.toThrow(message);
+    expect(opts.onError).toHaveBeenCalledWith(expect.stringMatching(message));
+  });
+  it('reports a closed voice channel while session negotiation is still pending', async () => {
+    const stop = vi.fn();
+    vi.stubGlobal('navigator', {
+      mediaDevices: { getUserMedia: async () => ({ getTracks: () => [{ stop }] }) },
+    });
+    vi.stubGlobal('RTCPeerConnection', Peer);
+    vi.stubGlobal('Audio', AudioElement);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => new Promise(() => {})),
+    );
+    const opts = options('audio');
+    const rejected = expect(provider.connect(opts)).rejects.toThrow(/voice channel closed/i);
+    await Promise.resolve();
+    Peer.instances[0].channel.close();
+    await rejected;
+    expect(stop).toHaveBeenCalledOnce();
+    expect(opts.onError).toHaveBeenCalledWith(expect.stringMatching(/voice channel closed/i));
+    expect(opts.onStatus).toHaveBeenLastCalledWith('disconnected');
+  });
+  it('explains when microphone capture is unavailable without creating a voice peer', async () => {
+    vi.stubGlobal('navigator', {});
+    vi.stubGlobal('RTCPeerConnection', Peer);
+    const opts = options('audio');
+    await expect(provider.connect(opts)).rejects.toThrow(/secure browser|desktop app/i);
+    expect(Peer.instances).toHaveLength(0);
+    expect(opts.onStatus).toHaveBeenLastCalledWith('disconnected');
+    expect(opts.onError).toHaveBeenCalledOnce();
   });
 });

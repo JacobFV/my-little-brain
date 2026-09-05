@@ -86,3 +86,18 @@ describe('runtime tool registration', () => {
     ).toEqual([]);
   });
 });
+
+it('registers account and portal tools with immutable server schemas', () => {
+  const result = sanitizeToolUpdate({
+    type: 'session.update',
+    session: {
+      type: 'realtime',
+      tools: ['focus_thought', 'browser_action', 'connected_account', 'portal_send'].map(
+        (name) => ({ type: 'function', name, description: 'injected' }),
+      ),
+    },
+  });
+  expect(result?.session.tools).toHaveLength(4);
+  expect(JSON.stringify(result)).not.toContain('injected');
+  expect(result?.session.tools[2].description).toContain('read-only');
+});

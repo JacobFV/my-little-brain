@@ -1,3 +1,10 @@
+import {
+  runConnector,
+  oauthConfig,
+  exchangeGoogle,
+  exchangeNotion,
+  ConnectorError,
+} from '../../server/src/connectors';
 import { timingSafeEqual } from 'node:crypto';
 import {
   originAllowed,
@@ -13,6 +20,12 @@ export type Env = {
   APP_ACCESS_TOKEN?: string;
   OPENAI_REALTIME_MODEL?: string;
   ALLOWED_ORIGINS?: string;
+  NOTION_CLIENT_ID?: string;
+  NOTION_CLIENT_SECRET?: string;
+  NOTION_REDIRECT_URI?: string;
+  GOOGLE_CLIENT_ID?: string;
+  GOOGLE_CLIENT_SECRET?: string;
+  GOOGLE_REDIRECT_URI?: string;
 };
 const EVENT_LIMIT = 256 * 1024;
 const ENCODER = new TextEncoder();
@@ -288,6 +301,43 @@ export function createWorker(requestFetch: typeof fetch = fetch) {
           model: env.OPENAI_REALTIME_MODEL || 'gpt-realtime-2.1',
           requiresToken: true,
         });
+      if (path.startsWith('/api/accounts/')) {
+        if (!trusted(request, env))
+          return json(request, env, 403, { error: 'This origin is not allowed.' });
+        if (
+          !authorized(
+            env.APP_ACCESS_TOKEN,
+            request.headers.get('Authorization')?.replace(/^Bearer /, ''),
+          )
+        )
+          return json(request, env, 401, { error: 'Enter the server access token in Settings.' });
+        if (path === '/api/accounts/config' && request.method === 'GET')
+          return json(request, env, 200, oauthConfig(env));
+        if (request.method !== 'POST')
+          return json(request, env, 405, { error: 'Use POST for account requests.' });
+        let input: any;
+        try {
+          input = await limitedJSON(request);
+        } catch {
+          return json(request, env, 400, { error: 'Invalid account request.' });
+        }
+        if (JSON.stringify(input).length > 16384)
+          return json(request, env, 413, { error: 'Account request is too large.' });
+        try {
+          if (path === '/api/accounts/config') return json(request, env, 200, oauthConfig(env));
+          if (path === '/api/accounts/run')
+            return json(request, env, 200, await runConnector(input, requestFetch));
+          if (path === '/api/accounts/notion-exchange')
+            return json(request, env, 200, await exchangeNotion(input, env, requestFetch));
+          if (path === '/api/accounts/google-exchange')
+            return json(request, env, 200, await exchangeGoogle(input, env, requestFetch));
+          return json(request, env, 404, { error: 'Not found' });
+        } catch (error) {
+          return json(request, env, error instanceof ConnectorError ? error.status : 502, {
+            error: error instanceof ConnectorError ? error.message : 'The account request failed.',
+          });
+        }
+      }
       if (path !== '/api/session' && path !== '/api/realtime')
         return json(request, env, 404, { error: 'Not found' });
       if (!trusted(request, env))

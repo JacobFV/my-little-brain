@@ -1,12 +1,10 @@
-import { useEffect, useState, type CSSProperties } from 'react';
+import { useState, type CSSProperties } from 'react';
 import { Camera, CameraOff, RefreshCw, SwitchCamera } from 'lucide-react';
 import type { CameraHandle } from './useCamera';
 import './camera.css';
 export function CameraPreview({ camera, style }: { camera: CameraHandle; style?: CSSProperties }) {
   const [ratio, setRatio] = useState(4 / 3);
   const active = camera.status === 'running' || camera.status === 'loading';
-  // A preview can be removed by navigation while the owning App stays mounted.
-  useEffect(() => () => camera.stop(), [camera.stop]);
   return (
     <section className="camera-preview" style={style} aria-label="Camera observations">
       <div className="camera-preview-header">

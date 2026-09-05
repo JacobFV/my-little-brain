@@ -1,4 +1,12 @@
 import express from 'express';
+import {
+  runConnector,
+  oauthConfig,
+  exchangeGoogle,
+  exchangeNotion,
+  ConnectorError,
+  type ConnectorEnv,
+} from './connectors.js';
 import { createServer, type Server } from 'node:http';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
@@ -25,6 +33,7 @@ export type ServerOptions = {
   origins?: string[];
   model?: string;
   fetchImpl?: typeof fetch;
+  connectorEnv?: ConnectorEnv;
 };
 export async function startServer(options: ServerOptions = {}): Promise<Server> {
   const host = options.host ?? process.env.HOST ?? '127.0.0.1';
@@ -143,6 +152,35 @@ export async function startServer(options: ServerOptions = {}): Promise<Server> 
       res
         .status(502)
         .json({ error: 'Could not connect to OpenAI. Check the server network and try again.' });
+    }
+  });
+  // Account tokens are request-scoped; these routes never persist or log credentials.
+  app.use('/api/accounts', (req, res, next) => {
+    if (!trusted(req)) {
+      res.status(403).json({ error: 'This origin is not allowed.' });
+      return;
+    }
+    if (!authorized(token, req.headers.authorization?.replace(/^Bearer /, ''))) {
+      res.status(401).json({ error: 'Enter the server access token in Settings.' });
+      return;
+    }
+    next();
+  });
+  const connectorEnv = options.connectorEnv ?? process.env;
+  app.get('/api/accounts/config', (_req, res) => res.json(oauthConfig(connectorEnv)));
+  app.post('/api/accounts/:action', express.json({ limit: '16kb' }), async (req, res) => {
+    try {
+      if (req.params.action === 'config') res.json(oauthConfig(connectorEnv));
+      else if (req.params.action === 'run') res.json(await runConnector(req.body, requestFetch));
+      else if (req.params.action === 'notion-exchange')
+        res.json(await exchangeNotion(req.body, connectorEnv, requestFetch));
+      else if (req.params.action === 'google-exchange')
+        res.json(await exchangeGoogle(req.body, connectorEnv, requestFetch));
+      else res.status(404).json({ error: 'Not found' });
+    } catch (error) {
+      res.status(error instanceof ConnectorError ? error.status : 502).json({
+        error: error instanceof ConnectorError ? error.message : 'The account request failed.',
+      });
     }
   });
   const staticDir = options.staticDir ?? path.join(root, 'apps/web/dist');

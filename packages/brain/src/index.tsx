@@ -25,6 +25,9 @@ export interface BrainSceneProps {
   onPluginFocus?: (id: string) => void;
   activePluginInteractionId?: string | null;
   distraction?: DistractionKind | null;
+  /** At most four frames/second, copied to a stable canvas. Portal surfaces are
+   * excluded from snapshots, bounding reciprocal viewing to one environment. */
+  onFrame?: (canvas: HTMLCanvasElement) => void;
 }
 
 const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(max, n));
@@ -186,6 +189,9 @@ export function BrainScene(props: BrainSceneProps) {
       gazeY = 0,
       velocityX = 0,
       velocityY = 0;
+    const snapshot = document.createElement('canvas');
+    const snapshotContext = snapshot.getContext('2d');
+    let lastSnapshot = -Infinity;
     const resize = () => {
       const width = element.clientWidth,
         height = element.clientHeight;
@@ -307,7 +313,42 @@ export function BrainScene(props: BrainSceneProps) {
           eyes[i].scale.y = blink * (0.62 + 0.38 * energy);
         }
       }
-      if (!contextLost) renderer.render(scene, camera);
+      if (!contextLost) {
+        if (p.onFrame && group.visible && snapshotContext && now - lastSnapshot >= 250) {
+          lastSnapshot = now;
+          const portals = pluginInteractions.root.children.filter((child) => child.userData.portal);
+          for (const portal of portals) portal.visible = false;
+          renderer.render(scene, camera);
+          const scale = Math.min(
+            1,
+            640 / Math.max(renderer.domElement.width, renderer.domElement.height),
+          );
+          const width = Math.max(1, Math.round(renderer.domElement.width * scale));
+          const height = Math.max(1, Math.round(renderer.domElement.height * scale));
+          if (snapshot.width !== width || snapshot.height !== height) {
+            snapshot.width = width;
+            snapshot.height = height;
+          }
+          snapshotContext.fillStyle = '#edf2ed';
+          snapshotContext.fillRect(0, 0, width, height);
+          snapshotContext.drawImage(renderer.domElement, 0, 0, width, height);
+          // Thoughts live in HTML in the interactive scene. Include their current
+          // positions and text in the portal's view of that same environment.
+          if (p.showThoughts)
+            for (const thought of p.thoughts) {
+              const x = clamp(((thought.x + 1) * width) / 2, 6, width - 150);
+              const y = clamp(((thought.y + 1) * height) / 2, 18, height - 18);
+              snapshotContext.fillStyle = '#ffffffeb';
+              snapshotContext.fillRect(x, y - 12, 144, 25);
+              snapshotContext.fillStyle = '#53665a';
+              snapshotContext.font = '10px system-ui';
+              snapshotContext.fillText(thought.text.slice(0, 28), x + 6, y + 4, 132);
+            }
+          for (const portal of portals) portal.visible = true;
+          p.onFrame(snapshot);
+        }
+        renderer.render(scene, camera);
+      }
       frame = requestAnimationFrame(render);
     };
     frame = requestAnimationFrame(render);
