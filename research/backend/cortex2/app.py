@@ -42,7 +42,7 @@ class JsonFormatter(logging.Formatter):
 
 
 def _configure_logging():
-    level = os.environ.get("LOG_LEVEL", "INFO")
+    level = (os.environ.get("LOG_LEVEL") or "INFO").upper()
     if on_gcp():
         handler = logging.StreamHandler(sys.stdout)
         handler.setFormatter(JsonFormatter())
