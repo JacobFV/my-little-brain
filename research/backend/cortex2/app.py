@@ -1,30 +1,57 @@
 """cortex² research service (FastAPI). See docs/cortex2-api.md for the contract.
 
-One image, two Cloud Run services:
-  cortex2         public: /v1 API + the built /lab web app (same origin)
-  cortex2-worker  private: /internal/tasks (Cloud Tasks, OIDC) and /internal/heartbeat (Cloud Scheduler)
-Locally the same process does both and runs tasks on threads.
+One image, two Cloud Run services (SERVICE_ROLE):
+  api      cortex2         public: /v1 API + the built /lab web app (same origin); /internal/* is 404
+  worker   cortex2-worker  private: /internal/tasks (Cloud Tasks, OIDC) and /internal/heartbeat (Scheduler)
+Locally (SERVICE_ROLE=all, the default) one process does both and runs tasks on threads.
 """
 from __future__ import annotations
 
 import base64
 import hashlib
+import json
 import logging
 import os
 import secrets
-from datetime import datetime, timedelta, timezone
+import sys
+import threading
+import time
+from contextlib import asynccontextmanager
+from datetime import timedelta
 from pathlib import Path
 
-import numpy as np
 from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, Response
 from pydantic import BaseModel, Field
 
-from . import agent, eeg, inverse as inv, llm, neural as nm, quantum as qm, runner, tasks
-from .store import artifacts, now, on_gcp, store
+from . import agent, eeg, inverse as inv, limits, llm, neural as nm, quantum as qm, runner, tasks
+from .store import artifacts, now, on_gcp, store, utcnow
 
-logging.basicConfig(level=os.environ.get("LOG_LEVEL", "INFO"))
+
+# ---------------------------------------------------------------- logging
+
+class JsonFormatter(logging.Formatter):
+    """Cloud Logging structured format (severity + message, plus exception text)."""
+
+    def format(self, record):
+        entry = {"severity": record.levelname, "message": record.getMessage(), "logger": record.name}
+        if record.exc_info:
+            entry["exception"] = self.formatException(record.exc_info)
+        return json.dumps(entry)
+
+
+def _configure_logging():
+    level = os.environ.get("LOG_LEVEL", "INFO")
+    if on_gcp():
+        handler = logging.StreamHandler(sys.stdout)
+        handler.setFormatter(JsonFormatter())
+        logging.basicConfig(level=level, handlers=[handler], force=True)
+    else:
+        logging.basicConfig(level=level)
+
+
+_configure_logging()
 log = logging.getLogger("cortex2.api")
 
 CLIENT_ID = os.environ.get("GOOGLE_OAUTH_CLIENT_ID", "")
@@ -32,30 +59,75 @@ DEV_AUTH = os.environ.get("DEV_AUTH") == "1" and not on_gcp()
 ALLOWED_EMAILS = {e.strip().lower() for e in os.environ.get("ALLOWED_EMAILS", "").split(",") if e.strip()}
 WEB_DIST = Path(os.environ.get("WEB_DIST", Path(__file__).resolve().parents[3] / "apps" / "web" / "dist"))
 VERSION = os.environ.get("CORTEX_VERSION", "dev")
+SERVICE_ROLE = os.environ.get("SERVICE_ROLE", "all")            # api | worker | all
+MAX_BODY_BYTES = int(os.environ.get("MAX_BODY_BYTES", str(6 * 1024 * 1024)))
+# Self-service budget ceilings: users can lower their autonomous budgets, never raise past these.
+CAP_AUTONOMOUS_JOBS = int(os.environ.get("CAP_AUTONOMOUS_JOBS", "50"))
+CAP_QPU_JOBS = int(os.environ.get("CAP_QPU_JOBS", "4"))
+INGEST_MIN_INTERVAL = float(os.environ.get("INGEST_MIN_INTERVAL", "0.8"))   # Firestore: ~1 write/s/doc
+INGEST_TOKEN_HOURS = 12
 
-app = FastAPI(title="cortex² research service", version=VERSION)
-origins = [o for o in os.environ.get("CORS_ORIGINS", "").split(",") if o]
+@asynccontextmanager
+async def lifespan(_app):
+    """Cold starts: import Qiskit *before* serving (a first import racing a request thread can crash
+    its native extension), then build the pure-numpy forward-model table in the background."""
+    try:
+        import qiskit  # noqa: F401
+        from qiskit import QuantumCircuit
+
+        QuantumCircuit(1)
+    except Exception:
+        log.exception("qiskit warm-up failed")
+
+    def warm():
+        try:
+            nm.forward_table()
+        except Exception:
+            log.exception("forward-model warm-up failed")
+    threading.Thread(target=warm, name="warmup", daemon=True).start()
+    yield
+
+
+app = FastAPI(title="cortex² research service", version=VERSION, lifespan=lifespan)
+origins = [o for o in os.environ.get("CORS_ORIGINS", "").split(",") if o and o != "*"]
 if origins:
     app.add_middleware(CORSMiddleware, allow_origins=origins, allow_methods=["GET", "POST"],
                        allow_headers=["Authorization", "Content-Type"])
 tasks.set_local_handler(runner.handle_task)
 
+CSP = ("default-src 'self'; "
+       "script-src 'self' https://accounts.google.com/gsi/client; "
+       "style-src 'self' 'unsafe-inline' https://accounts.google.com/gsi/style; "
+       "frame-src https://accounts.google.com/gsi/; "
+       "img-src 'self' data: blob: https://lh3.googleusercontent.com; font-src 'self' data:; "
+       "connect-src 'self' https://accounts.google.com/gsi/ ws://127.0.0.1:8765 ws://localhost:8765; "
+       "worker-src 'self' blob:; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'")
+
 
 @app.middleware("http")
-async def security_headers(request: Request, call_next):
+async def guard_requests(request: Request, call_next):
+    length = request.headers.get("content-length")
+    if length and length.isdigit() and int(length) > MAX_BODY_BYTES:
+        return JSONResponse({"detail": f"request body over {MAX_BODY_BYTES} bytes"}, status_code=413)
+    if request.url.path.startswith("/internal/") and SERVICE_ROLE == "api":
+        return JSONResponse({"detail": "not found"}, status_code=404)
     response = await call_next(request)
-    response.headers.setdefault("X-Content-Type-Options", "nosniff")
-    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    h = response.headers
+    h.setdefault("X-Content-Type-Options", "nosniff")
+    h.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    if on_gcp():
+        h.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
     if request.url.path.startswith("/v1"):
-        response.headers.setdefault("Cache-Control", "no-store")
+        h.setdefault("Cache-Control", "no-store")
     else:
-        response.headers.setdefault("Content-Security-Policy",
-            "default-src 'self'; script-src 'self' https://accounts.google.com/gsi/client; "
-            "frame-src https://accounts.google.com; style-src 'self' 'unsafe-inline' https://accounts.google.com/gsi/style; "
-            "img-src 'self' data: blob: https://lh3.googleusercontent.com; font-src 'self' data:; "
-            "connect-src 'self' https://accounts.google.com ws://127.0.0.1:8765 ws://localhost:8765; "
-            "worker-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'")
+        h.setdefault("Content-Security-Policy", CSP)
+        h.setdefault("Cross-Origin-Opener-Policy", "same-origin-allow-popups")   # Google sign-in popup
     return response
+
+
+@app.exception_handler(limits.RateLimited)
+async def rate_limited(_request: Request, exc: limits.RateLimited):
+    return JSONResponse({"detail": str(exc)}, status_code=429, headers={"Retry-After": str(exc.retry_after)})
 
 
 # ---------------------------------------------------------------- auth
@@ -71,8 +143,9 @@ def current_user(authorization: str = Header(default="")) -> dict:
         return {"uid": "dev", "email": "dev@localhost", "name": "Local developer", "picture": None}
     if not CLIENT_ID:
         raise HTTPException(503, "Google sign-in is not configured: set GOOGLE_OAUTH_CLIENT_ID")
-    cached = _token_cache.get(raw)
-    if cached and cached[0] > datetime.now(timezone.utc).timestamp():
+    key = hashlib.sha256(raw.encode()).hexdigest()
+    cached = _token_cache.get(key)
+    if cached and cached[0] > time.time():
         return cached[1]
     from google.auth.transport.requests import Request as GoogleRequest
     from google.oauth2 import id_token
@@ -89,12 +162,14 @@ def current_user(authorization: str = Header(default="")) -> dict:
     user = {"uid": claims["sub"], "email": email, "name": claims.get("name"), "picture": claims.get("picture")}
     if len(_token_cache) > 2000:
         _token_cache.clear()
-    _token_cache[raw] = (float(claims["exp"]), user)
+    _token_cache[key] = (float(claims["exp"]), user)
     return user
 
 
 def internal_caller(authorization: str = Header(default="")) -> None:
     """Cloud Tasks / Scheduler OIDC tokens minted for the task service account."""
+    if SERVICE_ROLE == "api":
+        raise HTTPException(404, "not found")
     if not on_gcp():
         return
     expected = os.environ.get("TASK_SERVICE_ACCOUNT", "")
@@ -109,7 +184,7 @@ def internal_caller(authorization: str = Header(default="")) -> None:
         claims = id_token.verify_oauth2_token(raw, GoogleRequest(), audience)
     except Exception as exc:
         raise HTTPException(403, "invalid task identity") from exc
-    if claims.get("email") != expected:
+    if claims.get("email") != expected or not claims.get("email_verified", True):
         raise HTTPException(403, "unexpected task identity")
 
 
@@ -124,6 +199,13 @@ def guard(fn, *args, **kwargs):
         raise HTTPException(400, str(exc)) from exc
 
 
+def public_job(job: dict | None) -> dict | None:
+    """Server-internal fields (stack traces) are logged, not returned."""
+    if job:
+        job.pop("traceback", None)
+    return job
+
+
 # ---------------------------------------------------------------- config / session
 
 @app.get("/v1/config")
@@ -133,7 +215,9 @@ def config():
             "gate_budget": qm.GATE_BUDGET, "offline_target": qm.OFFLINE_TARGET,
             "providers": runner.provider_availability(),
             "param_names": list(nm.PARAM_NAMES), "param_levels": nm.LEVELS.tolist(),
-            "feature_names": list(nm.FEATURE_NAMES), "approximations": list(inv.APPROXIMATIONS)}
+            "feature_names": list(nm.FEATURE_NAMES), "approximations": list(inv.APPROXIMATIONS),
+            "limits": {a: {"window_seconds": limits.limit_for(a).window, "max": limits.limit_for(a).maximum}
+                       for a in limits.DEFAULTS}}
 
 
 @app.get("/health")
@@ -143,7 +227,7 @@ def healthz():
 
 @app.get("/v1/me")
 def me(user=Depends(current_user)):
-    return user
+    return {**user, "hardware_allowed": limits.hardware_allowed(user.get("email"))}
 
 
 @app.get("/v1/session")
@@ -153,7 +237,14 @@ def get_session(user=Depends(current_user)):
 
 @app.post("/v1/session")
 def post_session(body: dict, user=Depends(current_user)):
-    return agent.update_session(user["uid"], body)
+    clean = dict(body)
+    if "max_autonomous_jobs" in clean:
+        clean["max_autonomous_jobs"] = min(int(clean["max_autonomous_jobs"]), CAP_AUTONOMOUS_JOBS)
+    if "qpu_jobs_budget" in clean:
+        clean["qpu_jobs_budget"] = min(int(clean["qpu_jobs_budget"]), CAP_QPU_JOBS)
+    if clean.get("allow_autonomous_qpu") and not limits.hardware_allowed(user.get("email")):
+        raise HTTPException(403, "this account may not use physical QPUs (HARDWARE_EMAILS)")
+    return agent.update_session(user["uid"], clean)
 
 
 # ---------------------------------------------------------------- datasets / experiments
@@ -166,18 +257,19 @@ def datasets(user=Depends(current_user)):
 
 
 class ExperimentRequest(BaseModel):
-    source: str = "synthetic"
+    source: str = Field(default="synthetic", max_length=20)
     truth_bitstring: str | None = Field(default=None, pattern="^[01]{8}$")
-    random_seed: int | None = None
-    dataset_id: str | None = None
-    channel: str | None = None
-    segment: str | None = None
-    recording_id: str | None = None
+    random_seed: int | None = Field(default=None, ge=0, le=2**31)
+    dataset_id: str | None = Field(default=None, max_length=80)
+    channel: str | None = Field(default=None, max_length=40)
+    segment: str | None = Field(default=None, max_length=40)
+    recording_id: str | None = Field(default=None, max_length=64)
     title: str | None = Field(default=None, max_length=160)
 
 
 @app.post("/v1/experiments")
 def new_experiment(req: ExperimentRequest, user=Depends(current_user)):
+    limits.consume(user["uid"], "experiment")
     return {"experiment": guard(runner.create_experiment, user["uid"], req.model_dump(exclude_none=True))}
 
 
@@ -194,7 +286,7 @@ def get_experiment(exp_id: str, user=Depends(current_user)):
     exp = guard(runner.owned, "experiments", exp_id, user["uid"])
     target = runner.target_of(exp)
     return {"experiment": exp, "landscape": inv.landscape(target),
-            "jobs": store().query("jobs", user["uid"], experiment_id=exp_id, limit=100),
+            "jobs": [public_job(j) for j in store().query("jobs", user["uid"], experiment_id=exp_id, limit=100)],
             "revisions": store().query("revisions", user["uid"], experiment_id=exp_id, limit=100)}
 
 
@@ -204,12 +296,13 @@ def export_experiment(exp_id: str, user=Depends(current_user)):
     data["reproducibility"] = {"code_version": VERSION, "model": data["experiment"].get("model_version"),
                                "observation_seed": inv.OBSERVATION_SEED, "offline_target": qm.OFFLINE_TARGET,
                                "exported_at": now(), "note": "rerun any job by POSTing its provider/approximation/baseline/spec/qasm"}
-    return JSONResponse(data, headers={"Content-Disposition": f'attachment; filename="cortex2-{exp_id}.json"'})
+    safe_id = "".join(c for c in exp_id if c.isalnum())[:40]
+    return JSONResponse(data, headers={"Content-Disposition": f'attachment; filename="cortex2-{safe_id}.json"'})
 
 
 class JobRequest(BaseModel):
-    provider: str
-    approximation: str = "trust_region"
+    provider: str = Field(max_length=40)
+    approximation: str = Field(default="trust_region", max_length=40)
     baseline: str | None = Field(default=None, pattern="^[01]{8}$")
     trust_weight: float = Field(default=0.15, ge=0, le=5)
     spec: dict | None = None
@@ -219,36 +312,50 @@ class JobRequest(BaseModel):
     title: str | None = Field(default=None, max_length=160)
 
 
+def check_spec(spec: dict | None) -> None:
+    if spec is not None and len(json.dumps(spec)) > 8000:
+        raise HTTPException(400, "spec too large")
+
+
 @app.post("/v1/experiments/{exp_id}/jobs")
 def new_job(exp_id: str, req: JobRequest, user=Depends(current_user)):
-    return {"job": guard(runner.create_job, user["uid"], exp_id, req.model_dump(exclude_none=True))}
+    check_spec(req.spec)
+    guard(runner.owned, "experiments", exp_id, user["uid"])
+    if req.provider in runner.HARDWARE_PROVIDERS:
+        if not limits.hardware_allowed(user.get("email")):
+            raise HTTPException(403, "this account may not use physical QPUs (HARDWARE_EMAILS)")
+        limits.consume(user["uid"], "hardware_job")
+    limits.consume(user["uid"], "job")
+    return {"job": public_job(guard(runner.create_job, user["uid"], exp_id, req.model_dump(exclude_none=True)))}
 
 
 class PreviewRequest(JobRequest):
-    experiment_id: str
-    provider: str = "aer_ideal"
+    experiment_id: str = Field(max_length=64)
+    provider: str = Field(default="aer_ideal", max_length=40)
 
 
 @app.post("/v1/circuits/preview")
 def circuit_preview(req: PreviewRequest, user=Depends(current_user)):
+    check_spec(req.spec)
     exp = guard(runner.owned, "experiments", req.experiment_id, user["uid"])
+    limits.consume(user["uid"], "preview")
     return guard(runner.preview, exp, req.model_dump(exclude_none=True))
 
 
 @app.get("/v1/jobs")
 def list_jobs(experiment_id: str | None = None, user=Depends(current_user)):
     eq = {"experiment_id": experiment_id} if experiment_id else {}
-    return {"jobs": store().query("jobs", user["uid"], limit=100, **eq)}
+    return {"jobs": [public_job(j) for j in store().query("jobs", user["uid"], limit=100, **eq)]}
 
 
 @app.get("/v1/jobs/{job_id}")
 def get_job(job_id: str, user=Depends(current_user)):
-    return {"job": guard(runner.owned, "jobs", job_id, user["uid"])}
+    return {"job": public_job(guard(runner.owned, "jobs", job_id, user["uid"]))}
 
 
 @app.post("/v1/jobs/{job_id}/cancel")
 def cancel(job_id: str, user=Depends(current_user)):
-    return {"job": guard(runner.cancel_job, user["uid"], job_id)}
+    return {"job": public_job(guard(runner.cancel_job, user["uid"], job_id))}
 
 
 @app.get("/v1/hypotheses/{bitstring}/trace")
@@ -273,6 +380,10 @@ class Instruction(BaseModel):
 
 @app.post("/v1/experiments/{exp_id}/agent/iterate")
 def iterate(exp_id: str, body: Instruction, user=Depends(current_user)):
+    guard(runner.owned, "experiments", exp_id, user["uid"])
+    if not agent.agent_configured():
+        raise HTTPException(503, "no model provider configured: set GEMINI_API_KEY or AGENT_PROVIDERS")
+    limits.consume(user["uid"], "agent_iteration")
     job = guard(agent.start_iteration, user["uid"], exp_id, body.instruction)
     runner.feed(user["uid"], "user", body.instruction or "Run one design iteration.", exp_id, job["id"])
     return {"job": job}
@@ -286,16 +397,17 @@ def revisions(exp_id: str, user=Depends(current_user)):
 
 class Message(BaseModel):
     text: str = Field(min_length=1, max_length=4000)
-    experiment_id: str | None = None
+    experiment_id: str | None = Field(default=None, max_length=64)
 
 
 @app.post("/v1/agent/messages")
 def message(body: Message, user=Depends(current_user)):
     if body.experiment_id:
         guard(runner.owned, "experiments", body.experiment_id, user["uid"])
-    item = runner.feed(user["uid"], "user", body.text, body.experiment_id)
     if not agent.agent_configured():
         raise HTTPException(503, "no model provider configured: set GEMINI_API_KEY or AGENT_PROVIDERS")
+    limits.consume(user["uid"], "agent_message")
+    item = runner.feed(user["uid"], "user", body.text, body.experiment_id)
     job = agent.schedule_operator(user["uid"], body.text, body.experiment_id, created_by="user")
     return {"item": item, "job": job}
 
@@ -310,7 +422,7 @@ def get_feed(experiment_id: str | None = None, user=Depends(current_user)):
 
 @app.get("/v1/artifacts/{path:path}")
 def artifact(path: str, user=Depends(current_user)):
-    if not path.startswith(user["uid"] + "/"):
+    if not path.startswith(user["uid"] + "/") or not artifacts().safe(path) or not path.endswith(".png"):
         raise HTTPException(404, "not found")
     data = artifacts().get(path)
     if data is None:
@@ -325,12 +437,13 @@ class Snapshot(BaseModel):
 @app.post("/v1/experiments/{exp_id}/snapshot")
 def snapshot(exp_id: str, body: Snapshot, user=Depends(current_user)):
     guard(runner.owned, "experiments", exp_id, user["uid"])
+    limits.consume(user["uid"], "snapshot")
     raw = body.png.split(",", 1)[-1]
     try:
         data = base64.b64decode(raw, validate=True)
     except ValueError as exc:
         raise HTTPException(400, "png must be base64") from exc
-    if not data.startswith(b"\x89PNG"):
+    if not data.startswith(b"\x89PNG\r\n\x1a\n"):
         raise HTTPException(400, "not a png")
     artifacts().put(f"{user['uid']}/{exp_id}/snapshot.png", data)
     return {"ok": True}
@@ -338,13 +451,17 @@ def snapshot(exp_id: str, body: Snapshot, user=Depends(current_user)):
 
 # ---------------------------------------------------------------- EEG
 
+def _token_hash(raw: str) -> str:
+    return hashlib.sha256(raw.encode()).hexdigest()
+
+
 def device_owner(authorization: str) -> str:
-    token = authorization.removeprefix("Bearer ").strip()
-    if not token:
+    scheme, _, token = authorization.partition(" ")
+    if scheme.lower() != "bearer" or not token.strip():
         raise HTTPException(401, "missing device token")
-    doc = store().get("ingest_tokens", hashlib.sha256(token.encode()).hexdigest())
-    if not doc:
-        raise HTTPException(403, "device token invalid")
+    doc = store().get("ingest_tokens", _token_hash(token.strip()))
+    if not doc or doc.get("revoked"):
+        raise HTTPException(403, "device token invalid or revoked")
     if doc["expires_at"] < now():
         raise HTTPException(403, "device token expired; create a new one in the lab")
     return doc["owner"]
@@ -352,11 +469,35 @@ def device_owner(authorization: str) -> str:
 
 @app.post("/v1/eeg/ingest-token")
 def ingest_token(user=Depends(current_user)):
+    limits.consume(user["uid"], "ingest_token")
     raw = secrets.token_urlsafe(32)
-    expires = datetime.now(timezone.utc) + timedelta(hours=12)
-    store().create("ingest_tokens", {"owner": user["uid"], "created_at": now(), "expires_at": expires.isoformat()},
-                   doc_id=hashlib.sha256(raw.encode()).hexdigest())
-    return {"token": raw, "expires_in_seconds": 12 * 3600}
+    expires = utcnow() + timedelta(hours=INGEST_TOKEN_HOURS)
+    # Only the SHA-256 of the token is stored; `expire_at` (timestamp) drives a Firestore TTL policy.
+    store().create("ingest_tokens", {"owner": user["uid"], "created_at": now(), "expires_at": expires.isoformat(),
+                                     "expire_at": expires + timedelta(days=1), "revoked": False},
+                   doc_id=_token_hash(raw))
+    return {"token": raw, "expires_in_seconds": INGEST_TOKEN_HOURS * 3600}
+
+
+@app.get("/v1/eeg/ingest-tokens")
+def list_ingest_tokens(user=Depends(current_user)):
+    rows = store().query("ingest_tokens", user["uid"], limit=100)
+    return {"tokens": [{"id": r["id"][:12], "created_at": r.get("created_at"), "expires_at": r.get("expires_at"),
+                        "active": not r.get("revoked") and r.get("expires_at", "") > now()} for r in rows]}
+
+
+class Revoke(BaseModel):
+    id: str | None = Field(default=None, min_length=6, max_length=64, description="token id prefix; omit to revoke all")
+
+
+@app.post("/v1/eeg/ingest-tokens/revoke")
+def revoke_ingest_tokens(body: Revoke, user=Depends(current_user)):
+    n = 0
+    for r in store().query("ingest_tokens", user["uid"], limit=500):
+        if (body.id is None or r["id"].startswith(body.id)) and not r.get("revoked"):
+            store().update("ingest_tokens", r["id"], {"revoked": True, "revoked_at": now()})
+            n += 1
+    return {"revoked": n}
 
 
 class Frame(BaseModel):
@@ -364,18 +505,26 @@ class Frame(BaseModel):
     fs: float = Field(gt=0, le=20000)
     channel_names: list[str] = Field(max_length=32)
     samples: list[list[float]] = Field(max_length=32)
-    bands: dict[str, float] = {}
-    per_channel_bands: list[dict] = []
+    bands: dict[str, float] = Field(default_factory=dict, max_length=16)
+    per_channel_bands: list[dict] = Field(default_factory=list, max_length=32)
     blink: bool = False
-    quality: str = Field(default="unverified", max_length=60)
+    quality: str = Field(default="unverified", max_length=200)
+
+
+_last_ingest: dict[str, float] = {}
 
 
 @app.post("/v1/eeg/ingest")
 def ingest(frame: Frame, authorization: str = Header(default="")):
     owner = device_owner(authorization)
-    if any(len(ch) > 512 for ch in frame.samples):
+    if any(len(ch) > 512 for ch in frame.samples) or any(len(n) > 40 for n in frame.channel_names):
         raise HTTPException(413, "at most 512 samples per channel per frame")
-    store().set("eeg_streams", owner, {"owner": owner, **frame.model_dump(), "updated_at": now()})
+    t = time.monotonic()
+    if t - _last_ingest.get(owner, 0.0) < INGEST_MIN_INTERVAL and not frame.blink:
+        return {"ok": True, "throttled": True}      # one live doc per user: stay under Firestore's ~1 write/s/doc
+    _last_ingest[owner] = t
+    store().set("eeg_streams", owner, {"owner": owner, **frame.model_dump(), "updated_at": now(),
+                                       "expire_at": utcnow() + timedelta(days=1)})
     return {"ok": True}
 
 
@@ -384,7 +533,8 @@ def eeg_latest(user=Depends(current_user)):
     doc = store().get("eeg_streams", user["uid"])
     if not doc:
         return {"live": False, "frame": None}
-    fresh = doc["updated_at"] > (datetime.now(timezone.utc) - timedelta(seconds=10)).isoformat()
+    fresh = str(doc.get("updated_at", "")) > (utcnow() - timedelta(seconds=10)).isoformat()
+    doc.pop("expire_at", None)
     return {"live": fresh, "frame": doc if fresh else None}
 
 
@@ -398,6 +548,7 @@ class Recording(BaseModel):
 @app.post("/v1/eeg/recordings")
 def upload_recording(rec: Recording, authorization: str = Header(default="")):
     owner = device_owner(authorization)
+    limits.consume(owner, "recording")
     n = len(rec.data[0])
     if len(rec.data) != len(rec.channel_names) or any(len(ch) != n for ch in rec.data):
         raise HTTPException(400, "data must be one equal-length list per channel")
@@ -405,11 +556,13 @@ def upload_recording(rec: Recording, authorization: str = Header(default="")):
         raise HTTPException(413, "at most 60 s and 120k samples per recording")
     if n < 4 * rec.fs:
         raise HTTPException(400, "record at least 4 s")
-    doc = store().create("eeg_recordings", {"owner": owner, "label": rec.label, "fs": rec.fs, "channel_names": rec.channel_names,
-                                            "data": [[round(v, 3) for v in ch] for ch in rec.data], "seconds": n / rec.fs,
-                                            "created_at": now()})
+    rid = secrets.token_hex(10)
+    # Samples go to GCS (a 120k-sample recording would exceed Firestore's 1 MiB document limit).
+    path = artifacts().put_json(f"{owner}/recordings/{rid}.json.gz", [[round(v, 3) for v in ch] for ch in rec.data])
+    store().create("eeg_recordings", {"owner": owner, "label": rec.label, "fs": rec.fs, "channel_names": rec.channel_names,
+                                      "data_path": path, "seconds": n / rec.fs, "created_at": now()}, doc_id=rid)
     runner.feed(owner, "system", f"OpenBCI recording '{rec.label}' uploaded ({n / rec.fs:.1f} s, {len(rec.data)} channels).")
-    return {"recording_id": doc["id"]}
+    return {"recording_id": rid}
 
 
 @app.get("/v1/eeg/recordings")
@@ -422,6 +575,12 @@ def list_recordings(user=Depends(current_user)):
 
 @app.post("/internal/tasks", dependencies=[Depends(internal_caller)])
 def internal_task(payload: dict):
+    try:
+        payload = tasks.valid_payload(payload)
+    except ValueError as exc:
+        # 200 so Cloud Tasks does not retry a malformed task forever
+        log.error("rejected task payload: %s", exc)
+        return {"rejected": str(exc)}
     return runner.handle_task(payload)
 
 
@@ -438,8 +597,9 @@ def web(path: str):
         raise HTTPException(404, "not found")
     if not WEB_DIST.exists():
         return JSONResponse({"service": "cortex2", "web": "not bundled; run the Vite dev server"}, status_code=404)
+    root = WEB_DIST.resolve()
     candidate = (WEB_DIST / path).resolve()
-    if path and candidate.is_file() and WEB_DIST.resolve() in candidate.parents:
+    if path and candidate.is_file() and root in candidate.parents:
         cache = "public, max-age=31536000, immutable" if "/assets/" in f"/{path}" else "public, max-age=300"
         return FileResponse(candidate, headers={"Cache-Control": cache})
     return FileResponse(WEB_DIST / "index.html", headers={"Cache-Control": "no-cache"})
