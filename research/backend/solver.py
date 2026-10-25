@@ -120,7 +120,7 @@ def local_qiskit(problem, shots=1024):
 def submit_ibm(problem, shots=1024):
     from qiskit_ibm_runtime import QiskitRuntimeService, Sampler
     from qiskit.transpiler import generate_preset_pass_manager
-    service=QiskitRuntimeService(channel="ibm_quantum_platform")
+    service=QiskitRuntimeService(channel="ibm_quantum_platform",token=__import__("os").environ["IBM_QUANTUM_TOKEN"])
     backend=service.least_busy(operational=True,simulator=False,min_num_qubits=N_BITS)
     isa=generate_preset_pass_manager(backend=backend,optimization_level=1).run(circuit(problem))
     job=Sampler(backend).run([isa],shots=shots)
@@ -131,7 +131,7 @@ def submit_ibm(problem, shots=1024):
 
 def poll_ibm(provider_job_id,problem):
     from qiskit_ibm_runtime import QiskitRuntimeService
-    job=QiskitRuntimeService(channel="ibm_quantum_platform").job(provider_job_id)
+    job=QiskitRuntimeService(channel="ibm_quantum_platform",token=__import__("os").environ["IBM_QUANTUM_TOKEN"]).job(provider_job_id)
     status=str(job.status()).lower()
     if "done" not in status and "complete" not in status:
         if any(x in status for x in ["error","cancel","fail"]):
