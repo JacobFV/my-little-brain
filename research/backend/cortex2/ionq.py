@@ -1,28 +1,48 @@
-"""IonQ trapped-ion execution via the IonQ Cloud REST API (no SDK dependency).
+"""IonQ trapped-ion execution via the IonQ Cloud REST API v0.4 (no SDK dependency).
 
 Trapped ions have all-to-all connectivity: every ZZ coupling of the Ising model is one native
 two-qubit interaction, with no SWAP routing. A full (unpruned) 8-qubit QAOA layer therefore
 fits the physical gate budget on IonQ, whereas IBM heavy-hex needs pruning — a hardware
 choice the agent can reason about. Circuits are submitted in IonQ's "qis" gateset; IonQ
 compiles them to native GPi/GPi2/MS gates server-side.
+
+Conventions (verified empirically against the IonQ simulator, see tests/test_hardware_calibration.py):
+  * result keys are integer basis states with qubit 0 as the least-significant bit — identical to
+    our bitstrings after format(k, "08b");
+  * qis `zz`/`rx`/`ry`/`rz` take `rotation` in radians with Qiskit's semantics,
+    e.g. zz(θ) = exp(-i θ/2 Z⊗Z) = Qiskit RZZ(θ).
 """
 from __future__ import annotations
 
-import math
 import os
 import time
+from functools import lru_cache
 
 import requests
 
 from . import neural as nm
 
-API = os.environ.get("IONQ_API_URL", "https://api.ionq.co/v0.3")
+API = os.environ.get("IONQ_API_URL", "https://api.ionq.co/v0.4").rstrip("/")
+ROOT = API.rsplit("/v0.", 1)[0]
+DEFAULT_QPU = "qpu.forte-1"
+DEFAULT_NOISE = "forte-1"
+NOISE_MODELS = ("ideal", "aria-1", "aria-2", "forte-1", "forte-enterprise-1")
 QIS_BASIS = ["x", "y", "z", "h", "s", "sdg", "t", "tdg", "sx", "sxdg", "rx", "ry", "rz", "cx", "rzz", "rxx", "ryy", "swap"]
 _NAME = {"sdg": "si", "tdg": "ti", "sx": "v", "sxdg": "vi", "cx": "cnot", "rzz": "zz", "rxx": "xx", "ryy": "yy"}
+TERMINAL_FAIL = ("failed", "canceled", "cancelled")
 
 
 def configured() -> bool:
     return bool(os.environ.get("IONQ_API_KEY"))
+
+
+def qpu_backend() -> str:
+    return os.environ.get("IONQ_QPU_BACKEND") or DEFAULT_QPU
+
+
+def noise_model() -> str:
+    m = os.environ.get("IONQ_NOISE_MODEL") or DEFAULT_NOISE
+    return m if m in NOISE_MODELS else DEFAULT_NOISE
 
 
 def _headers() -> dict:
@@ -32,11 +52,45 @@ def _headers() -> dict:
     return {"Authorization": f"apiKey {key}", "Content-Type": "application/json"}
 
 
+def _check(r: requests.Response, what: str) -> dict:
+    if r.status_code >= 400:
+        raise RuntimeError(f"IonQ {what} failed ({r.status_code}): {r.text[:400]}")
+    return r.json()
+
+
+@lru_cache(maxsize=1)
+def _backends_cached(_minute: int) -> list[dict]:
+    # v0.3 still reports per-key `has_access`; v0.4 omits it.
+    return _check(requests.get(f"{ROOT}/v0.3/backends", headers=_headers(), timeout=30), "backends")
+
+
+def backends() -> list[dict]:
+    return _backends_cached(int(time.time() // 600))
+
+
+def qpu_access() -> tuple[bool, str | None]:
+    """Whether this API key may run on the configured QPU (cached ~10 min)."""
+    if not configured():
+        return False, "IONQ_API_KEY is not configured on the server"
+    name = qpu_backend()
+    try:
+        info = {b["backend"]: b for b in backends()}.get(name)
+    except Exception as exc:
+        return False, f"IonQ backend list unavailable: {exc}"
+    if info is None:
+        return False, f"{name} is not an IonQ backend"
+    if info.get("status") not in ("available", "reserved", "calibrating"):
+        return False, f"{name} is {info.get('status')}"
+    if info.get("has_access") is False:
+        return False, f"this IonQ API key has no access to {name} (simulator only)"
+    return True, None
+
+
 def to_qis(qc):
     """Transpile to IonQ's qis gateset with all-to-all connectivity; returns (circuit, json gates, stats)."""
     from qiskit import transpile
 
-    from .quantum import gate_stats
+    from .quantum import GATE_BUDGET, gate_stats
 
     t = transpile(qc.remove_final_measurements(inplace=False), basis_gates=QIS_BASIS, optimization_level=2, seed_transpiler=11)
     gates = []
@@ -44,8 +98,7 @@ def to_qis(qc):
         op, qubits = inst.operation, [t.find_bit(q).index for q in inst.qubits]
         if op.name in ("barrier", "measure"):
             continue
-        name = _NAME.get(op.name, op.name)
-        g: dict = {"gate": name}
+        g: dict = {"gate": _NAME.get(op.name, op.name)}
         if op.name in ("rzz", "rxx", "ryy", "swap"):
             g["targets"] = qubits
         elif op.name == "cx":
@@ -57,63 +110,82 @@ def to_qis(qc):
         gates.append(g)
     stats = gate_stats(t)
     stats.update({"backend": "ionq (all-to-all, qis)", "physical_qubits": list(range(nm.N_BITS)),
+                  "within_budget": stats["gates"] <= GATE_BUDGET, "budget": GATE_BUDGET,
                   "note": "IonQ compiles qis gates to native GPi/GPi2/MS server-side; two-qubit count is exact, no SWAPs"})
-    from .quantum import GATE_BUDGET
-
-    stats["within_budget"], stats["budget"] = stats["gates"] <= GATE_BUDGET, GATE_BUDGET
     return t, gates, stats
 
 
-def submit(qc, shots: int, target: str, noise_model: str | None = None, name: str = "cortex2") -> dict:
+def job_body(gates: list[dict], shots: int, backend: str, noise: str | None = None, name: str = "cortex2",
+             dry_run: bool = False) -> dict:
+    body = {"type": "ionq.circuit.v1", "backend": backend, "shots": int(shots), "name": name[:100],
+            "input": {"qubits": nm.N_BITS, "gateset": "qis", "circuit": gates}}
+    if backend == "simulator":
+        body["noise"] = {"model": noise or "ideal"}
+    if dry_run:
+        body["dry_run"] = True
+    return body
+
+
+def submit(qc, shots: int, backend: str, noise: str | None = None, name: str = "cortex2", dry_run: bool = False) -> dict:
     _, gates, stats = to_qis(qc)
-    body = {"target": target, "shots": int(shots), "name": name[:100],
-            "input": {"format": "ionq.circuit.v0", "gateset": "qis", "qubits": nm.N_BITS, "circuit": gates}}
-    if target == "simulator" and noise_model and noise_model != "ideal":
-        body["noise"] = {"model": noise_model}
-    r = requests.post(f"{API}/jobs", json=body, headers=_headers(), timeout=60)
-    if r.status_code >= 400:
-        raise RuntimeError(f"IonQ submit failed ({r.status_code}): {r.text[:400]}")
-    job = r.json()
-    return {"provider_job_id": job["id"], "backend": target + (f" (noise {noise_model})" if target == "simulator" else ""),
-            "transpiled": stats, "provider_status": job.get("status")}
+    job = _check(requests.post(f"{API}/jobs", json=job_body(gates, shots, backend, noise, name, dry_run),
+                               headers=_headers(), timeout=60), "submit")
+    label = backend + (f" (noise {noise or 'ideal'})" if backend == "simulator" else "")
+    return {"provider_job_id": job["id"], "backend": label, "transpiled": stats, "provider_status": job.get("status"),
+            "dry_run": dry_run}
+
+
+def estimate(qc, shots: int, backend: str | None = None) -> dict:
+    """Cost / time estimate for running `qc` on a QPU (no job is created)."""
+    _, _, stats = to_qis(qc)
+    twoq = stats["two_qubit_gates"]
+    params = {"backend": backend or qpu_backend(), "qubits": nm.N_BITS, "shots": int(shots),
+              "1q_gates": max(0, stats["gates"] - twoq), "2q_gates": twoq}
+    est = _check(requests.get(f"{API}/jobs/estimate", params=params, headers=_headers(), timeout=30), "estimate")
+    return {"backend": params["backend"], "shots": shots, "1q_gates": params["1q_gates"], "2q_gates": twoq,
+            "estimated_total_cost": est.get("estimated_total_cost"), "unit": est.get("estimated_unit"),
+            "estimated_execution_ms": est.get("estimated_execution_time"),
+            "predicted_queue_ms": est.get("current_predicted_queue_time")}
+
+
+def probabilities_to_counts(probs: dict, shots: int) -> dict[str, int]:
+    """Largest-remainder rounding so the counts sum exactly to `shots`."""
+    items = [(format(int(k), f"0{nm.N_BITS}b"), float(p) * shots) for k, p in probs.items()]
+    counts = {s: int(v) for s, v in items}
+    short = shots - sum(counts.values())
+    for s, v in sorted(items, key=lambda kv: -(kv[1] - int(kv[1])))[:max(0, short)]:
+        counts[s] += 1
+    return {s: n for s, n in counts.items() if n}
 
 
 def poll(job_id: str, shots: int) -> dict:
-    r = requests.get(f"{API}/jobs/{job_id}", headers=_headers(), timeout=30)
-    if r.status_code >= 400:
-        raise RuntimeError(f"IonQ status failed ({r.status_code}): {r.text[:300]}")
-    job = r.json()
+    job = _check(requests.get(f"{API}/jobs/{job_id}", headers=_headers(), timeout=30), "status")
     status = job.get("status", "")
     if status == "completed":
-        rr = requests.get(f"{API}/jobs/{job_id}/results", headers=_headers(), timeout=60)
-        if rr.status_code >= 400:
-            raise RuntimeError(f"IonQ results failed ({rr.status_code}): {rr.text[:300]}")
-        probs = rr.json()
-        # keys are integer basis states, qubit 0 = least significant bit → same as our bitstrings
-        counts: dict[str, int] = {}
-        for k, p in probs.items():
-            n = int(round(float(p) * shots))
-            if n:
-                counts[format(int(k), f"0{nm.N_BITS}b")] = n
-        return {"status": "done", "counts": counts, "execution_time_ms": job.get("execution_time"),
-                "predicted_execution_time": job.get("predicted_execution_time")}
-    if status in ("failed", "canceled", "cancelled"):
+        url = ((job.get("results") or {}).get("probabilities") or {}).get("url") or f"/v0.4/jobs/{job_id}/results/probabilities"
+        probs = _check(requests.get(ROOT + url, headers=_headers(), timeout=60), "results")
+        return {"status": "done", "counts": probabilities_to_counts(probs, shots),
+                "execution_time_ms": job.get("execution_duration_ms"), "gate_counts": (job.get("stats") or {}).get("gate_counts"),
+                "cost_model": job.get("cost_model")}
+    if status in TERMINAL_FAIL:
         failure = job.get("failure") or {}
-        return {"status": "failed", "error": f"IonQ job {status}: {failure.get('error') or failure or ''}"}
+        detail = failure.get("error") or failure.get("message") or failure or ""
+        return {"status": "failed", "error": f"IonQ job {status}: {detail}"}
     return {"status": "pending", "provider_status": status}
 
 
-def run_blocking(qc, shots: int, noise_model: str | None, timeout: float = 240) -> tuple[dict[str, int], dict]:
-    """Simulator path: submit and wait (IonQ cloud simulator usually returns in seconds)."""
-    sub = submit(qc, shots, "simulator", noise_model)
+def run_blocking(qc, shots: int, noise: str | None, timeout: float = 240) -> tuple[dict[str, int], dict]:
+    """Simulator path: submit and wait (the IonQ cloud simulator usually returns in seconds)."""
+    sub = submit(qc, shots, "simulator", noise)
     deadline = time.monotonic() + timeout
     delay = 1.0
     while time.monotonic() < deadline:
         time.sleep(delay)
         res = poll(sub["provider_job_id"], shots)
         if res["status"] == "done":
-            return res["counts"], {"mode": "ionq_cloud_simulator", "noise_model": noise_model or "ideal",
-                                   "provider_job_id": sub["provider_job_id"], "transpiled": sub["transpiled"]}
+            return res["counts"], {"mode": "ionq_cloud_simulator", "noise_model": noise or "ideal",
+                                   "provider_job_id": sub["provider_job_id"], "backend": sub["backend"],
+                                   "gate_counts": res.get("gate_counts")}
         if res["status"] == "failed":
             raise RuntimeError(res["error"])
         delay = min(5.0, delay * 1.5)
@@ -121,8 +193,6 @@ def run_blocking(qc, shots: int, noise_model: str | None, timeout: float = 240) 
 
 
 def cancel(job_id: str) -> None:
-    requests.put(f"{API}/jobs/{job_id}/status/cancel", headers=_headers(), timeout=30)
-
-
-def round_counts_total(counts: dict[str, int]) -> int:
-    return int(math.fsum(counts.values()))
+    r = requests.put(f"{API}/jobs/{job_id}/status/cancel", headers=_headers(), timeout=30)
+    if r.status_code >= 400:
+        raise RuntimeError(f"IonQ cancel failed ({r.status_code}): {r.text[:200]}")

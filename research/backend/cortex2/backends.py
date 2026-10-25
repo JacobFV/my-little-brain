@@ -13,7 +13,6 @@ and call `register(...)`. Nothing else in the runner, agent or UI needs to chang
 """
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass, field
 from typing import Any, ClassVar
 
@@ -162,7 +161,7 @@ class IBMRuntime(GateBackend):
                         vendor="IBM", cost="Open plan ≈10 QPU-minutes / 28 days")
 
     def availability(self):
-        return (True, None) if qm.ibm_configured() else (False, "IBM_QUANTUM_TOKEN is not configured on the server")
+        return qm.ibm_availability()
 
     def submit(self, qc, shots, options, name):
         sub = qm.submit_ibm(qc, shots, int(options.get("optimization_level", 3)))
@@ -188,25 +187,36 @@ class _IonQ(GateBackend):
 
 class IonQSimulator(_IonQ):
     id, label, kind = "ionq_simulator", "IonQ cloud simulator · trapped-ion noise model", "quantum_simulator"
-    caps = Capabilities("gate", connectivity="all-to-all (no SWAPs)", noise="IonQ Aria/Forte noise model", vendor="IonQ",
-                        cost="free simulator", options={"ionq_noise": "ideal | aria-1 | forte-1"})
+    caps = Capabilities("gate", connectivity="all-to-all (no SWAPs)", noise="IonQ device noise model (default forte-1)",
+                        vendor="IonQ", cost="free simulator",
+                        options={"ionq_noise": " | ".join(ionq.NOISE_MODELS)})
 
     def run(self, qc, shots, options):
-        noise = options.get("ionq_noise") or os.environ.get("IONQ_NOISE_MODEL", "aria-1")
+        noise = options.get("ionq_noise") if options.get("ionq_noise") in ionq.NOISE_MODELS else ionq.noise_model()
         counts, meta = ionq.run_blocking(qc, shots, noise)
         isa, stats = self.compile(qc, options)
-        meta["backend"] = f"ionq simulator ({noise})"
         return counts, meta, stats, isa
 
 
 class IonQQPU(_IonQ):
     id, label, kind = "ionq_qpu", "IonQ · physical trapped-ion QPU", "quantum_hardware"
     caps = Capabilities("gate", mode="async", hardware=True, connectivity="all-to-all (no SWAPs)", noise="physical device",
-                        vendor="IonQ", cost="billed per shot/gate to the IonQ account")
+                        vendor="IonQ", cost="billed per gate/shot to the IonQ account (estimate attached to each job)")
+
+    def availability(self):
+        return ionq.qpu_access()
 
     def submit(self, qc, shots, options, name):
-        sub = ionq.submit(qc, shots, os.environ.get("IONQ_QPU_BACKEND", "qpu.aria-1"), name=name)
+        backend = ionq.qpu_backend()
+        cost = None
+        try:
+            cost = ionq.estimate(qc, shots, backend)
+        except Exception as exc:  # estimates are informative; never block a submission the user confirmed
+            cost = {"error": str(exc)[:200]}
+        ionq.submit(qc, shots, backend, name=name, dry_run=True)       # server-side validation, no charge
+        sub = ionq.submit(qc, shots, backend, name=name)
         sub["isa_circuit"] = qm.describe(ionq.to_qis(qc)[0])
+        sub["transpiled"]["cost_estimate"] = cost      # persisted with the job's transpiled stats
         return sub
 
     def poll(self, provider_job_id, shots):

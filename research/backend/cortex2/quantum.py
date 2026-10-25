@@ -10,6 +10,7 @@ reported alongside the logical counts and two-qubit depth.
 from __future__ import annotations
 
 import os
+import time
 from dataclasses import asdict, dataclass, field
 from functools import lru_cache
 
@@ -322,16 +323,65 @@ def ibm_configured() -> bool:
     return bool(os.environ.get("IBM_QUANTUM_TOKEN"))
 
 
+_SERVICE = None
+_SERVICE_KEY = None
+_QUOTA: dict = {"checked": 0.0, "state": None, "refreshing": False}
+QUOTA_TTL = 600
+
+
 def _service():
+    """Cached QiskitRuntimeService (constructing one costs several seconds of network round-trips)."""
+    global _SERVICE, _SERVICE_KEY
     from qiskit_ibm_runtime import QiskitRuntimeService
 
     token = os.environ.get("IBM_QUANTUM_TOKEN")
     if not token:
         raise RuntimeError("IBM_QUANTUM_TOKEN is not configured")
-    kwargs = {"channel": "ibm_quantum_platform", "token": token}
-    if os.environ.get("IBM_QUANTUM_INSTANCE"):
-        kwargs["instance"] = os.environ["IBM_QUANTUM_INSTANCE"]
-    return QiskitRuntimeService(**kwargs)
+    key = (token, os.environ.get("IBM_QUANTUM_INSTANCE"))
+    if _SERVICE is None or _SERVICE_KEY != key:
+        kwargs = {"channel": "ibm_quantum_platform", "token": token}
+        if key[1]:
+            kwargs["instance"] = key[1]
+        _SERVICE, _SERVICE_KEY = QiskitRuntimeService(**kwargs), key
+    return _SERVICE
+
+
+def _refresh_quota() -> None:
+    try:
+        u = _service().usage()
+        _QUOTA["state"] = {"limit_reached": bool(u.get("usage_limit_reached")),
+                           "remaining_seconds": u.get("usage_remaining_seconds"),
+                           "limit_seconds": u.get("usage_limit_seconds"),
+                           "available_at": u.get("time_available_at")}
+    except Exception as exc:
+        _QUOTA["state"] = {"error": str(exc)[:200]}
+    finally:
+        _QUOTA["checked"] = time.time()
+        _QUOTA["refreshing"] = False
+
+
+def ibm_quota(block: bool = False) -> dict | None:
+    """Open-plan usage, refreshed in the background so request paths never wait on IBM."""
+    import threading
+
+    stale = time.time() - _QUOTA["checked"] > QUOTA_TTL
+    if stale and ibm_configured():
+        if block:
+            _refresh_quota()
+        elif not _QUOTA["refreshing"]:
+            _QUOTA["refreshing"] = True
+            threading.Thread(target=_refresh_quota, daemon=True).start()
+    return _QUOTA["state"]
+
+
+def ibm_availability() -> tuple[bool, str | None]:
+    if not ibm_configured():
+        return False, "IBM_QUANTUM_TOKEN is not configured on the server"
+    q = ibm_quota() or {}
+    if q.get("limit_reached"):
+        return False, (f"IBM Open-plan QPU time exhausted ({q.get('limit_seconds')} s / 28 days); "
+                       f"jobs would queue until {q.get('available_at') or 'the next reset'}")
+    return True, None
 
 
 def ibm_backend():
@@ -355,6 +405,10 @@ def ibm_backends() -> list[dict]:
 def submit_ibm(qc, shots: int = DEFAULT_SHOTS, optimization_level: int = 3, seed: int = 11) -> dict:
     from qiskit_ibm_runtime import SamplerV2
 
+    quota = ibm_quota(block=True) or {}
+    if quota.get("limit_reached"):
+        raise RuntimeError(f"IBM Open-plan QPU time is exhausted; a job would stay queued until "
+                           f"{quota.get('available_at') or 'the next reset'}. Not submitting.")
     backend = ibm_backend()
     isa, stats = transpile(qc, backend, optimization_level, seed)
     job = SamplerV2(mode=backend).run([isa], shots=shots)

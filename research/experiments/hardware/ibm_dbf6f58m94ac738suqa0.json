@@ -1,0 +1,140 @@
+{
+ "provider_job_id": "dbf6f58m94ac738suqa0",
+ "backend": "ibm_kingston",
+ "status": "QUEUED",
+ "shots": 1024,
+ "experiment": {
+  "truth": "10101011",
+  "approximation": "trust_region",
+  "baseline": "00000000",
+  "spec": {
+   "reps": 1,
+   "gammas": [
+    0.6737954642616506
+   ],
+   "betas": [
+    -0.48915242481885557
+   ],
+   "prune_threshold": 0.0,
+   "max_couplings": 6,
+   "warm_start": null,
+   "warm_epsilon": 0.25,
+   "coupling_order": "strength",
+   "optimization_level": 3,
+   "seed_transpiler": 11
+  }
+ },
+ "transpiled": {
+  "size": 110,
+  "gates": 102,
+  "depth": 41,
+  "two_qubit_gates": 15,
+  "two_qubit_depth": 11,
+  "ops": {
+   "rz": 44,
+   "sx": 43,
+   "cz": 15,
+   "measure": 8,
+   "barrier": 1
+  },
+  "backend": "ibm_kingston",
+  "physical_qubits": [
+   152,
+   150,
+   91,
+   10,
+   151,
+   149,
+   147,
+   148
+  ],
+  "within_budget": true,
+  "budget": 130
+ },
+ "qubo_quality": {
+  "qubo_argmin": "01100000",
+  "qubo_argmin_nonlinear_loss": 3.095958868250985,
+  "nonlinear_argmin": "10101011",
+  "nonlinear_min_loss": 0.08599788545305999,
+  "rank_of_nonlinear_argmin_under_qubo": 229,
+  "spearman": 0.13583628976882578
+ },
+ "ideal": {
+  "expected_nonlinear_loss": 14.36730139631777,
+  "p_consistent": 0.0006219308280617878,
+  "top": [
+   {
+    "bitstring": "01010000",
+    "p": 0.041968271833341245
+   },
+   {
+    "bitstring": "01100000",
+    "p": 0.030852153434073576
+   },
+   {
+    "bitstring": "00010000",
+    "p": 0.029570252573538156
+   },
+   {
+    "bitstring": "01010100",
+    "p": 0.029465287048781267
+   },
+   {
+    "bitstring": "01011000",
+    "p": 0.028870210895549923
+   },
+   {
+    "bitstring": "10100000",
+    "p": 0.025387771354901327
+   },
+   {
+    "bitstring": "01000000",
+    "p": 0.023173502907795046
+   },
+   {
+    "bitstring": "01100100",
+    "p": 0.021660828938060327
+   },
+   {
+    "bitstring": "01101000",
+    "p": 0.02122337035369551
+   },
+   {
+    "bitstring": "00010100",
+    "p": 0.020760825788687185
+   },
+   {
+    "bitstring": "00011000",
+    "p": 0.020341543521801928
+   },
+   {
+    "bitstring": "01011100",
+    "p": 0.02026933714531526
+   },
+   {
+    "bitstring": "00100000",
+    "p": 0.019772201065920467
+   },
+   {
+    "bitstring": "10100100",
+    "p": 0.017824369168012943
+   },
+   {
+    "bitstring": "01000010",
+    "p": 0.017805483932209806
+   },
+   {
+    "bitstring": "10101000",
+    "p": 0.01746439110227355
+   }
+  ],
+  "p_truth": 0.0006219308280617878
+ },
+ "quota": {
+  "limit_reached": true,
+  "remaining_seconds": 0,
+  "limit_seconds": 600,
+  "available_at": "2026-11-07T19:06:48.693Z"
+ },
+ "note": "Submitted 2026-10-25 through the cortex2 runner (SamplerV2). The instance's Open-plan allowance was already exhausted, so the job is queued until the quota resets. Retrieve with quantum.poll_ibm(provider_job_id) and evaluate with inverse.evaluate_counts."
+}
