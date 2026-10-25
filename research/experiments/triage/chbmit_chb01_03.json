@@ -1,0 +1,313 @@
+{
+ "source": "CHB-MIT chb01_03, window 2960\u20133060 s (seizure 2996\u20133036 s)",
+ "model": "gemini/gemini-4-argon",
+ "operator_reply": [
+  "Spectrogram triage of `chbmit-chb01_03` (2960\u20133060 s, annotated seizure 2996\u20133036 s) shows quiescent pre-ictal activity above 8 Hz before 2996 s followed by intense ictal recruitment: `FT9-FT10` reaches the highest peak RMS (199.2 \u00b5V, 2.80\u00d7 median at 3020 s), `P8-O2` exhibits the largest relative surge (3.26\u00d7 median, 173.5 \u00b5V peak at 3004 s, 62.9% delta / 22.1% theta), and `T8-P8` shows strong broadband recruitment (2.50\u00d7 median, 152.2 \u00b5V peak, 8.7% beta / 4.8% gamma). I created four inverse-model experiments covering the `FT9-FT10` pre-ictal baseline (2960\u20132996 s, `5cb3544fecd04e288716`) and the three ictal windows (2996\u20133036 s on `FT9-FT10` `ddadf36ec0cf4a8db29d`, `P8-O2` `2593a6117f6740339798`, and `T8-P8` `a45f3a9b94964629be2b`), and dispatched full unpruned QAOA (`ionq_simulator`, `reps=1`) and `classical_exact` jobs on each (note: the task queue reported `no local task handler registered`, so those 8 sampling jobs are logged for retry once the worker is online). Comparing the Wilson\u2013Cowan hypothesis sets across windows shows the `FT9-FT10` pre-ictal baseline admits 6 consistent hypotheses (`01100011`, `10100011`, `10110010`, `10110011`, `11110010`, `11110011`; synaptic $\\tau \\in [16, 55]$ ms, inhibitory gain $10$, recurrent excitation $[16, 18]$), whereas all three ictal windows narrow to 3 consistent hypotheses each with slower synaptic time constants ($\\tau \\in [30, 55]$ ms). Within `FT9-FT10`, the transition from pre-ictal to ictal shifts the consistent set completely to `10001000`, `10001100`, and `11100011` (allowing higher inhibitory gain $[10, 19]$ and lower recurrent excitation $[12, 16]$), while `FT9-FT10` and `T8-P8` share the ictal hypothesis `11100011` and `P8-O2` diverges onto a distinct posterior low-drive set (`10110001`, `11001000`, `11001100`; excitatory drive $[1.5, 2.0]$)."
+ ],
+ "picks": [
+  {
+   "experiment_id": "a45f3a9b94964629be2b",
+   "title": "triage \u00b7 T8-P8 \u00b7 2996\u20133036s",
+   "why": "Ictal window on right temporo-parietal channel T8-P8 showing intense broadband 4-30 Hz power increase (beta 8.7%, gamma 4.8%, RMS ratio 2.50x).",
+   "best": {
+    "bitstring": "11100011",
+    "nonlinear_loss": 1.0056167460653902,
+    "parameters": {
+     "excitatory_drive": 3.0,
+     "inhibitory_gain": 10.0,
+     "recurrent_excitation": 16.0,
+     "synaptic_tau_ms": 55.0
+    },
+    "consistent": true,
+    "job_id": "06d3d76eb04d4f20b100"
+   }
+  },
+  {
+   "experiment_id": "2593a6117f6740339798",
+   "title": "triage \u00b7 P8-O2 \u00b7 2996\u20133036s",
+   "why": "Ictal window on right parieto-occipital channel P8-O2 with the highest RMS max/median ratio (3.26x, 173.5 uV at 3004 s) and dominant delta/theta surge.",
+   "best": {
+    "bitstring": "11001100",
+    "nonlinear_loss": 0.5937216645141545,
+    "parameters": {
+     "excitatory_drive": 1.5,
+     "inhibitory_gain": 19.0,
+     "recurrent_excitation": 12.0,
+     "synaptic_tau_ms": 55.0
+    },
+    "consistent": true,
+    "job_id": "92ae85c1255544029f56"
+   }
+  },
+  {
+   "experiment_id": "ddadf36ec0cf4a8db29d",
+   "title": "triage \u00b7 FT9-FT10 \u00b7 2996\u20133036s",
+   "why": "Ictal window on FT9-FT10 showing the highest peak RMS (199.2 uV, 2.80x median at 3020 s) and strong theta/alpha/beta recruitment.",
+   "best": {
+    "bitstring": "10001100",
+    "nonlinear_loss": 0.8836644053391136,
+    "parameters": {
+     "excitatory_drive": 1.5,
+     "inhibitory_gain": 19.0,
+     "recurrent_excitation": 12.0,
+     "synaptic_tau_ms": 30.0
+    },
+    "consistent": true,
+    "job_id": "48b7375af44047dfbab5"
+   }
+  },
+  {
+   "experiment_id": "5cb3544fecd04e288716",
+   "title": "triage \u00b7 FT9-FT10 \u00b7 2960\u20132996s",
+   "why": "Pre-ictal baseline on fronto-temporal channel FT9-FT10 prior to the 2996 s seizure onset, quiescent above 8 Hz.",
+   "best": {
+    "bitstring": "01100011",
+    "nonlinear_loss": 0.8652598745623763,
+    "parameters": {
+     "excitatory_drive": 3.0,
+     "inhibitory_gain": 10.0,
+     "recurrent_excitation": 16.0,
+     "synaptic_tau_ms": 16.0
+    },
+    "consistent": true,
+    "job_id": "6cceb885311e46128e69"
+   }
+  }
+ ],
+ "jobs": [
+  {
+   "experiment_id": "5cb3544fecd04e288716",
+   "provider": "ionq_simulator",
+   "status": "completed",
+   "backend": "simulator (noise forte-1)",
+   "provider_job_id": "01a174d5-2e9e-7716-b2a4-62b8ff9db616",
+   "best": "00100011",
+   "loss": 1.8044219576761327,
+   "gates": 52
+  },
+  {
+   "experiment_id": "5cb3544fecd04e288716",
+   "provider": "classical_exact",
+   "status": "completed",
+   "backend": null,
+   "provider_job_id": null,
+   "best": "01100011",
+   "loss": 0.8652598745623763,
+   "gates": null
+  },
+  {
+   "experiment_id": "ddadf36ec0cf4a8db29d",
+   "provider": "ionq_simulator",
+   "status": "completed",
+   "backend": "simulator (noise forte-1)",
+   "provider_job_id": "01a174d5-076f-722b-bb1f-aae1ef3880f2",
+   "best": "11001000",
+   "loss": 2.8323539999271605,
+   "gates": 52
+  },
+  {
+   "experiment_id": "ddadf36ec0cf4a8db29d",
+   "provider": "classical_exact",
+   "status": "completed",
+   "backend": null,
+   "provider_job_id": null,
+   "best": "10001100",
+   "loss": 0.8836644053391136,
+   "gates": null
+  },
+  {
+   "experiment_id": "2593a6117f6740339798",
+   "provider": "ionq_simulator",
+   "status": "completed",
+   "backend": "simulator (noise forte-1)",
+   "provider_job_id": "01a174d4-ea0d-76d0-97be-3343f5d13c00",
+   "best": "10000000",
+   "loss": 3.5795629167218186,
+   "gates": 52
+  },
+  {
+   "experiment_id": "2593a6117f6740339798",
+   "provider": "classical_exact",
+   "status": "completed",
+   "backend": null,
+   "provider_job_id": null,
+   "best": "11001100",
+   "loss": 0.5937216645141545,
+   "gates": null
+  },
+  {
+   "experiment_id": "a45f3a9b94964629be2b",
+   "provider": "ionq_simulator",
+   "status": "completed",
+   "backend": "simulator (noise forte-1)",
+   "provider_job_id": "01a174d4-c69f-769f-9d34-b7258f975518",
+   "best": "10110011",
+   "loss": 2.9698091961840847,
+   "gates": 52
+  },
+  {
+   "experiment_id": "a45f3a9b94964629be2b",
+   "provider": "classical_exact",
+   "status": "completed",
+   "backend": null,
+   "provider_job_id": null,
+   "best": "11100011",
+   "loss": 1.0056167460653902,
+   "gates": null
+  }
+ ],
+ "comparison": [
+  {
+   "kind": "channel_comparison",
+   "rows": [
+    {
+     "experiment_id": "a45f3a9b94964629be2b",
+     "title": "triage \u00b7 T8-P8 \u00b7 2996\u20133036s",
+     "best_found": "11100011",
+     "best_found_params": {
+      "excitatory_drive": 3.0,
+      "inhibitory_gain": 10.0,
+      "recurrent_excitation": 16.0,
+      "synaptic_tau_ms": 55.0
+     },
+     "best_found_loss": 1.0056167460653902,
+     "consistent_set": [
+      "10100011",
+      "11100011",
+      "11110010"
+     ],
+     "consistent_set_size": 3,
+     "consistent_param_ranges": {
+      "excitatory_drive": [
+       2.5,
+       3.0
+      ],
+      "inhibitory_gain": [
+       10.0,
+       10.0
+      ],
+      "recurrent_excitation": [
+       16.0,
+       18.0
+      ],
+      "synaptic_tau_ms": [
+       30.0,
+       55.0
+      ]
+     }
+    },
+    {
+     "experiment_id": "2593a6117f6740339798",
+     "title": "triage \u00b7 P8-O2 \u00b7 2996\u20133036s",
+     "best_found": "11001100",
+     "best_found_params": {
+      "excitatory_drive": 1.5,
+      "inhibitory_gain": 19.0,
+      "recurrent_excitation": 12.0,
+      "synaptic_tau_ms": 55.0
+     },
+     "best_found_loss": 0.5937216645141545,
+     "consistent_set": [
+      "10110001",
+      "11001000",
+      "11001100"
+     ],
+     "consistent_set_size": 3,
+     "consistent_param_ranges": {
+      "excitatory_drive": [
+       1.5,
+       2.0
+      ],
+      "inhibitory_gain": [
+       10.0,
+       19.0
+      ],
+      "recurrent_excitation": [
+       12.0,
+       18.0
+      ],
+      "synaptic_tau_ms": [
+       30.0,
+       55.0
+      ]
+     }
+    },
+    {
+     "experiment_id": "ddadf36ec0cf4a8db29d",
+     "title": "triage \u00b7 FT9-FT10 \u00b7 2996\u20133036s",
+     "best_found": "10001100",
+     "best_found_params": {
+      "excitatory_drive": 1.5,
+      "inhibitory_gain": 19.0,
+      "recurrent_excitation": 12.0,
+      "synaptic_tau_ms": 30.0
+     },
+     "best_found_loss": 0.8836644053391136,
+     "consistent_set": [
+      "10001000",
+      "10001100",
+      "11100011"
+     ],
+     "consistent_set_size": 3,
+     "consistent_param_ranges": {
+      "excitatory_drive": [
+       1.5,
+       3.0
+      ],
+      "inhibitory_gain": [
+       10.0,
+       19.0
+      ],
+      "recurrent_excitation": [
+       12.0,
+       16.0
+      ],
+      "synaptic_tau_ms": [
+       30.0,
+       55.0
+      ]
+     }
+    },
+    {
+     "experiment_id": "5cb3544fecd04e288716",
+     "title": "triage \u00b7 FT9-FT10 \u00b7 2960\u20132996s",
+     "best_found": "01100011",
+     "best_found_params": {
+      "excitatory_drive": 3.0,
+      "inhibitory_gain": 10.0,
+      "recurrent_excitation": 16.0,
+      "synaptic_tau_ms": 16.0
+     },
+     "best_found_loss": 0.8652598745623763,
+     "consistent_set": [
+      "01100011",
+      "10100011",
+      "10110010",
+      "10110011",
+      "11110010",
+      "11110011"
+     ],
+     "consistent_set_size": 6,
+     "consistent_param_ranges": {
+      "excitatory_drive": [
+       2.5,
+       3.0
+      ],
+      "inhibitory_gain": [
+       10.0,
+       10.0
+      ],
+      "recurrent_excitation": [
+       16.0,
+       18.0
+      ],
+      "synaptic_tau_ms": [
+       16.0,
+       55.0
+      ]
+     }
+    }
+   ]
+  }
+ ]
+}

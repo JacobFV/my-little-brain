@@ -171,3 +171,34 @@ Local bridge WebSocket (lowest latency, same machine as the headset): `ws://127.
 messages at ~20 Hz: `{ "type":"frame", "t": 1730000000.1, "board":"cyton", "fs":250,
 "channel_names":[…], "samples":[[new samples per channel]], "bands":{delta,theta,alpha,beta,gamma},
 "per_channel_bands":[{…}], "blink": false, "quality": "ok|railed|flat" }`
+
+### Bridge protocol v2 (additive; `hello.protocol == 2`)
+
+Frames gain:
+```json
+{ "state": "streaming", "blink_count": 12,
+  "alpha_state": "eyes_open | eyes_closed | unknown", "alpha_fraction": 0.31, "alpha_baseline": 0.19,
+  "quality": ["ok","railed","flat","noisy","no data", …],     // one per channel (was a single string in v1 docs)
+  "line_noise": [0.02, …],                                     // mains power ÷ 1–45 Hz power per channel (raw signal)
+  "per_channel_bands": [{"delta","theta","alpha","beta","gamma","rms_uv"}, …],
+  "recording": null | { "label", "seconds", "elapsed" } }
+```
+`hello` gains `state`, `message`, `serial_port`, `protocol: 2`.
+
+New server → browser messages:
+- `{ "type":"status", "state":"connecting|streaming|reconnecting|stopped", "message", "board", "serial_port" }`
+- `{ "type":"recording_progress", "label", "seconds", "elapsed" }`, about once per second while recording
+- `{ "type":"recording", "recording_id": "…" | null, "path": "local json", "message" }`. `recording_id` is null when
+  cloud upload is not configured.
+- `{ "type":"error", "message" }`
+
+Browser → bridge messages:
+- `{ "type":"record", "seconds": 4–60, "label" }`
+- `{ "type":"ping" }`, answered by `{ "type":"pong", "t" }`
+
+Suggested UI use:
+- `alpha_state === "eyes_closed"` → sleepy mood with occipital fibres glowing;
+- `blink` → force a blink;
+- `status.state === "reconnecting"` → show `message` as a banner;
+- quality `railed`/`flat` → dim that anchor.
+

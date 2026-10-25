@@ -18,6 +18,8 @@ import json
 import logging
 import os
 import time
+
+import numpy as np
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -598,6 +600,18 @@ OPERATOR_TOOLS = [
     _fn("create_experiment", "Create a new experiment.", {"source": {"type": "string", "enum": ["synthetic", "recording"]},
         "truth_bitstring": {"type": ["string", "null"]}, "dataset_id": {"type": ["string", "null"]},
         "channel": {"type": ["string", "null"]}, "segment": {"type": ["string", "null"]}}, ["source"]),
+    _fn("list_eeg_sources", "EEG sources for triage: CHB-MIT excerpts (channels, seizure annotations, time bounds) and the user's OpenBCI recordings.", {}),
+    _fn("render_spectrograms", "Render per-channel spectrograms of an EEG source/window and LOOK at them (you receive the image) plus per-channel band-power numbers.",
+        {"dataset_id": {"type": ["string", "null"]}, "recording_id": {"type": ["string", "null"]},
+         "start": {"type": ["number", "null"], "description": "seconds (source clock)"}, "end": {"type": ["number", "null"]},
+         "channels": {"type": ["array", "null"], "items": {"type": "string"}}}),
+    _fn("create_channel_experiments", "Splinter: create one inverse-model experiment per selected channel/window so each can be searched with quantum circuits.",
+        {"dataset_id": {"type": ["string", "null"]}, "recording_id": {"type": ["string", "null"]},
+         "picks": {"type": "array", "items": {"type": "object", "properties": {
+             "channel": {"type": "string"}, "start": {"type": "number"}, "end": {"type": "number"}, "why": {"type": "string"}},
+             "required": ["channel", "start", "end", "why"]}}}, ["picks"]),
+    _fn("compare_experiments", "Compare best hypotheses, parameter values and consistent hypothesis sets across experiments (e.g. channels).",
+        {"experiment_ids": {"type": "array", "items": {"type": "string"}}}, ["experiment_ids"]),
     _fn("update_memory", "Replace your rolling research memory (≤1500 chars): goals, open questions, what's running, next steps.",
         {"memory": {"type": "string"}}, ["memory"]),
 ]
@@ -610,6 +624,13 @@ compare providers on equal footing (same approximation/spec/shots), and start de
 clear failure to fix. Make good use of the budget: prefer cheap simulators to test ideas and reserve physical QPU runs for
 circuits that are within the gate budget and already validated on the noisy simulator. Never fabricate results, never claim
 quantum advantage (256 states are classically enumerable), and keep clinical language out: these are model hypotheses.
+
+EEG triage ("AI eyes + quantum search"): when asked to analyse EEG, call list_eeg_sources, then render_spectrograms and
+actually look at the image (rhythmic bands, onset times, which channels change, artefacts vs. physiology). Choose 2–4
+channel/window picks that best discriminate the phenomenon (e.g. seizure onset vs. pre-ictal baseline, eyes-closed alpha
+on O1/O2), state why for each, call create_channel_experiments, dispatch a quantum search on each new experiment
+(prefer ionq_simulator for the full unpruned problem, or aer_noisy) plus a classical_exact reference, and finally
+compare_experiments to report which neural-mass hypotheses each channel/window supports and where they diverge.
 Finish with a short reply to the user (2–6 sentences, concrete numbers from tools) and update_memory."""
 
 
@@ -669,6 +690,8 @@ def run_operator(job: dict) -> dict:
         if name == "update_memory":
             store().update("sessions", uid, {"operator_memory": args["memory"][:1500]})
             return {"ok": True}, None
+        if name in ("list_eeg_sources", "render_spectrograms", "create_channel_experiments", "compare_experiments"):
+            return triage_tool(uid, name, args, actions)
         return {"error": f"unknown tool {name}"}, None
 
     recent_feed = store().query("feed", uid, order="time", limit=16)
@@ -739,3 +762,73 @@ def heartbeat() -> dict:
             if schedule_operator(s["id"], "Periodic heartbeat: check running jobs and research progress."):
                 stats["ticks"] += 1
     return stats
+
+
+# ---------------------------------------------------------------- EEG triage tools (spectrogram vision → quantum)
+
+def triage_tool(uid: str, name: str, args: dict, actions: list) -> tuple[dict, bytes | None]:
+    from . import eeg, render
+
+    if name == "list_eeg_sources":
+        ds = [{"dataset_id": d["id"], "label": d["label"], "fs": d["fs"], "channels": d["channels"],
+               "bounds_s": [d["excerpt_start"], d["excerpt_end"]], "seizures": d.get("seizures"), "segments": d["segments"]}
+              for d in eeg.datasets()]
+        recs = [{"recording_id": r["id"], "label": r["label"], "fs": r["fs"], "channels": r["channel_names"], "seconds": r.get("seconds")}
+                for r in store().query("eeg_recordings", uid, limit=20)]
+        return {"datasets": ds, "openbci_recordings": recs}, None
+    if name == "render_spectrograms":
+        src = eeg.load_source(uid, args.get("dataset_id"), args.get("recording_id"), args.get("start"), args.get("end"))
+        png = render.spectrogram_grid(src, args.get("channels"))
+        path = artifacts().put(f"{uid}/triage/{int(time.time())}.png", png)
+        summary = eeg.channel_summary(src["data"], src["fs"], src["names"], src["start"])
+        if args.get("channels"):
+            summary = [c for c in summary if c["channel"] in args["channels"]]
+        runner.feed(uid, "agent", f"Rendered spectrograms for {src['label']} {src['start']:.0f}–{src['end']:.0f} s.",
+                    data={"image": path, "kind": "spectrogram"})
+        return {"source": src["label"], "window_s": [src["start"], src["end"]], "events": src["events"],
+                "channels": summary, "image": path}, png
+    if name == "create_channel_experiments":
+        made = []
+        for pick in (args.get("picks") or [])[:6]:
+            req = {"source": "recording" if args.get("dataset_id") else "openbci", "dataset_id": args.get("dataset_id"),
+                   "recording_id": args.get("recording_id"), "channel": pick["channel"], "start": pick["start"],
+                   "end": pick["end"], "selected_by": {"agent": "gemini spectrogram triage", "why": pick.get("why", "")[:400]},
+                   "title": f"triage · {pick['channel']} · {pick['start']:.0f}–{pick['end']:.0f}s"}
+            try:
+                e = runner.create_experiment(uid, {k: v for k, v in req.items() if v is not None})
+                made.append({"experiment_id": e["id"], "channel": pick["channel"], "window": [pick["start"], pick["end"]]})
+                actions.append({"action": "create_experiment", "experiment_id": e["id"]})
+            except Exception as exc:
+                made.append({"channel": pick.get("channel"), "error": str(exc)[:300]})
+        return {"created": made}, None
+    if name == "compare_experiments":
+        rows = []
+        for eid in (args.get("experiment_ids") or [])[:8]:
+            try:
+                e = runner.owned("experiments", eid, uid)
+            except KeyError:
+                rows.append({"experiment_id": eid, "error": "not found"})
+                continue
+            target = runner.target_of(e)
+            losses = inv.nonlinear_losses(target)
+            thr = inv.consistency_threshold(target, losses)
+            cons = [nm.bits_to_bitstring(nm.all_bits()[k]) for k in np.flatnonzero(losses <= thr)]
+            best = e.get("best") or {}
+            rows.append({"experiment_id": eid, "title": e["title"], "best_found": best.get("bitstring"),
+                         "best_found_params": best.get("parameters"), "best_found_loss": best.get("nonlinear_loss"),
+                         "consistent_set": cons[:16], "consistent_set_size": len(cons),
+                         "consistent_param_ranges": _param_ranges(cons)})
+        sets = [set(r.get("consistent_set", [])) for r in rows if "consistent_set" in r]
+        shared = set.intersection(*sets) if len(sets) > 1 else set()
+        runner.feed(uid, "result", "Cross-channel hypothesis comparison: " + "; ".join(
+            f"{r.get('title')}: best {r.get('best_found')} ({r.get('consistent_set_size')} consistent)" for r in rows if "title" in r)
+            + f". Shared hypotheses: {sorted(shared) or 'none'}.", data={"kind": "channel_comparison", "rows": rows})
+        return {"rows": rows, "shared_consistent_hypotheses": sorted(shared)}, None
+    return {"error": f"unknown tool {name}"}, None
+
+
+def _param_ranges(bitstrings: list[str]) -> dict:
+    if not bitstrings:
+        return {}
+    vals = nm.levels_to_params(np.vstack([nm.bits_to_levels(nm.bitstring_to_bits(b)) for b in bitstrings]))
+    return {n: [float(vals[:, j].min()), float(vals[:, j].max())] for j, n in enumerate(nm.PARAM_NAMES)}
