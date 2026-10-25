@@ -38,7 +38,6 @@ import {
   type JobRequest,
   type NewExperiment,
   type Recording,
-  type Session,
   type SyntheticPreset,
 } from './api';
 import {
@@ -252,7 +251,6 @@ export default function ResearchLab() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [feed, setFeed] = useState<FeedItem[]>([]);
-  const [session, setSession] = useState<Session | null>(null);
   const [datasets, setDatasets] = useState<Dataset[]>([]);
   const [presets, setPresets] = useState<SyntheticPreset[]>([]);
   const [recordings, setRecordings] = useState<Recording[]>([]);
@@ -309,7 +307,6 @@ export default function ResearchLab() {
       .datasets()
       .then((d) => (setDatasets(d.datasets), setPresets(d.synthetic_presets)))
       .catch(fail);
-    client.session().then(setSession).catch(fail);
     client
       .recordings()
       .then((r) => setRecordings(r.recordings))
@@ -343,14 +340,6 @@ export default function ResearchLab() {
       setFeed(f.items);
     },
     3000,
-    [client],
-    signedIn,
-  );
-  usePoll(
-    async () => {
-      setSession(await client.session());
-    },
-    10000,
     [client],
     signedIn,
   );
@@ -397,7 +386,7 @@ export default function ResearchLab() {
     if (live.source === 'none' || !live.frame) return undefined;
     const bands = averageBands(live.frame, live.buffer);
     return {
-      source: live.source === 'bridge' ? 'openbci_bridge' : 'cloud',
+      source: live.source === 'usb' ? 'openbci_usb' : live.source === 'bridge' ? 'openbci_bridge' : 'cloud',
       channels: live.frame.channel_names,
       band_powers: bands
         ? (Object.fromEntries(
@@ -414,7 +403,7 @@ export default function ResearchLab() {
       live: liveContext(),
     });
 
-  const alphaState = live.source === 'bridge' ? live.frame?.alpha_state : undefined;
+  const alphaState = live.source === 'bridge' || live.source === 'usb' ? live.frame?.alpha_state : undefined;
   // Cute reactions, driven by real events.
   const prevVerdicts = useRef<string>('');
   const prevCompleted = useRef<Set<string>>(new Set());
@@ -604,14 +593,6 @@ export default function ResearchLab() {
       if (!config || available.has(provider))
         await runJob(toJobRequest({ ...run, provider }, exp.baseline));
     setTab('experiment');
-  };
-  const updateSession = async (patch: Partial<Session>) => {
-    setSession((s) => (s ? { ...s, ...patch } : s));
-    try {
-      setSession(await client.updateSession(patch));
-    } catch (e) {
-      fail(e);
-    }
   };
   const ibmProvider = config?.providers.find((p) => p.id === 'ibm_quantum');
   const ionqProvider = config?.providers.find((p) => p.id === 'ionq_qpu');
@@ -815,33 +796,7 @@ export default function ResearchLab() {
                         <LogOut size={15} />
                       </IconButton>
                     </div>
-                  ) : (
-                    <div className="cx-signin">
-                      <strong>Sign in to run experiments</strong>
-                      <small>
-                        Jobs, recordings and agent sessions are stored per Google account.
-                      </small>
-                      <div ref={googleHost} className="cx-google" />
-                      {config?.auth.dev_auth && (
-                        <button className="outline-button" onClick={auth.signInDev}>
-                          Continue as dev (local only)
-                        </button>
-                      )}
-                      {config && !config.auth.google_client_id && !config.auth.dev_auth && (
-                        <small className="cx-note warn">
-                          Google sign-in is not configured on the server (GOOGLE_OAUTH_CLIENT_ID).
-                        </small>
-                      )}
-                      {auth.configError && (
-                        <small className="cx-note warn">
-                          {auth.configError === 'The research service is unreachable.'
-                            ? 'The research service is unreachable. Start it (uvicorn) or set VITE_CORTEX_API.'
-                            : `Research service: ${auth.configError}`}
-                        </small>
-                      )}
-                      {auth.authError && <small className="cx-note warn">{auth.authError}</small>}
-                    </div>
-                  )}
+                  ) : null}
                 </section>
                 {signedIn && newOpen && (
                   <section className="cx-section">
@@ -925,7 +880,7 @@ export default function ResearchLab() {
                     />
                     <strong>EEG</strong>
                     <small>
-                      {live.source === 'bridge'
+                      {live.source === 'bridge' || live.source === 'usb'
                         ? 'OpenBCI streaming'
                         : live.source === 'cloud'
                           ? 'cloud stream'
@@ -939,6 +894,7 @@ export default function ResearchLab() {
                 {eegOpen && (
                 <EEGPanel
                   bridge={bridgeStatus}
+                  usb={bridge.usb}
                   live={live}
                   info={bridge.info}
                   recording={bridge.recording}
@@ -966,11 +922,7 @@ export default function ResearchLab() {
                     if (j.experiment_id && j.experiment_id !== selectedExp)
                       setSelectedExp(j.experiment_id);
                     setTab(
-                      j.kind === 'agent_iteration'
-                        ? 'agent'
-                        : j.kind === 'agent_operator'
-                          ? 'feed'
-                          : 'job',
+                      j.kind === 'agent_iteration' ? 'agent' : 'job',
                     );
                     if (!rightOpen) setRightOpen(true);
                     if (compact) setLeftOpen(false);
@@ -983,8 +935,6 @@ export default function ResearchLab() {
                       )
                       .catch(fail)
                   }
-                  session={session}
-                  onSession={(p) => void updateSession(p)}
                 />
               </div>
               <div className="pane-bottom">
@@ -1009,20 +959,6 @@ export default function ResearchLab() {
                 researchOverlay={overlay}
                 onFrame={signedIn && exp ? (c) => (lastFrame.current = c) : undefined}
               />
-              <div className="cx-stage-note">
-                {live.frame ? (
-                  <>
-                    <i className="status-dot live" /> markers: measured{' '}
-                    {live.source === 'bridge' ? 'OpenBCI' : 'cloud'} EEG mapped to 10-20 sites (
-                    {anchors.mapped}/19)
-                  </>
-                ) : (
-                  <>markers: illustrative idle animation · no EEG streaming</>
-                )}
-                <br />
-                fibers: illustrative anatomical overlay, not tractography reconstructed from scalp
-                EEG
-              </div>
               {live.frame && <TraceStrip live={live} />}
             </div>
             <div className="cx-chat-dock">
@@ -1054,6 +990,33 @@ export default function ResearchLab() {
               >
                 {error || notice}
                 <button onClick={() => (setError(''), setNotice(''))}>Dismiss</button>
+              </div>
+            )}
+            {!signedIn && (
+              <div className="cx-signin-modal" role="dialog" aria-modal="true" aria-label="Meet your brain">
+                <div className="cx-signin">
+                      <h2>Meet your brain</h2>
+                      <p>Sign in so your brain can remember you.</p>
+                      <div ref={googleHost} className="cx-google" />
+                      {config?.auth.dev_auth && (
+                        <button className="outline-button" onClick={auth.signInDev}>
+                          Continue as dev (local only)
+                        </button>
+                      )}
+                      {config && !config.auth.google_client_id && !config.auth.dev_auth && (
+                        <small className="cx-note warn">
+                          Google sign-in is not configured on the server (GOOGLE_OAUTH_CLIENT_ID).
+                        </small>
+                      )}
+                      {auth.configError && (
+                        <small className="cx-note warn">
+                          {auth.configError === 'The research service is unreachable.'
+                            ? 'The research service is unreachable. Start it (uvicorn) or set VITE_CORTEX_API.'
+                            : `Research service: ${auth.configError}`}
+                        </small>
+                      )}
+                      {auth.authError && <small className="cx-note warn">{auth.authError}</small>}
+                    </div>
               </div>
             )}
             {aboutOpen && signedIn && (

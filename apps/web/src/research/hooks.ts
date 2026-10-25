@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { CytonUSB, webSerialSupported, type UsbState } from './webserial';
 import { ApiError, CortexClient, type EEGFrame, type LabConfig, type Me } from './api';
 
 const TOKEN_KEY = 'cortex2.idtoken';
@@ -211,12 +212,13 @@ export function usePoll(
   }, [ms, enabled, ...deps]);
 }
 
+export type UsbControls = ReturnType<typeof useBridge>['usb'];
 export type BridgeStatus = 'connecting' | 'open' | 'closed' | 'unsupported';
 export const BRIDGE_URL = 'ws://127.0.0.1:8765';
 const RING_SECONDS = 6;
 
 export interface LiveEEG {
-  source: 'bridge' | 'cloud' | 'none';
+  source: 'usb' | 'bridge' | 'cloud' | 'none';
   frame: EEGFrame | null;
   /** Rolling buffer per channel (last ~6 s) for traces. */
   buffer: number[][];
@@ -288,6 +290,9 @@ export function useBridge(client: CortexClient | null, cloudEnabled: boolean) {
   const bufferRef = useRef<number[][]>([]);
   const blinkRef = useRef(0);
   const lastBridge = useRef(0);
+  const usbRef = useRef<CytonUSB | null>(null);
+  const [usbState, setUsbState] = useState<UsbState>('idle');
+  const [usbMessage, setUsbMessage] = useState('');
   useEffect(() => {
     if (typeof WebSocket === 'undefined') {
       setStatus('unsupported');
@@ -354,6 +359,7 @@ export function useBridge(client: CortexClient | null, cloudEnabled: boolean) {
           return;
         }
         if (msg.type !== 'frame' || !Array.isArray(msg.samples)) return;
+        if (usbRef.current) return; // USB headset takes priority over the legacy bridge
         if (msg.recording) setRecording(msg.recording);
         const fs = msg.fs || 250;
         if (bufferRef.current.length !== msg.samples.length) bufferRef.current = [];
@@ -392,7 +398,7 @@ export function useBridge(client: CortexClient | null, cloudEnabled: boolean) {
 
   usePoll(
     async (signal) => {
-      if (!client || Date.now() - lastBridge.current < 3000) return;
+      if (!client || usbRef.current || Date.now() - lastBridge.current < 3000) return;
       const r = await client.eegLatest(signal);
       if (!r.live || !r.frame) {
         setLive((l) => (l.source === 'cloud' ? { ...l, source: 'none', frame: null } : l));
@@ -434,21 +440,126 @@ export function useBridge(client: CortexClient | null, cloudEnabled: boolean) {
     return () => window.clearInterval(t);
   }, []);
 
-  /** Ask the bridge to record and upload `seconds` (4–60) of EEG; progress arrives via `recording`. */
-  const record = useCallback((seconds: number, label: string) => {
-    const ws = wsRef.current;
-    if (!ws || ws.readyState !== WebSocket.OPEN) {
-      setBridgeError('The OpenBCI bridge is not connected.');
-      return false;
-    }
+  /** Connect the OpenBCI Cyton dongle directly over Web Serial (Chrome/Edge). */
+  const connectUsb = useCallback(async () => {
+    if (usbRef.current) return;
+    const blinkBase = { count: null as number | null };
+    const usb = new CytonUSB({
+      onState: (st, message) => {
+        setUsbState(st);
+        setUsbMessage(message);
+      },
+      onFrame: (frame) => {
+        if (usbRef.current !== usb) return;
+        if (bufferRef.current.length !== frame.samples.length) bufferRef.current = [];
+        bufferRef.current = appendRing(bufferRef.current, frame.samples, Math.round(frame.fs * RING_SECONDS));
+        const b = blinkDelta(blinkBase.count, frame);
+        blinkBase.count = b.count;
+        blinkRef.current += b.delta;
+        lastBridge.current = Date.now();
+        setLive({
+          source: 'usb',
+          frame,
+          buffer: bufferRef.current,
+          blinkCount: blinkRef.current,
+          lastUpdate: Date.now(),
+        });
+      },
+    });
+    usbRef.current = usb;
     setBridgeError('');
-    const s = Math.min(60, Math.max(4, Math.round(seconds)));
-    ws.send(JSON.stringify({ type: 'record', seconds: s, label: label.slice(0, 120) || 'lab recording' }));
-    setRecording({ label, seconds: s, elapsed: 0 });
-    return true;
+    try {
+      await usb.start();
+    } catch (e) {
+      usbRef.current = null;
+      await usb.stop().catch(() => {});
+      const msg = e instanceof Error ? e.message : String(e);
+      // user closed the port chooser → not an error
+      if (!/no port selected|NotFoundError/i.test(msg)) {
+        setUsbState('error');
+        setUsbMessage(msg);
+      } else setUsbState('idle');
+    }
   }, []);
+  const disconnectUsb = useCallback(async () => {
+    const usb = usbRef.current;
+    usbRef.current = null;
+    setRecording(null);
+    await usb?.stop();
+    setLive((l) => (l.source === 'usb' ? { ...l, source: 'none', frame: null } : l));
+  }, []);
+  useEffect(() => () => void usbRef.current?.stop(), []);
 
-  return { status, live, info, recording, lastRecording, bridgeError, record };
+  /** Record `seconds` (4–60) of EEG and upload it; progress arrives via `recording`. */
+  const record = useCallback(
+    (seconds: number, label: string) => {
+      const s = Math.min(60, Math.max(4, Math.round(seconds)));
+      const name = label.slice(0, 120) || 'lab recording';
+      const usb = usbRef.current;
+      if (usb) {
+        setBridgeError('');
+        const start = usb.samplesTotal;
+        setRecording({ label: name, seconds: s, elapsed: 0 });
+        const tick = window.setInterval(() => {
+          const cur = usbRef.current;
+          if (cur !== usb) {
+            window.clearInterval(tick);
+            setRecording(null);
+            setBridgeError('USB headset disconnected during recording.');
+            return;
+          }
+          const elapsed = Math.min(s, (usb.samplesTotal - start) / 250);
+          setRecording({ label: name, seconds: s, elapsed });
+          if (elapsed < s) return;
+          window.clearInterval(tick);
+          const payload = usb.snapshot(s, name);
+          setRecording(null);
+          void (async () => {
+            if (!client) {
+              setLastRecording({ recordingId: null, message: 'Sign in to upload recordings.', at: Date.now() });
+              return;
+            }
+            try {
+              const { token } = await client.post<{ token: string }>('/v1/eeg/ingest-token');
+              const device = new CortexClient(token, client.base);
+              const r = await device.post<{ recording_id: string }>('/v1/eeg/recordings', payload);
+              setLastRecording({ recordingId: r.recording_id, message: `uploaded as ${r.recording_id}`, at: Date.now() });
+            } catch (e) {
+              setLastRecording({
+                recordingId: null,
+                message: `Upload failed: ${e instanceof Error ? e.message : e}`,
+                at: Date.now(),
+              });
+            }
+          })();
+        }, 500);
+        return true;
+      }
+      const ws = wsRef.current;
+      if (!ws || ws.readyState !== WebSocket.OPEN) {
+        setBridgeError('Connect the headset (USB) first.');
+        return false;
+      }
+      setBridgeError('');
+      ws.send(JSON.stringify({ type: 'record', seconds: s, label: name }));
+      setRecording({ label, seconds: s, elapsed: 0 });
+      return true;
+    },
+    [client],
+  );
+
+  const usb = {
+    supported: webSerialSupported(),
+    state: usbState,
+    message: usbMessage,
+    connect: connectUsb,
+    disconnect: disconnectUsb,
+  };
+  const effectiveStatus: BridgeStatus = usbState === 'streaming' ? 'open' : status;
+  const effectiveInfo: BridgeInfo | null =
+    usbState === 'streaming' ? { protocol: 2, state: 'streaming', message: usbMessage, board: 'cyton-usb', cloud: !!client } : info;
+
+  return { status: effectiveStatus, live, info: effectiveInfo, recording, lastRecording, bridgeError, record, usb };
 }
 
 export function useCompact() {

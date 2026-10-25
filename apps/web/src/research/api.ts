@@ -16,7 +16,7 @@ export type Approximation =
   'surrogate' | 'secant' | 'jacobian' | 'regression' | 'feature_regression' | 'trust_region';
 export const HARDWARE_PROVIDERS: ReadonlySet<string> = new Set(['ibm_quantum', 'ionq_qpu', 'qbraid_qpu']);
 export type JobStatus = 'queued' | 'running' | 'submitted' | 'completed' | 'failed' | 'cancelled';
-export type JobKind = 'sample' | 'agent_iteration' | 'agent_operator';
+export type JobKind = 'sample' | 'agent_iteration';
 
 export interface ProviderInfo {
   id: ProviderId;
@@ -41,16 +41,6 @@ export interface Me {
   email?: string;
   name?: string;
   picture?: string;
-}
-export interface Session {
-  autopilot: boolean;
-  max_autonomous_jobs: number;
-  autonomous_jobs_total: number;
-  allow_autonomous_qpu: boolean;
-  qpu_jobs_budget: number;
-  qpu_jobs_total: number;
-  operator_memory?: string;
-  last_tick?: string;
 }
 export interface Dataset {
   id: string;
@@ -458,8 +448,6 @@ export class CortexClient {
 
   config = () => this.get<LabConfig>('/v1/config');
   me = () => this.get<Me>('/v1/me');
-  session = () => this.get<Session>('/v1/session');
-  updateSession = (patch: Partial<Session>) => this.post<Session>('/v1/session', patch);
   datasets = () =>
     this.get<{ datasets: Dataset[]; synthetic_presets: SyntheticPreset[] }>('/v1/datasets');
   experiments = () => this.get<{ experiments: Experiment[] }>('/v1/experiments');

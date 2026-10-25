@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Circle, Eye, EyeOff, Radio } from 'lucide-react';
 import { BAD_QUALITY, BANDS, channelQuality, type EEGFrame } from './api';
-import type { BridgeInfo, BridgeStatus, LiveEEG, RecordingProgress, RecordingResult } from './hooks';
+import type { BridgeInfo, BridgeStatus, LiveEEG, RecordingProgress, RecordingResult, UsbControls } from './hooks';
 import { bandPowers } from './signal';
 import { decimate } from './WaveCompare';
 
@@ -46,7 +46,7 @@ export function TraceStrip({ live, maxChannels = 8 }: { live: LiveEEG; maxChanne
         );
       })}
       <small className="cx-trace-meta">
-        {live.source === 'bridge' ? 'OpenBCI bridge' : 'cloud stream'} · {f.board ?? 'board'} ·{' '}
+        {live.source === 'usb' ? 'OpenBCI USB' : live.source === 'bridge' ? 'OpenBCI bridge' : 'cloud stream'} · {f.board ?? 'board'} ·{' '}
         {f.fs} Hz · {qualitySummary(f)} · auto-scaled per channel · measured
       </small>
     </div>
@@ -130,7 +130,9 @@ export function EEGPanel({
   lastRecording = null,
   bridgeError = '',
   onRecord,
+  usb,
 }: {
+  usb?: UsbControls;
   bridge: BridgeStatus;
   live: LiveEEG;
   onIngestToken?: () => void;
@@ -144,6 +146,7 @@ export function EEGPanel({
   const bands = averageBands(live.frame, live.buffer);
   const f = live.frame;
   const quality = f ? channelQuality(f) : [];
+  const usbOn = usb?.state === 'streaming';
   const degraded = info && bridge === 'open' && info.state !== 'streaming' && info.state !== '';
   return (
     <section className="cx-section cx-eeg">
@@ -151,7 +154,9 @@ export function EEGPanel({
         <h3>EEG sources</h3>
         <span className={`cx-live ${live.source !== 'none' ? 'on' : ''}`}>
           <Radio size={12} />{' '}
-          {live.source === 'bridge'
+          {live.source === 'usb'
+            ? 'USB live'
+            : live.source === 'bridge'
             ? 'bridge live'
             : live.source === 'cloud'
               ? 'cloud live'
@@ -159,18 +164,40 @@ export function EEGPanel({
         </span>
       </header>
       <div className="cx-source">
-        <span className={`status-dot ${bridge === 'open' ? 'live' : ''}`} />
+        <span className={`status-dot ${usbOn || bridge === 'open' ? 'live' : ''}`} />
         <span>
-          <strong>OpenBCI bridge</strong>
+          <strong>OpenBCI Cyton</strong>
           <small>
-            {bridge === 'open'
-              ? 'ws://127.0.0.1:8765 connected'
-              : bridge === 'connecting'
-                ? 'looking for local bridge…'
-                : 'not running'}
+            {usbOn
+              ? usb?.message || 'USB streaming'
+              : usb?.state === 'connecting'
+                ? usb.message || 'connecting…'
+                : bridge === 'open'
+                  ? 'local bridge connected'
+                  : usb?.supported
+                    ? 'plug in the USB dongle, switch the board to PC'
+                    : 'use Chrome for USB headset'}
           </small>
         </span>
       </div>
+      {usb?.supported && (
+        <div className="cx-source-actions">
+          {usbOn ? (
+            <button className="outline-button" onClick={() => void usb.disconnect()}>
+              Disconnect headset
+            </button>
+          ) : (
+            <button
+              className="primary-button"
+              disabled={usb.state === 'connecting'}
+              onClick={() => void usb.connect()}
+            >
+              {usb.state === 'connecting' ? 'Connecting…' : 'Connect headset (USB)'}
+            </button>
+          )}
+        </div>
+      )}
+      {usb?.state === 'error' && usb.message && <small className="cx-note warn">{usb.message}</small>}
       {degraded && (
         <div className="cx-banner" role="status">
           Bridge {info.state}
@@ -178,7 +205,7 @@ export function EEGPanel({
         </div>
       )}
       {bridgeError && <small className="cx-note warn">{bridgeError}</small>}
-      {f?.alpha_state && f.alpha_state !== 'unknown' && live.source === 'bridge' && (
+      {f?.alpha_state && f.alpha_state !== 'unknown' && (live.source === 'bridge' || live.source === 'usb') && (
         <div className={`cx-alpha ${f.alpha_state}`}>
           {f.alpha_state === 'eyes_closed' ? <EyeOff size={13} /> : <Eye size={13} />}
           {f.alpha_state === 'eyes_closed' ? 'eyes closed' : 'eyes open'}
@@ -209,7 +236,7 @@ export function EEGPanel({
       {bridge === 'open' && onRecord && (
         <RecordControls recording={recording} lastRecording={lastRecording} cloud={info?.cloud} onRecord={onRecord} />
       )}
-      {bridge !== 'open' && (
+      {bridge !== 'open' && !usb?.supported && (
         <p className="cx-help">
           Start it next to the headset:
           <code>
@@ -218,7 +245,7 @@ export function EEGPanel({
           or <code>--board synthetic</code> to test without hardware.
         </p>
       )}
-      {onIngestToken && (
+      {onIngestToken && !usb?.supported && (
         <div className="cx-source-actions">
           <button className="outline-button" onClick={onIngestToken}>
             Pair bridge with cloud

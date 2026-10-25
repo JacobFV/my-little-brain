@@ -2340,3 +2340,42 @@ p.cx-dim {
     top: 56px;
   }
 }
+
+/* Sign-in modal ("Meet your brain") */
+.cx-signin-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(246, 248, 243, 0.55);
+  backdrop-filter: blur(14px) saturate(1.05);
+  -webkit-backdrop-filter: blur(14px) saturate(1.05);
+}
+.cx-signin-modal .cx-signin {
+  width: min(360px, 100%);
+  gap: 12px;
+  padding: 26px 24px 22px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(98, 113, 89, 0.12);
+  box-shadow: 0 24px 60px rgba(60, 72, 52, 0.16);
+  text-align: center;
+  justify-items: center;
+}
+.cx-signin-modal .cx-signin h2 {
+  margin: 0;
+  font-family: 'Manrope', sans-serif;
+  font-size: 20px;
+  font-weight: 600;
+  color: #4f5c47;
+}
+.cx-signin-modal .cx-signin p {
+  margin: 0 0 4px;
+  font-size: 13px;
+  color: var(--cx-soft);
+}
+.cx-account:empty {
+  display: none;
+}
