@@ -28,7 +28,8 @@ function sampleWave(now: number, channel: number): number[] {
   });
 }
 function Trace({ values, tint = '#8a8cc5' }: { values: number[]; tint?: string }) {
-  const d = values.map((v, i) => `${i ? 'L' : 'M'}${(i / Math.max(1,values.length - 1) * 260).toFixed(1)},${(21 - v * 16).toFixed(1)}`).join(' ');
+  const maxAmplitude = Math.max(1e-6, ...values.map(v => Math.abs(v)));
+  const d = values.map((v, i) => `${i ? 'L' : 'M'}${(i / Math.max(1,values.length - 1) * 260).toFixed(1)},${(21 - (v / maxAmplitude) * 16).toFixed(1)}`).join(' ');
   return <svg className="cx-trace" viewBox="0 0 260 42" preserveAspectRatio="none" aria-label="EEG waveform">
     <path d="M0 21H260" stroke="#a8adab" strokeOpacity=".25" strokeDasharray="3 4"/>
     <path d={d} stroke={tint} strokeWidth="1.6" fill="none" vectorEffect="non-scaling-stroke"/>
