@@ -265,6 +265,8 @@ class ExperimentRequest(BaseModel):
     segment: str | None = Field(default=None, max_length=40)
     recording_id: str | None = Field(default=None, max_length=64)
     title: str | None = Field(default=None, max_length=160)
+    start: float | None = Field(default=None, ge=0, le=1e6)
+    end: float | None = Field(default=None, ge=0, le=1e6)
 
 
 @app.post("/v1/experiments")
@@ -356,6 +358,43 @@ def get_job(job_id: str, user=Depends(current_user)):
 @app.post("/v1/jobs/{job_id}/cancel")
 def cancel(job_id: str, user=Depends(current_user)):
     return {"job": public_job(guard(runner.cancel_job, user["uid"], job_id))}
+
+
+@app.get("/v1/eeg/spectrogram")
+def eeg_spectrogram(dataset_id: str | None = None, recording_id: str | None = None, start: float | None = None,
+                    end: float | None = None, channels: str | None = None, user=Depends(current_user)):
+    """Per-channel spectrogram grid (PNG) — the same image the agent looks at during EEG triage."""
+    from . import render
+
+    src = guard(eeg.load_source, user["uid"], dataset_id=dataset_id, recording_id=recording_id, start=start, end=end)
+    picks = [c for c in (channels or "").split(",") if c]
+    png = render.spectrogram_grid(src, picks or None)
+    return Response(png, media_type="image/png", headers={"Cache-Control": "private, max-age=300"})
+
+
+class TriageRequest(BaseModel):
+    dataset_id: str | None = Field(default=None, max_length=80)
+    recording_id: str | None = Field(default=None, max_length=64)
+    start: float | None = None
+    end: float | None = None
+    instruction: str | None = Field(default=None, max_length=2000)
+
+
+@app.post("/v1/eeg/triage")
+def eeg_triage(body: TriageRequest, user=Depends(current_user)):
+    """Gemini looks at every channel's spectrogram, picks channels/windows and splinters them into quantum searches."""
+    if not (body.dataset_id or body.recording_id):
+        raise HTTPException(400, "give dataset_id or recording_id")
+    if not agent.agent_configured():
+        raise HTTPException(503, "no model provider configured")
+    src = f"dataset_id={body.dataset_id}" if body.dataset_id else f"recording_id={body.recording_id}"
+    window = f" window {body.start}–{body.end} s" if body.start is not None and body.end is not None else ""
+    text = (f"EEG triage on {src}{window}: render the per-channel spectrograms, look at them, pick the 2–4 most informative "
+            "channels/windows, create one inverse experiment per pick, dispatch quantum searches on each, then compare the "
+            "hypothesis sets across channels. " + (body.instruction or ""))
+    item = runner.feed(user["uid"], "user", text)
+    job = agent.schedule_operator(user["uid"], text, None, created_by="user")
+    return {"item": item, "job": job}
 
 
 @app.get("/v1/hypotheses/{bitstring}/trace")

@@ -50,8 +50,19 @@ def create_experiment(uid: str, req: dict) -> dict:
         target = inv.synthetic_target(req.get("truth_bitstring"), rng_seed=req.get("random_seed"))
         title = req.get("title") or f"synthetic recovery · hidden {nm.bits_to_bitstring(target.truth_bits)}"
     elif source == "recording":
-        ds, ch, seg = req["dataset_id"], req.get("channel") or "FP1-F7", req.get("segment") or "ictal"
-        x, fs, meta = eeg.segment(ds, ch, seg)
+        ds, ch = req["dataset_id"], req.get("channel") or "FP1-F7"
+        if req.get("start") is not None and req.get("end") is not None:
+            src = eeg.load_source(uid, dataset_id=ds, start=req["start"], end=req["end"])
+            if ch not in src["names"]:
+                raise KeyError(f"channel {ch!r} not in {ds}")
+            x, fs = src["data"][src["names"].index(ch)], src["fs"]
+            seg = f"{src['start']:.0f}–{src['end']:.0f}s"
+            in_seizure = any(e["start"] < src["end"] and e["end"] > src["start"] for e in src["events"])
+            meta = {"dataset_id": ds, "channel": ch, "segment": "ictal" if in_seizure else "window",
+                    "start": src["start"], "end": src["end"], "selected_by": req.get("selected_by")}
+        else:
+            seg = req.get("segment") or "ictal"
+            x, fs, meta = eeg.segment(ds, ch, seg)
         target = inv.recording_target(x, fs, f"{eeg.dataset(ds)['label']} · {ch} · {seg}", meta)
         title = req.get("title") or f"{ds} {ch} {seg}"
     elif source == "openbci":
@@ -66,8 +77,11 @@ def create_experiment(uid: str, req: dict) -> dict:
         if data is None:
             raise KeyError("recording data missing")
         x = eeg.preprocess(np.asarray(data[chans.index(ch)], dtype=float), float(rec["fs"]))
+        if req.get("start") is not None and req.get("end") is not None:
+            x = x[int(float(req["start"]) * float(rec["fs"])): int(float(req["end"]) * float(rec["fs"]))]
         target = inv.recording_target(x, float(rec["fs"]), f"OpenBCI · {rec['label']} · {ch}",
-                                      {"recording_id": rec["id"], "channel": ch})
+                                      {"recording_id": rec["id"], "channel": ch, "start": req.get("start"), "end": req.get("end"),
+                                       "selected_by": req.get("selected_by")})
         target.source = "openbci"
         title = req.get("title") or f"OpenBCI {rec['label']} {ch}"
     else:

@@ -102,3 +102,60 @@ def summarize_frame(samples: list[list[float]], fs: float) -> dict:
     keys = nm.CLASSIC_BANDS.keys()
     avg = {k: float(np.mean([p[k] for p in per if p])) if any(per) else 0.0 for k in keys}
     return {"bands": avg, "per_channel_bands": per}
+
+
+# ---------------------------------------------------------------- multichannel sources (spectrogram triage)
+
+def load_source(uid: str, dataset_id: str | None = None, recording_id: str | None = None,
+                start: float | None = None, end: float | None = None) -> dict:
+    """Preprocessed multichannel EEG for a CHB-MIT excerpt or an OpenBCI recording, optionally windowed.
+
+    Times are seconds in the source's own clock (CHB-MIT: seconds into the EDF file).
+    """
+    if dataset_id:
+        d = dataset(dataset_id)
+        fs = float(d["fs"])
+        raw = _load(d["path"])
+        t0 = float(d["excerpt_start"])
+        names = list(d["channels"])
+        events = [{"label": "seizure", "start": s["start"], "end": s["end"]} for s in d.get("seizures", [])]
+        label = d["label"]
+    elif recording_id:
+        from .store import artifacts, store
+
+        rec = store().get("eeg_recordings", recording_id)
+        if not rec or rec.get("owner") != uid:
+            raise KeyError("recording not found")
+        data = rec.get("data") if rec.get("data") is not None else artifacts().get_json(rec["data_path"])
+        if data is None:
+            raise KeyError("recording data missing")
+        raw = np.asarray(data, dtype=float)
+        fs = float(rec["fs"])
+        t0, names, events, label = 0.0, list(rec["channel_names"]), [], f"OpenBCI · {rec['label']}"
+    else:
+        raise ValueError("give dataset_id or recording_id")
+    total = raw.shape[1] / fs
+    a = max(t0, float(start) if start is not None else t0)
+    b = min(t0 + total, float(end) if end is not None else t0 + total)
+    if b - a < 4:
+        raise ValueError(f"window must be ≥4 s inside [{t0:.0f}, {t0 + total:.0f}] s")
+    x = preprocess(raw, fs)[:, int((a - t0) * fs): int((b - t0) * fs)]
+    return {"data": x, "fs": fs, "names": names, "start": a, "end": b, "events": events, "label": label,
+            "dataset_id": dataset_id, "recording_id": recording_id, "bounds": [t0, t0 + total]}
+
+
+def channel_summary(x: np.ndarray, fs: float, names: list[str], start: float, window: float = 4.0) -> list[dict]:
+    """Per-channel numbers that accompany the spectrogram image: band powers and their largest change over time."""
+    out = []
+    step = int(window * fs)
+    for name, ch in zip(names, x):
+        wins = [ch[i:i + step] for i in range(0, len(ch) - step + 1, step)] or [ch]
+        bands = [nm.band_powers(w, fs) for w in wins]
+        rms = [float(np.sqrt(np.mean(w ** 2))) for w in wins]
+        dom = {k: float(np.mean([b[k] for b in bands])) for k in nm.CLASSIC_BANDS}
+        peak_rms = int(np.argmax(rms))
+        out.append({"channel": name, "mean_band_pct": {k: round(v, 1) for k, v in dom.items()},
+                    "rms_uv_median": round(float(np.median(rms)), 1), "rms_uv_max": round(max(rms), 1),
+                    "rms_peak_time_s": round(start + peak_rms * window, 1),
+                    "rms_ratio_max_over_median": round(float(max(rms) / (np.median(rms) + 1e-9)), 2)})
+    return out
