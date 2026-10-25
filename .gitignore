@@ -24,3 +24,5 @@ __pycache__/
 .claude/worktrees/
 .DS_Store
 research/.data/
+media/build/
+media/stills/
