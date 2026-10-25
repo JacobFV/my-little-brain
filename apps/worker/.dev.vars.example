@@ -1,3 +1,0 @@
-# Local Wrangler only. Copy to .dev.vars, which is ignored. Never use VITE_ for these.
-OPENAI_API_KEY=replace-with-your-openai-key
-APP_ACCESS_TOKEN=replace-with-at-least-24-random-characters

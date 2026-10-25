@@ -23,8 +23,8 @@ import {
   Waves,
   Wrench,
 } from 'lucide-react';
-import { IconButton } from '../components';
-import { WorkspacePane } from '../WorkspacePane';
+import { IconButton } from './ui';
+import { WorkspacePane } from './WorkspacePane';
 import {
   ApiError,
   isActive,

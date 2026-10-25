@@ -14,4 +14,3 @@ research/.data
 research/.env
 **/__pycache__
 **/.pytest_cache
-apps/desktop/release

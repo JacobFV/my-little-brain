@@ -4,11 +4,6 @@ FROM node:22-slim AS web
 WORKDIR /src
 COPY package.json package-lock.json ./
 COPY apps/web/package.json apps/web/package.json
-COPY apps/server/package.json apps/server/package.json
-COPY apps/desktop/package.json apps/desktop/package.json
-COPY apps/worker/package.json apps/worker/package.json
-COPY apps/mobile/package.json apps/mobile/package.json
-COPY packages/core/package.json packages/core/package.json
 COPY packages/brain/package.json packages/brain/package.json
 RUN npm ci --ignore-scripts --no-audit --no-fund --workspace=@little-brain/web --include-workspace-root
 COPY tsconfig.base.json ./

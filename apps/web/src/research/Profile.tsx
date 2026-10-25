@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { FileText, Trash2, Upload, X } from 'lucide-react';
-import { IconButton } from '../components';
+import { IconButton } from './ui';
 import { ApiError, type CortexClient, type ProfileDoc } from './api';
 
 const TEXT_EXT = /\.(txt|md|markdown|json|csv)$/i;

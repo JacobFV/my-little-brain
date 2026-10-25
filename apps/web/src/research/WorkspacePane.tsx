@@ -1,6 +1,6 @@
 import { useRef, type PointerEvent, type ReactNode } from 'react';
 import { X } from 'lucide-react';
-import { IconButton } from './components';
+import { IconButton } from './ui';
 
 /** Both side panes belong to the same workspace and use the same sizing and chrome. */
 export function WorkspacePane({
