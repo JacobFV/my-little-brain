@@ -54,10 +54,30 @@
 
   <!-- 2 · it knows you -->
   <section class="slide">
-    <canvas class="masked" id="eeg" width="900" height="900"></canvas>
-    <div class="word" style="left:150px">It knows</div>
-    <div class="word" style="left:1460px">you</div>
-    <div class="small" style="left:154px">your notes · your live EEG</div>
+    <style>
+      .appvid { position:absolute; left:410px; top:300px; width:1100px; height:619px; border-radius:28px; object-fit:cover;
+                box-shadow:0 30px 80px rgba(40,10,60,.35), 0 0 0 1px rgba(255,255,255,.25); background:#f4f1ee; overflow:hidden; }
+      .appvid img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; opacity:0; animation:xf 12s infinite; }
+      .appvid img:nth-child(2) { animation-delay:4s; } .appvid img:nth-child(3) { animation-delay:8s; }
+      @keyframes xf { 0% { opacity:0 } 6% { opacity:1 } 33% { opacity:1 } 40% { opacity:0 } 100% { opacity:0 } }
+      .ann { position:absolute; font-size:21px; font-weight:600; letter-spacing:-.005em; padding:7px 15px; border-radius:999px;
+             background:rgba(255,255,255,.18); border:1px solid rgba(255,255,255,.45); backdrop-filter:blur(6px); white-space:nowrap; }
+      .lead { position:absolute; background:rgba(255,255,255,.75); }
+      .lead::after { content:''; position:absolute; width:9px; height:9px; border-radius:50%; background:#fff; }
+      .lead.h { height:1.5px; } .lead.h::after { right:-4px; top:-4px; }
+      .lead.hl { height:1.5px; } .lead.hl::after { left:-4px; top:-4px; }
+    </style>
+    <div class="word" style="left:150px;top:110px">It knows you</div>
+    <div class="small" style="left:154px;top:222px">your notes · your live EEG · your questions</div>
+    <div class="appvid"><img src="app-shots/02-reasoning.png" alt=""><img src="app-shots/03-experiment.png" alt=""><img src="app-shots/05-agent.png" alt=""></div>
+    <div class="ann" style="left:112px;top:320px">it watches your live EEG</div>
+    <div class="lead h" style="left:382px;top:340px;width:234px"></div>
+    <div class="ann" style="left:112px;top:560px">you chat with your brain</div>
+    <div class="lead h" style="left:372px;top:580px;width:328px"></div>
+    <div class="ann" style="left:1590px;top:420px">it designs quantum circuits</div>
+    <div class="lead hl" style="left:1372px;top:440px;width:214px"></div>
+    <div class="ann" style="left:1590px;top:700px">results land here</div>
+    <div class="lead hl" style="left:1372px;top:720px;width:214px"></div>
   </section>
 
   <!-- 3 · it studies itself, on quantum hardware -->
@@ -107,21 +127,6 @@ addEventListener('keydown', (e) => {
 addEventListener('click', (e) => go(e.clientX > innerWidth / 3 ? cur + 1 : cur - 1));
 
 const W = 'rgba(255,255,255,';
-// eight EEG traces, white, drifting
-const eeg = document.getElementById('eeg').getContext('2d');
-function drawEEG(t) {
-  eeg.clearRect(0, 0, 900, 900);
-  for (let c = 0; c < 8; c++) {
-    const y0 = 170 + c * 80;
-    eeg.strokeStyle = W + (.55 + .05 * c) + ')'; eeg.lineWidth = 3; eeg.beginPath();
-    for (let x = 0; x <= 900; x += 4) {
-      const s = t / 1000 + x / 90;
-      const v = Math.sin(s * (2 + c * .3)) * 9 + Math.sin(s * 10.3 + c) * 6 * (c === 7 ? 2.2 : 1) + Math.sin(s * .7 + c * 2) * 12;
-      x ? eeg.lineTo(x, y0 + v) : eeg.moveTo(x, y0 + v);
-    }
-    eeg.stroke();
-  }
-}
 // the brain as an agent: operation packets fly out to quantum/AI infra, results come back
 const cc = document.getElementById('collapse').getContext('2d');
 const QB = { x: 430, y: 580 };
@@ -162,7 +167,6 @@ function drawCollapse(t) {
   });
 }
 function frame(t) {
-  if (cur === 1) drawEEG(t);
   if (cur === 2) drawCollapse(t);
   requestAnimationFrame(frame);
 }
