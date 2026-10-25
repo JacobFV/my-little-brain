@@ -53,6 +53,30 @@ class IngestFrame(BaseModel):
     samples: list[float]=Field(min_length=1,max_length=256)
 
 def now():return datetime.now(timezone.utc)
+
+def settings_for(uid):
+    ref=db.collection("research_sessions").document(uid)
+    snap=ref.get()
+    if snap.exists:return snap.to_dict()
+    default={"autopilot":False,"max_autonomous_jobs":4,
+             "enabled_providers":["classical","ibm_simulator","extropic_simulator"],
+             "created_at":now().isoformat()}
+    ref.set(default)
+    return default
+
+class SessionUpdate(BaseModel):
+    autopilot: bool
+
+@app.get("/v1/session")
+def get_session(user=Depends(user_from_header)):
+    return settings_for(user["uid"])
+
+@app.post("/v1/session")
+def set_session(req:SessionUpdate,user=Depends(user_from_header)):
+    settings_for(user["uid"])
+    db.collection("research_sessions").document(user["uid"]).update({"autopilot":req.autopilot})
+    return settings_for(user["uid"])
+
 def user_from_header(authorization: str=Header(default="")):
     if not CLIENT_ID:raise HTTPException(503,"google sign-in not configured")
     try:
@@ -183,18 +207,46 @@ class TaskMessage(BaseModel):
 
 def run_agent(uid,command):
     from openai import OpenAI
-    recent=sorted([doc_json(x) for x in db.collection("research_jobs").where("owner","==",uid).limit(40).stream()],
-                   key=lambda x:x.get("created_at",""),reverse=True)[:12]
+    recent=sorted([doc_json(x) for x in db.collection("research_jobs").where("owner","==",uid).limit(60).stream()],
+                  key=lambda x:x.get("created_at",""),reverse=True)[:25]
     compact=[{"id":j["id"],"provider":j.get("provider"),"status":j.get("status"),
-              "objective":j.get("objective"),"error":j.get("error")} for j in recent]
-    rules=("You are a careful neuroscience research operator. "
-           "Only report actual tool/provider measurements. Do not claim brain-source localization or quantum advantage. "
-           "Reply with concise scientific interpretation and a recommended next job. "
-           "Never execute arbitrary code or invent provider job identifiers.")
-    response=OpenAI().responses.create(
-        model=GPT_MODEL,instructions=rules,
-        input=json.dumps({"user_command":command,"recent_jobs":compact,"known_scientific_scope":"synthetic four-parameter inverse model"}))
-    return response.output_text
+              "objective":j.get("objective"),"error":j.get("error"),
+              "result":str(j.get("result"))[:850]} for j in recent]
+    settings=settings_for(uid)
+    allowed=settings["enabled_providers"] if settings.get("autopilot") else []
+    rules=("You are a research operator examining persisted scientific job results. "
+           "These are synthetic neural-model hypotheses, NOT EEG source localization or clinical results. "
+           "Never invent provider measurements, quantum speedup or credentials. "
+           "Respond with JSON keys summary (string), dispatch (boolean), "
+           "provider (classical, ibm_simulator, extropic_simulator, or null), reason (string). "
+           "Dispatch only if permitted by allowed_providers and scientifically useful. "
+           "Never automatically dispatch physical quantum hardware.")
+    response=OpenAI().responses.create(model=GPT_MODEL,instructions=rules,
+        input=json.dumps({"request":command,"recent_jobs":compact,"allowed_providers":allowed,
+                          "synthetic_benchmark":True}))
+    raw=response.output_text.strip()
+    try:plan=json.loads(raw)
+    except (ValueError,TypeError):
+        plan={"summary":raw[:1200],"dispatch":False,"provider":None,"reason":"unstructured model reply"}
+    provider=plan.get("provider")
+    permitted={"classical","ibm_simulator","extropic_simulator"}
+    automated=sum(1 for job in recent if job.get("autonomous") is True)
+    active=any(j.get("provider")==provider and j.get("status") in ("running","queued","submitted") for j in recent)
+    launch=(plan.get("dispatch") is True and settings.get("autopilot") is True
+            and provider in permitted and provider in allowed and not active
+            and automated<int(settings.get("max_autonomous_jobs",4)))
+    child=None
+    if launch:
+        child=make_job(uid,provider,"agent follow-up: "+str(plan.get("reason","comparison"))[:75],
+                       extra={"autonomous":True})
+    return {"summary":str(plan.get("summary",""))[:1200],
+            "recommended_provider":provider if provider in permitted else None,
+            "dispatched_job":child["id"] if child else None}
+
+def schedule_agent_review(uid,job_id):
+    if not settings_for(uid).get("autopilot"):return
+    make_job(uid,"agent","review completed experiment","agent",
+             extra={"command":"Review experiment "+job_id+". If worthwhile, propose another bounded computational experiment."})
 
 @app.post("/internal/execute",dependencies=[Depends(internal_identity)])
 def execute(task:TaskMessage):
