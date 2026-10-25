@@ -199,7 +199,7 @@ export default function ResearchLab() {
         </div>
         {activeTab==='activity' ? <>
           <div className="cx-stage">
-            <BrainScene thoughts={[]} activeThoughtId={null} thinking={false} paused={false} showThoughts={false} onThoughtSelect={()=>{}} anatomyMode={brainView !== 'avatar'} color="#e0b4ba" researchOverlay={{ intensities: project.map(p=>p.value), opacity }}/>
+            <BrainScene thoughts={[]} activeThoughtId={null} thinking={false} paused={false} showThoughts={false} onThoughtSelect={()=>{}} anatomyMode={brainView !== 'avatar'} color="#e0b4ba" researchOverlay={{ intensities: project.map(p=>p.value), opacity, shellOpacity: brainView === "inside" ? .23 : brainView === "anatomy" ? .72 : 1 }}/>
             <div className="cx-legend"><b>activity propagation</b><span>{live ? 'eeg-derived features' : 'SIMULATED · not source-localized'}</span></div>
             <div className="cx-stage-controls">
               <button className={brainView==='avatar'?'active':''} onClick={()=>setBrainView('avatar')}>cute</button>
