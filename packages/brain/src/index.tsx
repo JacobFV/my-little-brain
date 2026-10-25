@@ -26,7 +26,7 @@ export interface BrainSceneProps {
   activePluginInteractionId?: string | null;
   distraction?: DistractionKind | null;
   /** Hackathon-only illustrative field propagation; not anatomical source localization. */
-  researchOverlay?: { intensities: number[]; opacity: number };
+  researchOverlay?: { intensities: number[]; opacity: number; shellOpacity?: number };
   /** At most four frames/second, copied to a stable canvas. Portal surfaces are
    * excluded from snapshots, bounding reciprocal viewing to one environment. */
   onFrame?: (canvas: HTMLCanvasElement) => void;
@@ -205,6 +205,7 @@ export function BrainScene(props: BrainSceneProps) {
     renderer.domElement.addEventListener('lostpointercapture', orbitEnd);
     let disposed = false;
     let anatomyMode = Boolean(current.current.anatomyMode);
+    let lastShellOpacity = -1;
     const loading = new AbortController();
     setAnatomyState('loading');
     void loadAnatomy(loading.signal, props.color)
@@ -283,6 +284,21 @@ export function BrainScene(props: BrainSceneProps) {
         setAnatomyMode(cortex, subcortex, anatomyMode);
       }
       const overlay = p.researchOverlay;
+      if (overlay) {
+        const shellOpacity = clamp(overlay.shellOpacity ?? .28, .08, 1);
+        if (Math.abs(lastShellOpacity - shellOpacity) > .001) {
+          lastShellOpacity = shellOpacity;
+          for (const root of [cortex, subcortex]) root.traverse(obj => {
+            if (!(obj instanceof THREE.Mesh)) return;
+            for (const material of Array.isArray(obj.material) ? obj.material : [obj.material]) {
+              material.transparent = shellOpacity < .999;
+              material.opacity = shellOpacity;
+              material.depthWrite = shellOpacity >= .999;
+              material.needsUpdate = true;
+            }
+          });
+        }
+      }
       activityRoot.visible = Boolean(overlay);
       if (overlay) {
         const opacity = clamp(overlay.opacity, 0, 1);
