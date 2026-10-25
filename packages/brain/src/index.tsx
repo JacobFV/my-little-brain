@@ -363,7 +363,8 @@ export function BrainScene(props: BrainSceneProps) {
           sinceForced >= 0 && sinceForced < 0.16
             ? Math.max(0.08, Math.abs(sinceForced - 0.08) / 0.08)
             : 1;
-        const lid = Math.min(blink, forced) * mood.lid;
+        // Only a real blink closes the eyes; moods never squash the eyeballs out of round.
+        const lid = Math.min(blink, forced);
         for (let i = 0; i < eyes.length; i++) {
           const direction = gazeTarget.clone().sub(eyeRoots[i].position);
           eyes[i].rotation.set(

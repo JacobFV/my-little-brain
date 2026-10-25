@@ -294,8 +294,8 @@ export default function ResearchLab() {
   const [leftWidth, setLeftWidth] = useState(286);
   const [rightWidth, setRightWidth] = useState(420);
   const [tab, setTab] = useState<Tab>('experiment');
-  const [inside, setInside] = useState(true);
-  const [fibers, setFibers] = useState(true);
+  const inside = true;
+  const fibers = true;
   const [showQuantum, setShowQuantum] = useState(true);
   const [experiments, setExperiments] = useState<Experiment[]>([]);
   const [selectedExp, setSelectedExp] = useState<string | null>(null);
@@ -979,7 +979,7 @@ export default function ResearchLab() {
           )}
           <section className="main-content">
             <div
-              className={`simple-habitat cx-habitat ${showQuantum && signedIn ? 'with-qviz' : ''}`}
+              className="simple-habitat cx-habitat"
             >
               <BrainScene
                 thoughts={[]}
@@ -1007,32 +1007,6 @@ export default function ResearchLab() {
                 EEG
               </div>
               {live.frame && <TraceStrip live={live} />}
-            </div>
-            <div className="scene-options">
-              <button
-                className={inside ? 'selected' : ''}
-                aria-pressed={inside}
-                onClick={() => setInside((v) => !v)}
-              >
-                <Layers size={15} />
-                <span>Inside</span>
-              </button>
-              <button
-                className={fibers ? 'selected' : ''}
-                aria-pressed={fibers}
-                onClick={() => setFibers((v) => !v)}
-              >
-                <Waves size={15} />
-                <span>Fibers</span>
-              </button>
-              <button
-                className={showQuantum ? 'selected' : ''}
-                aria-pressed={showQuantum}
-                onClick={() => setShowQuantum((v) => !v)}
-              >
-                <Atom size={15} />
-                <span>Quantum</span>
-              </button>
             </div>
             {showQuantum && signedIn && (
               <QuantumViz
