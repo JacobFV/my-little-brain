@@ -306,6 +306,8 @@ def execute_sample_job(job: dict) -> dict:
 
 def finish_job(job, exp, target, q, counts, runner, patch) -> dict:
     jid = job["id"]
+    if (store().get("jobs", jid) or {}).get("status") == "cancelled":
+        return store().get("jobs", jid)          # cancelled while executing: discard the result
     evaluation = inv.evaluate_counts(target, counts, q, job.get("validation_budget", inv.DEFAULT_VALIDATION_BUDGET),
                                      already_validated=set(validated_history(exp, exclude_job=jid)))
     patch.update({"counts": counts, "evaluation": evaluation, "runner": runner, "updated_at": now(),

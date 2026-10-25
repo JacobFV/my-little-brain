@@ -112,6 +112,13 @@ export function useAuth() {
     return () => window.clearTimeout(t);
   }, [token, setToken]);
 
+  const signInDev = useCallback(() => setToken('dev'), [setToken]);
+  // Stable identity: callers put this in effect dependency lists.
+  const onUnauthorized = useCallback(() => {
+    setToken(null);
+    setAuthError('Your sign-in expired. Sign in again.');
+  }, [setToken]);
+
   /** Renders the Google button into `host` (script is only loaded when a client id is configured). */
   const mountGoogle = useCallback(
     (host: HTMLElement | null) => {
@@ -153,13 +160,10 @@ export function useAuth() {
     client,
     authError,
     setAuthError,
-    signInDev: () => setToken('dev'),
+    signInDev,
     signOut,
     mountGoogle,
-    onUnauthorized: () => {
-      setToken(null);
-      setAuthError('Your sign-in expired. Sign in again.');
-    },
+    onUnauthorized,
   };
 }
 
@@ -233,9 +237,47 @@ export function appendRing(buffer: number[][], incoming: number[][], max: number
   });
 }
 
+/** Bridge-reported state (protocol v2 `hello`/`status`), separate from the socket state. */
+export interface BridgeInfo {
+  protocol: number;
+  state: string; // connecting | streaming | reconnecting | stopped
+  message: string;
+  board?: string;
+  serialPort?: string;
+  /** Bridge can upload recordings (started with --cloud and a device token). */
+  cloud?: boolean;
+}
+export interface RecordingProgress {
+  label: string;
+  seconds: number;
+  elapsed: number;
+}
+export interface RecordingResult {
+  recordingId: string | null;
+  path?: string;
+  message: string;
+  at: number;
+}
+
+/** Count blinks from v2 `blink_count` deltas (robust to dropped frames); fall back to v1 `blink`. */
+export function blinkDelta(prevCount: number | null, frame: Pick<EEGFrame, 'blink' | 'blink_count'>) {
+  if (typeof frame.blink_count === 'number') {
+    if (prevCount === null || frame.blink_count < prevCount) return { delta: 0, count: frame.blink_count };
+    return { delta: Math.min(5, frame.blink_count - prevCount), count: frame.blink_count };
+  }
+  return { delta: frame.blink ? 1 : 0, count: prevCount };
+}
+
 /** Local OpenBCI bridge WebSocket with exponential reconnect; falls back to the cloud stream. */
 export function useBridge(client: CortexClient | null, cloudEnabled: boolean) {
   const [status, setStatus] = useState<BridgeStatus>('connecting');
+  const [info, setInfo] = useState<BridgeInfo | null>(null);
+  const [recording, setRecording] = useState<RecordingProgress | null>(null);
+  const [lastRecording, setLastRecording] = useState<RecordingResult | null>(null);
+  const [bridgeError, setBridgeError] = useState('');
+  const wsRef = useRef<WebSocket | null>(null);
+  const blinkCountRef = useRef<number | null>(null);
+  const lastCloudFrame = useRef('');
   const [live, setLive] = useState<LiveEEG>({
     source: 'none',
     frame: null,
@@ -267,16 +309,52 @@ export function useBridge(client: CortexClient | null, cloudEnabled: boolean) {
       }
       ws.onopen = () => {
         retry = 0;
+        blinkCountRef.current = null;
+        wsRef.current = ws;
         setStatus('open');
+        setBridgeError('');
       };
       ws.onmessage = (event) => {
-        let msg: (EEGFrame & { type?: string }) | null = null;
+        let msg: (EEGFrame & { type?: string; [k: string]: unknown }) | null = null;
         try {
           msg = JSON.parse(String(event.data));
         } catch {
           return;
         }
-        if (!msg || msg.type !== 'frame' || !Array.isArray(msg.samples)) return;
+        if (!msg) return;
+        const str = (k: string) => (typeof msg![k] === 'string' ? (msg![k] as string) : '');
+        if (msg.type === 'hello' || msg.type === 'status') {
+          setInfo((prev) => ({
+            protocol: Number(msg.protocol ?? (msg.type === 'status' ? 2 : 1)),
+            state: str('state') || 'streaming',
+            message: str('message'),
+            board: str('board') || undefined,
+            serialPort: str('serial_port') || undefined,
+            cloud: msg.type === 'hello' ? msg.cloud === true : prev?.cloud,
+          }));
+          return;
+        }
+        if (msg.type === 'recording_progress') {
+          setRecording({ label: str('label'), seconds: Number(msg.seconds) || 0, elapsed: Number(msg.elapsed) || 0 });
+          return;
+        }
+        if (msg.type === 'recording') {
+          setRecording(null);
+          setLastRecording({
+            recordingId: (msg.recording_id as string | null) ?? null,
+            path: str('path') || undefined,
+            message: str('message'),
+            at: Date.now(),
+          });
+          return;
+        }
+        if (msg.type === 'error') {
+          setRecording(null);
+          setBridgeError(str('message') || 'bridge error');
+          return;
+        }
+        if (msg.type !== 'frame' || !Array.isArray(msg.samples)) return;
+        if (msg.recording) setRecording(msg.recording);
         const fs = msg.fs || 250;
         if (bufferRef.current.length !== msg.samples.length) bufferRef.current = [];
         bufferRef.current = appendRing(
@@ -284,7 +362,9 @@ export function useBridge(client: CortexClient | null, cloudEnabled: boolean) {
           msg.samples,
           Math.round(fs * RING_SECONDS),
         );
-        if (msg.blink) blinkRef.current += 1;
+        const b = blinkDelta(blinkCountRef.current, msg);
+        blinkCountRef.current = b.count;
+        blinkRef.current += b.delta;
         lastBridge.current = Date.now();
         setLive({
           source: 'bridge',
@@ -295,6 +375,8 @@ export function useBridge(client: CortexClient | null, cloudEnabled: boolean) {
         });
       };
       ws.onclose = () => {
+        if (wsRef.current === ws) wsRef.current = null;
+        setRecording(null);
         setStatus('closed');
         if (!stopped) timer = window.setTimeout(connect, Math.min(30_000, 1000 * 2 ** retry++));
       };
@@ -316,7 +398,10 @@ export function useBridge(client: CortexClient | null, cloudEnabled: boolean) {
         setLive((l) => (l.source === 'cloud' ? { ...l, source: 'none', frame: null } : l));
         return;
       }
-      const f = r.frame;
+      const f = r.frame as EEGFrame & { updated_at?: string };
+      // The cloud keeps only the latest frame; skip re-reads of the same one (no duplicate samples/blinks).
+      if (f.updated_at && f.updated_at === lastCloudFrame.current) return;
+      lastCloudFrame.current = f.updated_at ?? '';
       if (bufferRef.current.length !== f.samples.length) bufferRef.current = [];
       bufferRef.current = appendRing(
         bufferRef.current,
@@ -349,7 +434,21 @@ export function useBridge(client: CortexClient | null, cloudEnabled: boolean) {
     return () => window.clearInterval(t);
   }, []);
 
-  return { status, live };
+  /** Ask the bridge to record and upload `seconds` (4–60) of EEG; progress arrives via `recording`. */
+  const record = useCallback((seconds: number, label: string) => {
+    const ws = wsRef.current;
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      setBridgeError('The OpenBCI bridge is not connected.');
+      return false;
+    }
+    setBridgeError('');
+    const s = Math.min(60, Math.max(4, Math.round(seconds)));
+    ws.send(JSON.stringify({ type: 'record', seconds: s, label: label.slice(0, 120) || 'lab recording' }));
+    setRecording({ label, seconds: s, elapsed: 0 });
+    return true;
+  }, []);
+
+  return { status, live, info, recording, lastRecording, bridgeError, record };
 }
 
 export function useCompact() {

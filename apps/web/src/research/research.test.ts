@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import { RESEARCH_ANCHORS } from '@little-brain/brain';
-import { ApiError, CortexClient, errorMessage, provenance } from './api';
-import { appendRing, tokenExpiry } from './hooks';
+import { ApiError, CortexClient, channelQuality, errorMessage, provenance } from './api';
+import { appendRing, blinkDelta, tokenExpiry } from './hooks';
+import { qualitySummary } from './EEGPanel';
 import {
   anchorsFromEEG,
   bandPowers,
@@ -178,5 +179,41 @@ describe('helpers', () => {
     expect(specDiff({ reps: 1, max_couplings: 28 }, { reps: 2, max_couplings: 28 })).toEqual([
       { key: 'reps', before: '1', after: '2' },
     ]);
+  });
+});
+
+
+describe('bridge protocol v2', () => {
+  const names = ['Fp1', 'Fp2', 'O1', 'O2'];
+  const frame = (extra: Record<string, unknown> = {}) => ({
+    fs: 250,
+    channel_names: names,
+    samples: names.map((_, i) => Array.from({ length: 250 }, (_, k) => Math.sin(k / (3 + i)) * 10)),
+    per_channel_bands: names.map(() => ({ delta: 60, theta: 30, alpha: 5, beta: 5, gamma: 0 })),
+    ...extra,
+  });
+
+  it('normalises v1 string, cloud comma-joined and v2 per-channel quality', () => {
+    expect(channelQuality({ channel_names: names, quality: 'ok' })).toEqual(['ok', 'ok', 'ok', 'ok']);
+    expect(channelQuality({ channel_names: names, quality: 'ok,flat,ok,railed' })).toEqual(['ok', 'flat', 'ok', 'railed']);
+    expect(channelQuality({ channel_names: names, quality: ['ok', 'noisy'] })).toEqual(['ok', 'noisy', 'unverified', 'unverified']);
+    expect(qualitySummary({ channel_names: names, quality: ['ok', 'flat', 'ok', 'flat'] })).toBe('2/4 ok · flat: Fp2, O2');
+  });
+
+  it('counts blinks from blink_count deltas and ignores bridge restarts', () => {
+    expect(blinkDelta(null, { blink_count: 7 })).toEqual({ delta: 0, count: 7 });
+    expect(blinkDelta(7, { blink_count: 9 })).toEqual({ delta: 2, count: 9 });
+    expect(blinkDelta(9, { blink_count: 0 })).toEqual({ delta: 0, count: 0 });
+    expect(blinkDelta(null, { blink: true })).toEqual({ delta: 1, count: null });
+  });
+
+  it('eyes closed lights the occipital anchors; railed electrodes are dimmed', () => {
+    const open = anchorsFromEEG(frame({ alpha_state: 'eyes_open' }) as never, []);
+    const closed = anchorsFromEEG(frame({ alpha_state: 'eyes_closed' }) as never, []);
+    expect(closed.intensities[idx('O1')]).toBeGreaterThanOrEqual(0.85);
+    expect(closed.intensities[idx('O1')]).toBeGreaterThan(open.intensities[idx('O1')]);
+    const railed = anchorsFromEEG(frame({ quality: ['railed', 'ok', 'ok', 'ok'] }) as never, []);
+    expect(railed.intensities[idx('Fp1')]).toBeLessThan(railed.intensities[idx('Fp2')] * 0.5);
+    expect(railed.values[idx('Fp1')].quality).toBe('railed');
   });
 });

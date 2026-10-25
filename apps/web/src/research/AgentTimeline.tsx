@@ -2,14 +2,26 @@ import { useEffect, useState } from 'react';
 import { ChevronDown, ChevronRight, Sparkles } from 'lucide-react';
 import { fmt, type CortexClient, type Revision } from './api';
 
-function ArtifactImage({ client, path }: { client: CortexClient; path: string }) {
+/** Image from an authenticated endpoint (object URL, revoked on unmount). */
+export function AuthImage({
+  load,
+  deps,
+  alt,
+  className = 'cx-revision-img',
+}: {
+  load: () => Promise<string>;
+  deps: unknown[];
+  alt: string;
+  className?: string;
+}) {
   const [url, setUrl] = useState<string | null>(null);
   const [error, setError] = useState('');
   useEffect(() => {
     let alive = true;
     let made: string | null = null;
-    client
-      .artifact(path)
+    setUrl(null);
+    setError('');
+    load()
       .then((u) => {
         made = u;
         if (alive) setUrl(u);
@@ -20,14 +32,18 @@ function ArtifactImage({ client, path }: { client: CortexClient; path: string })
       alive = false;
       if (made) URL.revokeObjectURL(made);
     };
-  }, [client, path]);
-  if (error) return <p className="cx-dim">Render unavailable: {error}</p>;
-  if (!url) return <div className="cx-img-loading" aria-label="Loading render" />;
+  }, deps); // eslint-disable-line react-hooks/exhaustive-deps
+  if (error) return <p className="cx-dim">Image unavailable: {error}</p>;
+  if (!url) return <div className="cx-img-loading" aria-label="Loading image" />;
+  return <img className={className} src={url} alt={alt} />;
+}
+
+export function ArtifactImage({ client, path, alt }: { client: CortexClient; path: string; alt?: string }) {
   return (
-    <img
-      className="cx-revision-img"
-      src={url}
-      alt="What the agent looked at: rendered waveform comparison and samples"
+    <AuthImage
+      load={() => client.artifact(path)}
+      deps={[client, path]}
+      alt={alt ?? 'What the agent looked at: rendered waveform comparison and samples'}
     />
   );
 }

@@ -1382,8 +1382,9 @@ p.cx-dim {
   background: linear-gradient(90deg, #b8d1a6, #8fc28a);
   transition: width 0.4s;
 }
-.cx-budget.over .cx-budget-track span {
-  background: linear-gradient(90deg, #f5c38b, #f07b8f);
+/* ~130 gates is a soft target: above it is shown, never treated as a failure */
+.cx-budget.above .cx-budget-track span {
+  background: linear-gradient(90deg, #b8d1a6, #e9c98f);
 }
 .cx-budget-track i {
   position: absolute;
@@ -1398,8 +1399,8 @@ p.cx-dim {
   color: #5d6e55;
   font-variant-numeric: tabular-nums;
 }
-.cx-budget.over b {
-  color: #c27063;
+.cx-budget.above b {
+  color: #9a7b45;
 }
 .cx-budget b small {
   font-weight: 400;
@@ -1626,9 +1627,8 @@ p.cx-dim {
 }
 .cx-chips {
   display: flex;
+  flex-wrap: wrap;
   gap: 5px;
-  overflow-x: auto;
-  scrollbar-width: none;
 }
 .cx-chips button {
   display: inline-flex;
@@ -1738,4 +1738,139 @@ p.cx-dim {
   left: auto;
   right: 14px;
   transform: none;
+}
+
+/* ---- bridge protocol v2: status, quality, alpha, recording ---- */
+.cx-banner {
+  margin: 6px 0;
+  padding: 7px 10px;
+  border-radius: 10px;
+  background: #fdf6ec;
+  border: 1px solid #f3e3cb;
+  color: #8a6a3a;
+  font-size: 11px;
+}
+.cx-alpha {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0;
+  font-size: 11px;
+  color: var(--cx-soft, #7d8a86);
+}
+.cx-alpha.eyes_closed {
+  color: #6b72b8;
+  font-weight: 600;
+}
+.cx-quality {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 6px 0;
+}
+.cx-q {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 8px;
+  background: #ffffff90;
+  border: 1px solid #e3ebe6;
+}
+.cx-q.ok {
+  color: #4f8a6f;
+}
+.cx-q.warn {
+  color: #a0803f;
+  border-color: #f0e2c4;
+}
+.cx-q.bad {
+  color: #b05a5a;
+  border-color: #efd0d0;
+  background: #fbf0f0;
+}
+.cx-record {
+  display: grid;
+  gap: 6px;
+  margin: 6px 0;
+  font-size: 11px;
+}
+.cx-record .cx-row {
+  display: flex;
+  gap: 5px;
+}
+.cx-record input {
+  flex: 1;
+  min-width: 0;
+}
+.cx-rec-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #d9534f;
+  margin-right: 4px;
+  animation: cx-pulse 1s ease-in-out infinite;
+}
+@keyframes cx-pulse {
+  50% {
+    opacity: 0.3;
+  }
+}
+.cx-progress {
+  height: 4px;
+  border-radius: 3px;
+  background: #e9efec;
+  overflow: hidden;
+}
+.cx-progress i {
+  display: block;
+  height: 100%;
+  background: #8fb39b;
+  transition: width 0.4s;
+}
+
+/* ---- EEG triage: spectrograms, agent picks, cross-channel comparison ---- */
+.cx-spectrogram {
+  width: 100%;
+  border-radius: 10px;
+  display: block;
+  background: #fff;
+}
+.cx-selected-by {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+  color: #6b72b8;
+}
+.cx-table-wrap {
+  margin-top: 8px;
+  overflow-x: auto;
+}
+.cx-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+}
+.cx-table th,
+.cx-table td {
+  text-align: left;
+  padding: 4px 6px;
+  border-bottom: 1px solid #e8eeea;
+  white-space: nowrap;
+}
+.cx-table th {
+  color: var(--cx-soft, #7d8a86);
+  font-weight: 500;
+}
+.cx-feed .cx-revision-img {
+  margin-top: 8px;
+}
+
+.cx-feed .message {
+  max-width: 100%;
+  min-width: 0;
+}
+.cx-feed .message-text {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
 }

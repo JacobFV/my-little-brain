@@ -66,6 +66,7 @@ def test_unavailable_provider_and_agent_are_refused():
 
 def test_recording_experiment_and_eeg_ingest():
     ds = c.get("/v1/datasets", headers=H).json()["datasets"][0]
+    assert ds["segments"] == ["preictal", "ictal", "postictal"]  # contract: list of names
     exp = c.post("/v1/experiments", headers=H, json={"source": "recording", "dataset_id": ds["id"], "channel": "T7-P7", "segment": "ictal"}).json()["experiment"]
     assert exp["target"]["weights"][-1] == 0 and exp["target"]["truth_bitstring"] is None
     tok = c.post("/v1/eeg/ingest-token", headers=H).json()["token"]
@@ -90,3 +91,15 @@ def test_verdict_logic():
     assert verdict(mk(0.5, .1), mk(0.5, .3)) == "improved"
     assert verdict(mk(0.5, .1), mk(0.5, .1)) == "unchanged"
     assert verdict(None, mk(0.5, .1)) == "untested"
+
+
+def test_cancel_during_execution_is_not_resurrected():
+    from cortex2 import runner
+    from cortex2.store import store
+    exp = c.post("/v1/experiments", json={"source": "synthetic", "truth_bitstring": "00110010"}, headers=H).json()["experiment"]
+    job = runner.create_job("dev", exp["id"], {"provider": "classical_anneal", "approximation": "secant"}, enqueue=False)
+    store().update("jobs", job["id"], {"status": "running"})
+    assert c.post(f"/v1/jobs/{job['id']}/cancel", headers=H).json()["job"]["status"] == "cancelled"
+    done = runner.execute_sample_job(store().get("jobs", job["id"]))     # worker finishes afterwards
+    assert done["status"] == "cancelled"
+    assert c.get(f"/v1/experiments/{exp['id']}", headers=H).json()["experiment"]["best"] is None

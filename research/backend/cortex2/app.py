@@ -252,7 +252,7 @@ def post_session(body: dict, user=Depends(current_user)):
 @app.get("/v1/datasets")
 def datasets(user=Depends(current_user)):
     ds = [{k: d[k] for k in ("id", "label", "kind", "fs", "channels", "seizures", "citation", "license", "source")}
-          | {"segments": {k: v for k, v in d["segments"].items()}} for d in eeg.datasets()]
+          | {"segments": list(d["segments"]), "segment_details": d["segments"]} for d in eeg.datasets()]
     return {"datasets": ds, "synthetic_presets": runner.SYNTHETIC_PRESETS}
 
 
