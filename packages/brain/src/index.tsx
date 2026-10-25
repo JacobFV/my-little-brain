@@ -38,6 +38,7 @@ const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(ma
 export function BrainScene(props: BrainSceneProps) {
   const host = useRef<HTMLDivElement>(null);
   const pluginButtons = useRef(new Map<string, HTMLButtonElement>());
+  const researchButtons = useRef(new Map<number, HTMLButtonElement>());
   const pluginDrag = useRef<{
     id: string;
     pointer: number;
@@ -389,6 +390,17 @@ export function BrainScene(props: BrainSceneProps) {
           eyes[i].scale.y = blink;
         }
       }
+      if (p.researchOverlay) {
+        activityRoot.updateWorldMatrix(true, false);
+        for (let i=0; i<activityNodes.length; i++) {
+          const marker=researchButtons.current.get(i);
+          if (!marker) continue;
+          const projected=activityNodes[i].clone().applyMatrix4(activityRoot.matrixWorld).project(camera);
+          marker.hidden=projected.z>1 || projected.z< -1 || Math.abs(projected.x)>1 || Math.abs(projected.y)>1;
+          marker.style.left=`${(projected.x+1)*50}%`;
+          marker.style.top=`${(1-projected.y)*50}%`;
+        }
+      }
       if (p.paused) for (const eye of eyes) eye.scale.y = 1;
       if (!contextLost) {
         if (p.onFrame && group.visible && snapshotContext && now - lastSnapshot >= 250) {
@@ -493,6 +505,16 @@ export function BrainScene(props: BrainSceneProps) {
         isolation: 'isolate',
       }}
     >
+      {props.researchOverlay && <div aria-label="research brain activity markers" style={{position:'absolute',inset:0,pointerEvents:'none',zIndex:4}}>
+        {['frontal left','frontal right','temporal left','temporal right','parietal left','parietal right','occipital left','occipital right'].map((name,i) =>
+          <button key={name} ref={node=>{if(node)researchButtons.current.set(i,node);else researchButtons.current.delete(i);}}
+            type="button" title={`${name}: ${((props.researchOverlay?.intensities[i] ?? 0)*100).toFixed(1)}% normalized synthetic feature proxy`}
+            aria-label={`${name}: ${((props.researchOverlay?.intensities[i] ?? 0)*100).toFixed(1)}% activity`}
+            style={{position:'absolute',pointerEvents:'auto',transform:'translate(-50%,-50%)',
+              width:12,height:12,padding:0,borderRadius:'50%',border:'1px solid #73a9a7',
+              background:'#9bdccc',boxShadow:'0 0 0 5px #74c3b325',cursor:'help'}}/>
+        )}
+      </div>}
       <style>{`
       .brain-plugin-hit { position:absolute;z-index:3;border:0;background:transparent;border-radius:14px;touch-action:none;cursor:grab;min-width:24px;min-height:24px;padding:0; }
       .brain-plugin-hit:focus-visible {outline:2px solid #9372ab;outline-offset:4px;}
