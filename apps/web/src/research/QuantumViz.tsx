@@ -31,8 +31,8 @@ export function GateBudget({
   const ratio = gates / budget;
   return (
     <div
-      className={`cx-budget ${ratio > 1 ? 'over' : ''}`}
-      title={`${gates} physical gates vs ~${budget} gate budget`}
+      className={`cx-budget ${ratio > 1 ? 'above' : ''}`}
+      title={`${gates} physical gates · ~${budget} is a soft target (reference line), not a limit`}
     >
       <span>{label}</span>
       <div className="cx-budget-track">
@@ -43,7 +43,7 @@ export function GateBudget({
       </div>
       <b>
         {gates}
-        <small>/{budget}</small>
+        <small> · ~{budget} target</small>
       </b>
     </div>
   );

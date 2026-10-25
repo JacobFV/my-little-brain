@@ -540,6 +540,28 @@ export default function ResearchLab() {
       setBusy(false);
     }
   };
+  /** Agent-driven EEG triage: OpenBCI recording if one is selected, else the CHB-MIT seizure window. */
+  const triage = async () => {
+    setBusy(true);
+    setError('');
+    try {
+      const meta = (exp?.target.meta ?? {}) as Record<string, unknown>;
+      const body =
+        exp?.target.source === 'openbci' && typeof meta.recording_id === 'string'
+          ? { recording_id: meta.recording_id }
+          : { dataset_id: datasets[0]?.id ?? 'chbmit-chb01_03', start: 2960, end: 3060 };
+      const { item, job } = await client.triage(body);
+      setFeed((f) => [item, ...f]);
+      if (job) setJobs((j) => [job, ...j.filter((x) => x.id !== job.id)]);
+      setTab('feed');
+      if (!rightOpen) setRightOpen(true);
+      setNotice('EEG triage started — the agent is reading the spectrograms.');
+    } catch (e) {
+      fail(e);
+    } finally {
+      setBusy(false);
+    }
+  };
   const runJob = async (req: JobRequest) => {
     if (!exp) return;
     setBusy(true);
@@ -645,6 +667,17 @@ export default function ResearchLab() {
         onClick={() => setConfirmQpu('ionq_qpu')}
       >
         <Atom size={13} /> Submit to IonQ
+      </button>
+      <button
+        disabled={busy || !config?.agent_configured}
+        title={
+          config?.agent_configured
+            ? 'The agent reads per-channel spectrograms, picks channels/windows and runs a quantum search on each'
+            : 'No agent model configured on the server'
+        }
+        onClick={() => void triage()}
+      >
+        <Waves size={13} /> EEG triage
       </button>
       <button disabled={!exp || busy} onClick={() => void compareProviders()}>
         <Layers size={13} /> Compare providers
@@ -1081,7 +1114,7 @@ export default function ResearchLab() {
                       model={config?.model ?? 'agent'}
                     />
                   ) : (
-                    <FeedTab items={feed} />
+                    <FeedTab items={feed} client={client} />
                   )}
                 </div>
                 {signedIn && (

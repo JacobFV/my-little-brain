@@ -360,6 +360,7 @@ export function errorMessage(status: number, body: unknown): string {
   }
   if (typeof body === 'string' && body.trim()) return body.trim().slice(0, 300);
   if (status === 401) return 'Your sign-in expired. Sign in again.';
+  if (status === 429) return 'Too many requests — please wait a moment and try again.';
   if (status === 0) return 'The research service is unreachable.';
   return `Request failed (HTTP ${status}).`;
 }
@@ -388,6 +389,15 @@ export class CortexClient {
       body = text ? JSON.parse(text) : null;
     } catch {
       /* non-JSON body */
+    }
+    if (response.status === 429) {
+      const wait = Number(response.headers.get('Retry-After'));
+      throw new ApiError(
+        429,
+        `Easy there — the lab is rate-limiting requests. Try again in ${
+          Number.isFinite(wait) && wait > 0 ? `${Math.ceil(wait)} s` : 'a moment'
+        }.`,
+      );
     }
     if (!response.ok) throw new ApiError(response.status, errorMessage(response.status, body));
     return body as T;
@@ -450,18 +460,32 @@ export class CortexClient {
   exportUrl = (experimentId: string) =>
     `${this.base}/v1/experiments/${encodeURIComponent(experimentId)}/export`;
 
-  /** Authenticated artifact (PNG) → object URL. Caller revokes. */
-  async artifact(path: string): Promise<string> {
+  /** Authenticated GET of an image endpoint → object URL. Caller revokes. */
+  async imageUrl(pathAndQuery: string): Promise<string> {
     const headers = new Headers();
     if (this.token) headers.set('Authorization', `Bearer ${this.token}`);
-    const clean = path.replace(/^\/+/, '').replace(/^v1\/artifacts\//, '');
-    const r = await this.fetcher(
-      `${this.base}/v1/artifacts/${clean.split('/').map(encodeURIComponent).join('/')}`,
-      { headers },
-    );
-    if (!r.ok) throw new ApiError(r.status, errorMessage(r.status, null));
+    const r = await this.fetcher(`${this.base}${pathAndQuery}`, { headers });
+    if (!r.ok)
+      throw new ApiError(r.status, errorMessage(r.status, await r.text().then((t) => { try { return JSON.parse(t); } catch { return t; } }).catch(() => null)));
     return URL.createObjectURL(await r.blob());
   }
+  /** Authenticated artifact (PNG) → object URL. Caller revokes. */
+  artifact(path: string): Promise<string> {
+    const clean = path.replace(/^\/+/, '').replace(/^v1\/artifacts\//, '');
+    return this.imageUrl(`/v1/artifacts/${clean.split('/').map(encodeURIComponent).join('/')}`);
+  }
+  /** Per-channel spectrogram grid (the image the agent triages). */
+  spectrogram(src: { dataset_id?: string; recording_id?: string; start?: number; end?: number; channels?: string[] }) {
+    const q = new URLSearchParams();
+    if (src.dataset_id) q.set('dataset_id', src.dataset_id);
+    if (src.recording_id) q.set('recording_id', src.recording_id);
+    if (src.start != null) q.set('start', String(src.start));
+    if (src.end != null) q.set('end', String(src.end));
+    if (src.channels?.length) q.set('channels', src.channels.join(','));
+    return this.imageUrl(`/v1/eeg/spectrogram?${q}`);
+  }
+  triage = (body: { dataset_id?: string; recording_id?: string; start?: number; end?: number; instruction?: string }) =>
+    this.post<{ item: FeedItem; job: Job }>('/v1/eeg/triage', body);
   async download(experimentId: string): Promise<Blob> {
     const headers = new Headers();
     if (this.token) headers.set('Authorization', `Bearer ${this.token}`);

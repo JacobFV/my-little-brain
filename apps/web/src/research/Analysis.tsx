@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Download, Eye, Play } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Download, Eye, Play, Sparkles } from 'lucide-react';
+import { ArtifactImage, AuthImage } from './AgentTimeline';
 import {
   fmt,
   isActive,
@@ -133,6 +134,22 @@ export function ExperimentTab({
   const [previewError, setPreviewError] = useState('');
   const exp = detail?.experiment;
   const shown = hypothesis ?? exp?.best?.bitstring ?? null;
+  const meta = (exp?.target.meta ?? {}) as Record<string, unknown>;
+  const selectedBy = meta.selected_by as { agent?: string; why?: string } | undefined;
+  const num = (v: unknown) => (typeof v === 'number' ? v : undefined);
+  const segStart = num(meta.start);
+  const segEnd = num(meta.end);
+  const spectroSrc =
+    exp && exp.target.source !== 'synthetic'
+      ? {
+          dataset_id: typeof meta.dataset_id === 'string' ? meta.dataset_id : undefined,
+          recording_id: typeof meta.recording_id === 'string' ? meta.recording_id : undefined,
+          // a little context around the analysed segment
+          start: segStart !== undefined ? Math.max(0, segStart - 20) : undefined,
+          end: segEnd !== undefined ? segEnd + 20 : undefined,
+          channels: typeof meta.channel === 'string' ? [meta.channel] : undefined,
+        }
+      : null;
   useEffect(() => setHypothesis(null), [exp?.id]);
   useEffect(() => {
     setPreview(null);
@@ -235,7 +252,32 @@ export function ExperimentTab({
             consistent with the spectrum — not validated seizure causes.
           </p>
         )}
+        {selectedBy?.why && (
+          <p className="cx-note cx-selected-by">
+            <Sparkles size={12} /> Picked by {selectedBy.agent ?? 'the agent'} during EEG triage:{' '}
+            {selectedBy.why}
+          </p>
+        )}
       </section>
+
+      {spectroSrc && (
+        <section className="cx-card">
+          <div className="cx-card-head">
+            <h4>Spectrogram</h4>
+            <span className="cx-dim">
+              {spectroSrc.channels?.join(', ')}
+              {spectroSrc.start != null ? ` · ${spectroSrc.start}–${spectroSrc.end} s` : ''}
+            </span>
+          </div>
+          <AuthImage
+            load={() => client.spectrogram(spectroSrc)}
+            deps={[client, JSON.stringify(spectroSrc)]}
+            alt="Spectrogram of the analysed EEG channel"
+            className="cx-spectrogram"
+          />
+          <small className="cx-dim">measured EEG · time–frequency power</small>
+        </section>
+      )}
 
       <section className="cx-card">
         <div className="cx-card-head">
@@ -747,7 +789,83 @@ export function JobTab({
   );
 }
 
-export function FeedTab({ items }: { items: FeedItem[] }) {
+interface ComparisonRow {
+  experiment_id: string;
+  title: string;
+  best_found?: string | null;
+  best_found_params?: Record<string, number> | null;
+  consistent_set_size?: number | null;
+  consistent_param_ranges?: Record<string, number[] | string> | null;
+}
+
+/** Structured payloads attached to feed items (spectrogram images, cross-channel comparisons). */
+function FeedData({ data, client }: { data?: Record<string, unknown>; client?: CortexClient }) {
+  if (!data) return null;
+  if (data.kind === 'spectrogram' && typeof data.image === 'string' && client)
+    return (
+      <ArtifactImage
+        client={client}
+        path={data.image}
+        alt="Per-channel spectrograms the agent inspected"
+      />
+    );
+  if (data.kind === 'channel_comparison' && Array.isArray(data.rows)) {
+    const rows = data.rows as ComparisonRow[];
+    const range = (v: number[] | string | undefined) =>
+      Array.isArray(v)
+        ? v.length > 1 && v[0] !== v[v.length - 1]
+          ? `${v[0]}–${v[v.length - 1]}`
+          : `${v[0]}`
+        : (v ?? '—');
+    const params = Object.keys(
+      rows.find((r) => r.consistent_param_ranges)?.consistent_param_ranges ?? {},
+    );
+    return (
+      <div className="cx-table-wrap">
+        <table className="cx-table" aria-label="Cross-channel hypothesis comparison">
+          <thead>
+            <tr>
+              <th>experiment</th>
+              <th>best</th>
+              <th>consistent</th>
+              {params.map((p) => (
+                <th key={p}>{PARAM_SHORT[p] ?? p}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.experiment_id}>
+                <td>{r.title}</td>
+                <td>
+                  <code>{r.best_found ?? '—'}</code>
+                </td>
+                <td>{r.consistent_set_size ?? '—'}</td>
+                {params.map((p) => (
+                  <td key={p}>
+                    {range(r.consistent_param_ranges?.[p] as number[] | string | undefined)}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <small className="cx-dim">
+          ranges = parameter values across each channel&apos;s consistent hypothesis set
+        </small>
+      </div>
+    );
+  }
+  return null;
+}
+
+export function FeedTab({ items, client }: { items: FeedItem[]; client?: CortexClient }) {
+  const end = useRef<HTMLDivElement>(null);
+  const newest = items[0]?.id;
+  // Chat order (oldest → newest): keep the newest message in view as items arrive.
+  useEffect(() => {
+    end.current?.scrollIntoView({ block: 'end' });
+  }, [newest]);
   if (!items.length)
     return (
       <div className="cx-empty">
@@ -782,8 +900,10 @@ export function FeedTab({ items }: { items: FeedItem[] }) {
             </time>
           </div>
           <div className="message-text">{item.text}</div>
+          <FeedData data={item.data} client={client} />
         </article>
       ))}
+      <div ref={end} />
     </div>
   );
 }

@@ -1382,8 +1382,9 @@ p.cx-dim {
   background: linear-gradient(90deg, #b8d1a6, #8fc28a);
   transition: width 0.4s;
 }
-.cx-budget.over .cx-budget-track span {
-  background: linear-gradient(90deg, #f5c38b, #f07b8f);
+/* ~130 gates is a soft target: above it is shown, never treated as a failure */
+.cx-budget.above .cx-budget-track span {
+  background: linear-gradient(90deg, #b8d1a6, #e9c98f);
 }
 .cx-budget-track i {
   position: absolute;
@@ -1398,8 +1399,8 @@ p.cx-dim {
   color: #5d6e55;
   font-variant-numeric: tabular-nums;
 }
-.cx-budget.over b {
-  color: #c27063;
+.cx-budget.above b {
+  color: #9a7b45;
 }
 .cx-budget b small {
   font-weight: 400;
@@ -1825,4 +1826,51 @@ p.cx-dim {
   height: 100%;
   background: #8fb39b;
   transition: width 0.4s;
+}
+
+/* ---- EEG triage: spectrograms, agent picks, cross-channel comparison ---- */
+.cx-spectrogram {
+  width: 100%;
+  border-radius: 10px;
+  display: block;
+  background: #fff;
+}
+.cx-selected-by {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+  color: #6b72b8;
+}
+.cx-table-wrap {
+  margin-top: 8px;
+  overflow-x: auto;
+}
+.cx-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+}
+.cx-table th,
+.cx-table td {
+  text-align: left;
+  padding: 4px 6px;
+  border-bottom: 1px solid #e8eeea;
+  white-space: nowrap;
+}
+.cx-table th {
+  color: var(--cx-soft, #7d8a86);
+  font-weight: 500;
+}
+.cx-feed .cx-revision-img {
+  margin-top: 8px;
+}
+
+.cx-feed .message {
+  max-width: 100%;
+  min-width: 0;
+}
+.cx-feed .message-text {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
 }
