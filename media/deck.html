@@ -5,105 +5,85 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>My Little Brain</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400..700&family=DM+Sans:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@500;700&display=swap">
 <style>
-  /* Judges deck: open in a browser, ← → / space / click to move, F for fullscreen. */
-  :root { --ink:#14161f; --soft:#4a5060; --violet:#5b4bd6; --bg:#fbfbfd; }
+  /* Judges deck. Open in Chrome · ← → / space / click · F = fullscreen. */
   * { box-sizing:border-box; margin:0; padding:0; }
-  html, body { height:100%; background:var(--bg); overflow:hidden; font-family:'DM Sans', system-ui, sans-serif; color:var(--ink); }
-  .stage { position:fixed; left:50%; top:50%; width:1920px; height:1080px; transform-origin:0 0; }
-  .slide { position:absolute; inset:0; padding:128px; opacity:0; pointer-events:none; transition:opacity .7s ease, transform .9s cubic-bezier(.2,.7,.2,1); transform:scale(1.015); }
-  .slide.on { opacity:1; pointer-events:auto; transform:none; }
-  .blob { position:absolute; border-radius:50%; filter:blur(90px); opacity:.75; animation:drift 14s ease-in-out infinite alternate; }
-  @keyframes drift { from { transform:translate(0,0) scale(1); } to { transform:translate(60px,-40px) scale(1.12); } }
-  .eyebrow { font-size:28px; letter-spacing:5px; text-transform:uppercase; color:var(--violet); font-weight:700; }
-  h1 { font-family:'Space Grotesk', sans-serif; font-size:176px; line-height:.95; font-weight:700; letter-spacing:-4px; }
-  h2 { font-family:'Space Grotesk', sans-serif; font-size:92px; line-height:1; font-weight:700; letter-spacing:-2px; }
-  .lead { font-size:46px; line-height:1.3; color:var(--soft); max-width:1000px; }
-  .z { position:relative; z-index:2; }
-  canvas, svg.viz, video.viz { position:absolute; z-index:1; }
-  .steps { display:flex; flex-direction:column; gap:54px; margin-top:70px; }
-  .step b { display:block; font-family:'Space Grotesk', sans-serif; font-size:52px; letter-spacing:-1px; }
-  .step span { font-size:32px; color:var(--soft); line-height:1.35; display:block; max-width:820px; margin-top:8px; }
-  .nums { display:grid; grid-template-columns:1fr 1fr; gap:64px 90px; margin-top:80px; max-width:1120px; }
-  .num b { display:block; white-space:nowrap; font-family:'Space Grotesk', sans-serif; font-size:104px; line-height:1; letter-spacing:-3px;
-           background:linear-gradient(90deg,#5b4bd6,#e0559f 60%,#f08a3c); -webkit-background-clip:text; background-clip:text; color:transparent; }
-  .num span { display:block; font-size:30px; color:var(--soft); line-height:1.35; margin-top:12px; max-width:540px; }
-  .foot { position:absolute; left:128px; right:128px; bottom:60px; font-size:24px; color:#6a7080; z-index:2; }
-  .tags { margin-top:56px; font-size:30px; color:var(--ink); font-weight:500; letter-spacing:.5px; }
-  .tags i { font-style:normal; color:#e0559f; padding:0 14px; }
-  .pager { position:fixed; right:28px; bottom:22px; font-size:14px; color:#9aa0ad; letter-spacing:2px; z-index:9; }
+  html, body { height:100%; overflow:hidden; background:#cfdcfb; font-family:'Inter Tight', system-ui, sans-serif; color:#fff; }
+  .stage { position:fixed; left:50%; top:50%; width:1920px; height:1080px; transform-origin:0 0; overflow:hidden; background:#cfdcfb; }
+
+  /* one color field: a few huge, heavily blurred blobs that breathe; slides re-frame it */
+  .field { position:absolute; inset:-200px; filter:blur(110px) saturate(1.15); transition:transform 1.8s cubic-bezier(.2,.7,.2,1); }
+  .b { position:absolute; border-radius:50%; animation:breathe 16s ease-in-out infinite alternate; }
+  @keyframes breathe { to { transform:translate(70px,-50px) scale(1.12) rotate(8deg); } }
+
+  .slide { position:absolute; inset:0; opacity:0; transition:opacity 1.1s ease; pointer-events:none; }
+  .slide.on { opacity:1; }
+  .word { position:absolute; top:470px; font-size:96px; font-weight:700; letter-spacing:-.035em; line-height:.95; }
+  .small { position:absolute; top:586px; font-weight:500; font-size:30px; letter-spacing:-.01em; opacity:.9; }
+
+  /* visuals dissolve into the field through a soft mask — no frames, no cards */
+  .masked { position:absolute; left:510px; top:90px; width:900px; height:900px;
+            -webkit-mask-image:radial-gradient(closest-side, #000 50%, transparent 100%);
+            mask-image:radial-gradient(closest-side, #000 50%, transparent 100%); }
+  video.masked { object-fit:contain; }
+  .pager { position:fixed; right:26px; bottom:20px; font:500 13px 'Inter Tight', sans-serif; color:rgba(255,255,255,.7); letter-spacing:2px; z-index:5; }
 </style>
 </head>
 <body>
 <div class="stage" id="stage">
+  <div class="field" id="field">
+    <div class="b" style="left:-40px;top:40px;width:620px;height:820px;background:#ff3b2f"></div>
+    <div class="b" style="left:120px;top:-120px;width:520px;height:520px;background:#ffcf6b;animation-delay:-3s"></div>
+    <div class="b" style="left:640px;top:200px;width:820px;height:760px;background:#b07de0;animation-delay:-6s"></div>
+    <div class="b" style="left:900px;top:520px;width:640px;height:620px;background:#ff6a1a;animation-delay:-9s"></div>
+    <div class="b" style="left:1180px;top:240px;width:420px;height:560px;background:#ffd36e;animation-delay:-2s"></div>
+    <div class="b" style="left:780px;top:640px;width:420px;height:420px;background:#ff4f8b;animation-delay:-11s"></div>
+    <div class="b" style="left:1720px;top:-60px;width:520px;height:520px;background:#c78cff;animation-delay:-5s"></div>
+    <div class="b" style="left:1500px;top:900px;width:700px;height:460px;background:#6fa8ff;animation-delay:-7s"></div>
+    <div class="b" style="left:-160px;top:760px;width:520px;height:460px;background:#7fb2ff;animation-delay:-4s"></div>
+  </div>
 
-  <!-- 1 · cover -->
+  <!-- 1 · the brain -->
   <section class="slide on">
-    <div class="blob" style="left:1050px;top:60px;width:760px;height:760px;background:#ff9ad5"></div>
-    <div class="blob" style="left:1320px;top:430px;width:560px;height:560px;background:#ffb36b;animation-delay:-4s"></div>
-    <div class="blob" style="left:860px;top:560px;width:600px;height:480px;background:#7aa8ff;animation-delay:-8s"></div>
-    <div class="blob" style="left:-80px;top:-60px;width:560px;height:460px;background:#8ef0cf;opacity:.5"></div>
-    <video class="viz" src="brain/real-brain.webm" poster="brain/real-brain.png" autoplay loop muted playsinline style="left:960px;top:60px;width:960px;height:899px;object-fit:contain"></video>
-    <div class="z" style="margin-top:40px">
-      <div class="eyebrow">personal AI · neuroscience · quantum</div>
-      <h1 style="margin-top:36px">My Little<br>Brain</h1>
-      <p class="lead" style="margin-top:44px">A brainy AI that knows you — your notes, your live EEG — and does real neuroscience research on you, on quantum hardware.</p>
-      <div class="tags">chat with your brain<i>✦</i>it reads your brainwaves<i>✦</i>it runs quantum experiments</div>
-    </div>
-    <div class="foot">OpenBCI · Gemini 4 Argon · IonQ · IBM Quantum · qBraid · Extropic THRML</div>
+    <video class="masked" src="brain/real-brain.webm" poster="brain/real-brain.png" autoplay loop muted playsinline
+           style="left:610px;width:700px"></video>
+    <div class="word" style="left:150px">My Little</div>
+    <div class="word" style="left:1450px">Brain</div>
   </section>
 
-  <!-- 2 · how -->
+  <!-- 2 · it knows you -->
   <section class="slide">
-    <div class="blob" style="left:-120px;top:620px;width:760px;height:520px;background:#8ef0cf"></div>
-    <div class="blob" style="left:1180px;top:-80px;width:760px;height:640px;background:#b28cff"></div>
-    <div class="blob" style="left:1400px;top:600px;width:560px;height:520px;background:#ffb36b;animation-delay:-6s"></div>
-    <canvas id="circuit" width="900" height="760" style="left:930px;top:180px;width:900px;height:760px"></canvas>
-    <div class="z">
-      <div class="eyebrow">how it works</div>
-      <h2 style="margin-top:30px">Your brain,<br>studying itself.</h2>
-      <div class="steps">
-        <div class="step"><b>It observes you.</b><span>Live OpenBCI EEG — blinks, alpha, rhythms — and whatever you tell it about yourself.</span></div>
-        <div class="step"><b>It looks.</b><span>Gemini renders spectrograms of every channel, sees what changed, picks what’s worth explaining.</span></div>
-        <div class="step"><b>It runs quantum experiments.</b><span>8 qubits · 256 brain hypotheses · QAOA on IonQ, IBM and qBraid, plus a thermodynamic surrogate.</span></div>
-      </div>
-    </div>
+    <canvas class="masked" id="eeg" width="900" height="900"></canvas>
+    <div class="word" style="left:150px">It knows</div>
+    <div class="word" style="left:1460px">you</div>
+    <div class="small" style="left:154px">your notes · your live EEG</div>
   </section>
 
-  <!-- 3 · results -->
+  <!-- 3 · it studies itself, on quantum hardware -->
   <section class="slide">
-    <div class="blob" style="left:-60px;top:-60px;width:720px;height:600px;background:#7aa8ff"></div>
-    <div class="blob" style="left:1260px;top:60px;width:680px;height:640px;background:#ff9ad5;animation-delay:-5s"></div>
-    <div class="blob" style="left:700px;top:640px;width:760px;height:480px;background:#8ef0cf;animation-delay:-9s"></div>
-    <canvas id="collapse" width="560" height="620" style="left:1330px;top:250px;width:480px;height:531px"></canvas>
-    <div class="z">
-      <div class="eyebrow">what it found</div>
-      <div class="nums">
-        <div class="num"><b>48 / 256</b><span>simulations to recover a hidden brain state — blind, in 2–3 self-revised iterations</span></div>
-        <div class="num"><b>42 gates</b><span>a circuit Gemini wrote itself, down from 106, that cracked the alpha rhythm</span></div>
-        <div class="num"><b>52 vs 454</b><span>gates for the full problem: trapped ions vs heavy-hex — so it picks its hardware</span></div>
-        <div class="num"><b>τ 16→55ms</b><span>every seizure window points to slower synaptic dynamics</span></div>
-      </div>
-    </div>
-    <div class="foot">hypotheses from a simplified neural-mass model, not diagnoses · 256 states are classically enumerable — no quantum-advantage claim</div>
+    <canvas class="masked" id="collapse" width="900" height="900"></canvas>
+    <div class="word" style="left:150px">It studies</div>
+    <div class="word" style="left:1440px">itself</div>
+    <div class="small" style="left:154px">256 hypotheses · 8 qubits</div>
+    <div class="small" style="left:1444px">found in 48</div>
+    <div class="small" style="left:0;right:0;top:auto;bottom:56px;text-align:center;font-size:22px;opacity:.7">Gemini · IonQ · IBM · qBraid · Extropic — model hypotheses, not diagnoses</div>
   </section>
 </div>
 <div class="pager" id="pager"></div>
 
 <script>
-const stage = document.getElementById('stage');
+const stage = document.getElementById('stage'), field = document.getElementById('field');
 const slides = [...document.querySelectorAll('.slide')];
-let cur = 0;
-function fit() {
-  const s = Math.min(innerWidth / 1920, innerHeight / 1080);
-  stage.style.transform = `scale(${s}) translate(-50%, -50%)`;
-}
+let cur = 0, t0 = 0;
+const frames = ['translate(0,0) scale(1)', 'translate(-120px,40px) scale(1.08) rotate(-4deg)', 'translate(80px,-60px) scale(1.12) rotate(5deg)'];
+function fit() { const s = Math.min(innerWidth / 1920, innerHeight / 1080); stage.style.transform = `scale(${s}) translate(-50%,-50%)`; }
 function go(i) {
   cur = Math.max(0, Math.min(slides.length - 1, i));
   slides.forEach((el, k) => el.classList.toggle('on', k === cur));
+  field.style.transform = frames[cur];
   document.getElementById('pager').textContent = `${cur + 1} / ${slides.length}`;
-  if (cur === 2) collapseT0 = performance.now();
+  t0 = performance.now();
 }
 addEventListener('resize', fit);
 addEventListener('keydown', (e) => {
@@ -113,65 +93,38 @@ addEventListener('keydown', (e) => {
 });
 addEventListener('click', (e) => go(e.clientX > innerWidth / 3 ? cur + 1 : cur - 1));
 
-// ---- quantum circuit: 8 wires, QAOA layers, gates pulse left → right, measurement sparks
-const cv = document.getElementById('circuit'), cx = cv.getContext('2d');
-const wires = 8, gates = [];
-for (let layer = 0; layer < 7; layer++)
-  for (let k = 0; k < 3; k++) {
-    const a = Math.floor(Math.random() * wires), b = (a + 1 + Math.floor(Math.random() * (wires - 1))) % wires;
-    gates.push({ x: 120 + layer * 95 + k * 18, a, b, kind: layer % 3 === 2 ? 'rx' : 'zz' });
-  }
-function drawCircuit(t) {
-  cx.clearRect(0, 0, 900, 760);
-  const y = (q) => 70 + q * 86;
-  for (let q = 0; q < wires; q++) {
-    cx.strokeStyle = 'rgba(40,36,80,.25)'; cx.lineWidth = 2;
-    cx.beginPath(); cx.moveTo(40, y(q)); cx.lineTo(840, y(q)); cx.stroke();
-    cx.fillStyle = '#5b4bd6'; cx.font = '600 20px "Space Grotesk"'; cx.fillText(`q${q}`, 0, y(q) + 7);
-  }
-  const sweep = 60 + ((t / 9) % 820);
-  for (const g of gates) {
-    const glow = Math.max(0, 1 - Math.abs(g.x - sweep) / 90);
-    if (g.kind === 'zz') {
-      cx.strokeStyle = `rgba(224,85,159,${.35 + .65 * glow})`; cx.lineWidth = 3 + 4 * glow;
-      cx.beginPath(); cx.moveTo(g.x, y(g.a)); cx.lineTo(g.x, y(g.b)); cx.stroke();
-      for (const q of [g.a, g.b]) { cx.fillStyle = `rgba(224,85,159,${.6 + .4 * glow})`; cx.beginPath(); cx.arc(g.x, y(q), 9 + 6 * glow, 0, 7); cx.fill(); }
-    } else {
-      for (let q = 0; q < wires; q++) {
-        cx.fillStyle = `rgba(91,75,214,${.15 + .6 * glow})`;
-        cx.beginPath(); cx.roundRect(g.x - 18, y(q) - 18, 36, 36, 8); cx.fill();
-      }
+const W = 'rgba(255,255,255,';
+// eight EEG traces, white, drifting
+const eeg = document.getElementById('eeg').getContext('2d');
+function drawEEG(t) {
+  eeg.clearRect(0, 0, 900, 900);
+  for (let c = 0; c < 8; c++) {
+    const y0 = 170 + c * 80;
+    eeg.strokeStyle = W + (.55 + .05 * c) + ')'; eeg.lineWidth = 3; eeg.beginPath();
+    for (let x = 0; x <= 900; x += 4) {
+      const s = t / 1000 + x / 90;
+      const v = Math.sin(s * (2 + c * .3)) * 9 + Math.sin(s * 10.3 + c) * 6 * (c === 7 ? 2.2 : 1) + Math.sin(s * .7 + c * 2) * 12;
+      x ? eeg.lineTo(x, y0 + v) : eeg.moveTo(x, y0 + v);
     }
-  }
-  for (let q = 0; q < wires; q++) {           // measurement: bits flicker
-    const bit = Math.sin(t / 300 + q * 1.7) > 0 ? 1 : 0;
-    cx.fillStyle = bit ? '#f08a3c' : 'rgba(20,22,31,.35)';
-    cx.font = '700 30px "Space Grotesk"'; cx.fillText(bit, 860, y(q) + 10);
+    eeg.stroke();
   }
 }
-
-// ---- 256 hypotheses collapsing onto the answer
-const cl = document.getElementById('collapse'), cc = cl.getContext('2d');
-let collapseT0 = 0;
-const target = 141, seedH = Array.from({ length: 256 }, () => .2 + Math.random() * .8);
+// 256 hypotheses collapse onto one
+const cc = document.getElementById('collapse').getContext('2d');
+const seed = Array.from({ length: 256 }, (_, i) => .25 + .75 * Math.abs(Math.sin(i * 12.9898) * 43758.5453 % 1));
 function drawCollapse(t) {
-  cc.clearRect(0, 0, 560, 620);
-  const k = Math.min(1, Math.max(0, (t - collapseT0 - 600) / 3200));
-  const e = k * k * (3 - 2 * k);
+  cc.clearRect(0, 0, 900, 900);
+  const k = Math.min(1, Math.max(0, (t - t0 - 700) / 3000)), e = k * k * (3 - 2 * k), target = 137;
   for (let i = 0; i < 256; i++) {
-    const col = i % 16, row = Math.floor(i / 16);
-    const d = Math.abs(i - target);
-    const h = (1 - e) * seedH[i] + e * (i === target ? 1 : Math.exp(-d / 3) * .25);
-    const x = 20 + col * 33, yy = 20 + row * 36, r = 4 + 12 * h;
-    const hit = i === target && e > .6;
-    cc.fillStyle = hit ? '#f08a3c' : `rgba(${91 + 133 * h | 0},${75 + 10 * h | 0},${214 - 55 * h | 0},${.25 + .75 * h})`;
-    cc.beginPath(); cc.arc(x + 12, yy + 12, r, 0, 7); cc.fill();
-    if (hit) { cc.strokeStyle = 'rgba(240,138,60,.5)'; cc.lineWidth = 3; cc.beginPath(); cc.arc(x + 12, yy + 12, r + 10 + 6 * Math.sin(t / 200), 0, 7); cc.stroke(); }
+    const h = (1 - e) * seed[i] + e * (i === target ? 1 : Math.exp(-Math.abs(i - target) / 3) * .18);
+    const x = 150 + (i % 16) * 40, yy = 150 + Math.floor(i / 16) * 40;
+    cc.fillStyle = W + (.2 + .8 * h) + ')';
+    cc.beginPath(); cc.arc(x, yy, 3 + 11 * h, 0, 7); cc.fill();
+    if (i === target && e > .6) { cc.strokeStyle = W + '.6)'; cc.lineWidth = 3; cc.beginPath(); cc.arc(x, yy, 24 + 6 * Math.sin(t / 220), 0, 7); cc.stroke(); }
   }
 }
-
 function frame(t) {
-  if (cur === 1) drawCircuit(t);
+  if (cur === 1) drawEEG(t);
   if (cur === 2) drawCollapse(t);
   requestAnimationFrame(frame);
 }
