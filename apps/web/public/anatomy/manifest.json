@@ -1,0 +1,342 @@
+{
+  "version": 1,
+  "description": "Modified public population-template visualization geometry, not individual anatomy.",
+  "coordinates": "Input FreeSurfer RAS mm -> scene [-R, S-15, A+17] * 0.015 + [0,0.35,0]. Anterior faces viewer; anatomical right is viewer left.",
+  "sources": [
+    {
+      "path": "cache/neuromaps/atlases/fsaverage/tpl-fsaverage_den-41k_hemi-L_pial.surf.gii",
+      "sha256": "623013c0c92c129c6c7b9868f040a28585b81073c5171a011133a40d6b1d7624",
+      "upstream": "https://netneurolab.github.io/neuromaps/generated/neuromaps.datasets.fetch_fsaverage.html"
+    },
+    {
+      "path": "cache/neuromaps/atlases/fsaverage/tpl-fsaverage_den-41k_hemi-L_desc-sulc_midthickness.shape.gii",
+      "sha256": "fa7e34c73a13a714eb1caf9c751b0d0fd4242bf2ba81a70293d700b8bb107ae5",
+      "upstream": "https://netneurolab.github.io/neuromaps/generated/neuromaps.datasets.fetch_fsaverage.html"
+    },
+    {
+      "path": "cache/neuromaps/atlases/fsaverage/tpl-fsaverage_den-41k_hemi-R_pial.surf.gii",
+      "sha256": "102724bc6a1a1c86fcf4d2c22aa940f361124c2b88d58b49d50b14e33dc014f2",
+      "upstream": "https://netneurolab.github.io/neuromaps/generated/neuromaps.datasets.fetch_fsaverage.html"
+    },
+    {
+      "path": "cache/neuromaps/atlases/fsaverage/tpl-fsaverage_den-41k_hemi-R_desc-sulc_midthickness.shape.gii",
+      "sha256": "dbdc00ca7c8861ce792d2636f7348fde22fae9a5f34623a7162e305823f8acd7",
+      "upstream": "https://netneurolab.github.io/neuromaps/generated/neuromaps.datasets.fetch_fsaverage.html"
+    },
+    {
+      "path": "src/enigma/enigmatoolbox/datasets/surfaces/sctx_lh.gii",
+      "sha256": "2b8726966be0f86184dd19e73e76e3bc35bd4408cda0b17ea9cd4fbfcdd7633a",
+      "upstream": "https://github.com/MICA-MNI/ENIGMA/tree/b08974b55243060cbc1fad12c87048037446e8f7/enigmatoolbox/datasets/surfaces"
+    },
+    {
+      "path": "src/enigma/enigmatoolbox/datasets/surfaces/sctx_rh.gii",
+      "sha256": "5812b5c79553513254af1c8c1553a5a3f8eba8ddbb3ffa9be4555dfc1ac21d92",
+      "upstream": "https://github.com/MICA-MNI/ENIGMA/tree/b08974b55243060cbc1fad12c87048037446e8f7/enigmatoolbox/datasets/surfaces"
+    },
+    {
+      "path": "mne-sample/processed-v6/MNE-sample-data/subjects/fsaverage/mri/aseg.mgz",
+      "sha256": "b55ef817e5e5bd1a3d76d4a2305283eef16fbff199ead3d840dd4b0fa8205e48",
+      "upstream": "https://surfer.nmr.mgh.harvard.edu/fswiki/FsAverage"
+    }
+  ],
+  "meshes": [
+    {
+      "name": "cortex-l",
+      "kind": "cortex",
+      "file": "cortex-l.bin",
+      "vertices": 40962,
+      "triangles": 81920,
+      "bytes": 1638444,
+      "sha256": "da63737e266fba392e1406b15876b35ad25764bed6c5208c1f4c3de487b03ffd"
+    },
+    {
+      "name": "cortex-r",
+      "kind": "cortex",
+      "file": "cortex-r.bin",
+      "vertices": 40962,
+      "triangles": 81920,
+      "bytes": 1638444,
+      "sha256": "fd44f92805ffd13900bf10862af81a18d8391bb5bfcce37dd841a81c4bec3b08"
+    },
+    {
+      "name": "accumbens-l",
+      "kind": "subcortex",
+      "file": "accumbens-l.bin",
+      "vertices": 867,
+      "triangles": 1748,
+      "bytes": 34860,
+      "sha256": "6b9e552fd2f28e21ba74d6f23f0bbd813c6e95db537288a330164177a8f20ae1"
+    },
+    {
+      "name": "amygdala-l",
+      "kind": "subcortex",
+      "file": "amygdala-l.bin",
+      "vertices": 1419,
+      "triangles": 2852,
+      "bytes": 56940,
+      "sha256": "3c08ab3b87f5c83b5a87cf273550acf093e4dd22a4afb690f0b9bd1a62d37a8b"
+    },
+    {
+      "name": "caudate-l",
+      "kind": "subcortex",
+      "file": "caudate-l.bin",
+      "vertices": 3012,
+      "triangles": 6064,
+      "bytes": 120972,
+      "sha256": "ebe4a84df6376f06ea6002cdc14f5a472c53c88ddffd82bf1fe98b7f6b4249bb"
+    },
+    {
+      "name": "hippocampus-l",
+      "kind": "subcortex",
+      "file": "hippocampus-l.bin",
+      "vertices": 3784,
+      "triangles": 7588,
+      "bytes": 151612,
+      "sha256": "e0a964d67946214474917c1f7f3d55ec050e0caaec5a9fd34d03d92ba53c3d0c"
+    },
+    {
+      "name": "pallidum-l",
+      "kind": "subcortex",
+      "file": "pallidum-l.bin",
+      "vertices": 1446,
+      "triangles": 2900,
+      "bytes": 57948,
+      "sha256": "1f91b92b5652536a146bd180ce30c1d06cb6b0763b60503567bf0916e8421a71"
+    },
+    {
+      "name": "putamen-l",
+      "kind": "subcortex",
+      "file": "putamen-l.bin",
+      "vertices": 4003,
+      "triangles": 8024,
+      "bytes": 160348,
+      "sha256": "742c1a148e18a9a5f9d76e3fd5129107ac6b8a324d9314b1120960f2064948b4"
+    },
+    {
+      "name": "thalamus-l",
+      "kind": "subcortex",
+      "file": "thalamus-l.bin",
+      "vertices": 3726,
+      "triangles": 7456,
+      "bytes": 149100,
+      "sha256": "175affe0f28045c41e314885598166711f66e0dcf78acd3ff8e28919f1261de6"
+    },
+    {
+      "name": "ventricle-l",
+      "kind": "ventricle",
+      "file": "ventricle-l.bin",
+      "vertices": 7653,
+      "triangles": 15320,
+      "bytes": 306300,
+      "sha256": "f02d805355f05bdcb056c88e8daea9fd64b478e7e6fa5860877124c6d8895075"
+    },
+    {
+      "name": "accumbens-r",
+      "kind": "subcortex",
+      "file": "accumbens-r.bin",
+      "vertices": 838,
+      "triangles": 1680,
+      "bytes": 33580,
+      "sha256": "1c5c93921647acc7231f82f56614763dc1746a145b053e4560b8e23ebc735204"
+    },
+    {
+      "name": "amygdala-r",
+      "kind": "subcortex",
+      "file": "amygdala-r.bin",
+      "vertices": 1457,
+      "triangles": 2912,
+      "bytes": 58268,
+      "sha256": "24ef288b5d3a26b55f2a0fbb2115b7a940bb2278439ec5532045fe2580640184"
+    },
+    {
+      "name": "caudate-r",
+      "kind": "subcortex",
+      "file": "caudate-r.bin",
+      "vertices": 3208,
+      "triangles": 6480,
+      "bytes": 129100,
+      "sha256": "496010726a190abb8eea5db9b362dda31207c3a7bd2ed6a7c18b296bb3546ed5"
+    },
+    {
+      "name": "hippocampus-r",
+      "kind": "subcortex",
+      "file": "hippocampus-r.bin",
+      "vertices": 3742,
+      "triangles": 7508,
+      "bytes": 149980,
+      "sha256": "1ad0d15d036498cb7ad7c231c3c9327fddfeaf8a23174ea9515b45155bf0490a"
+    },
+    {
+      "name": "pallidum-r",
+      "kind": "subcortex",
+      "file": "pallidum-r.bin",
+      "vertices": 1373,
+      "triangles": 2748,
+      "bytes": 54956,
+      "sha256": "7cb7301609545503675484e437d6fd3cc71b594d5d0797d43eafe59579d37595"
+    },
+    {
+      "name": "putamen-r",
+      "kind": "subcortex",
+      "file": "putamen-r.bin",
+      "vertices": 3871,
+      "triangles": 7764,
+      "bytes": 155116,
+      "sha256": "121c79564730d9750291c0d4183ba780762f170cd8988eee1666940f3d94131c"
+    },
+    {
+      "name": "thalamus-r",
+      "kind": "subcortex",
+      "file": "thalamus-r.bin",
+      "vertices": 3699,
+      "triangles": 7416,
+      "bytes": 148188,
+      "sha256": "c2827ebea99c906298b96707a97c23646bcaf1690696f690c4302f33840f3f76"
+    },
+    {
+      "name": "ventricle-r",
+      "kind": "ventricle",
+      "file": "ventricle-r.bin",
+      "vertices": 7180,
+      "triangles": 14376,
+      "bytes": 287404,
+      "sha256": "0ffc6694f4d7406fe29330a8c0d9ed29689a4c78f191b4cfd30dc73c7b1f5a80"
+    },
+    {
+      "name": "cerebellum-l",
+      "kind": "hindbrain",
+      "file": "cerebellum-l.bin",
+      "vertices": 16296,
+      "triangles": 32588,
+      "bytes": 651804,
+      "sha256": "f0341b6a5a5c037c5c9540a4f69c2afad6c8e105a98a1c26da69f989fb9749c9",
+      "segmentationLabels": [
+        7,
+        8
+      ],
+      "processing": "fsaverage aseg; gaussian sigma 0.65 voxel; marching cubes level 0.5; tkregister RAS"
+    },
+    {
+      "name": "cerebellum-r",
+      "kind": "hindbrain",
+      "file": "cerebellum-r.bin",
+      "vertices": 16398,
+      "triangles": 32788,
+      "bytes": 655836,
+      "sha256": "d6398fd81c962fb5601b17323a9b470a15245086a0852bbc8ce3b5dba10a7193",
+      "segmentationLabels": [
+        46,
+        47
+      ],
+      "processing": "fsaverage aseg; gaussian sigma 0.65 voxel; marching cubes level 0.5; tkregister RAS"
+    },
+    {
+      "name": "brainstem",
+      "kind": "hindbrain",
+      "file": "brainstem.bin",
+      "vertices": 8970,
+      "triangles": 17936,
+      "bytes": 358764,
+      "sha256": "50772f7f7ed85b528e3698faa675d1b1e29d15a74266daecb8827c93cc6e2132",
+      "segmentationLabels": [
+        16
+      ],
+      "processing": "fsaverage aseg; gaussian sigma 0.65 voxel; marching cubes level 0.5; tkregister RAS"
+    },
+    {
+      "name": "ventral-diencephalon-l",
+      "kind": "subcortex",
+      "file": "ventral-diencephalon-l.bin",
+      "vertices": 3197,
+      "triangles": 6394,
+      "bytes": 127892,
+      "sha256": "fb695577b537d82f065ec3caeefcafe3c991d400aa1e585843a8b21fb40ddb05",
+      "segmentationLabels": [
+        28
+      ],
+      "processing": "fsaverage aseg; gaussian sigma 0.65 voxel; marching cubes level 0.5; tkregister RAS"
+    },
+    {
+      "name": "ventral-diencephalon-r",
+      "kind": "subcortex",
+      "file": "ventral-diencephalon-r.bin",
+      "vertices": 3254,
+      "triangles": 6508,
+      "bytes": 130172,
+      "sha256": "4fc606ad8e1a63c04786f2defd7ad14f242f5700239e5f2d0f8ed38238ddccde",
+      "segmentationLabels": [
+        60
+      ],
+      "processing": "fsaverage aseg; gaussian sigma 0.65 voxel; marching cubes level 0.5; tkregister RAS"
+    },
+    {
+      "name": "white-matter-l",
+      "kind": "white-matter",
+      "file": "white-matter-l.bin",
+      "vertices": 102474,
+      "triangles": 205212,
+      "bytes": 4102140,
+      "sha256": "9eb7cd4910dc2f026287c6551fadb68fd38e02db4ddeb48708cc132a2f468ba0",
+      "segmentationLabels": [
+        2
+      ],
+      "processing": "fsaverage aseg; gaussian sigma 0.65 voxel; marching cubes level 0.5; tkregister RAS"
+    },
+    {
+      "name": "white-matter-r",
+      "kind": "white-matter",
+      "file": "white-matter-r.bin",
+      "vertices": 103838,
+      "triangles": 207908,
+      "bytes": 4156316,
+      "sha256": "9b826764616eb989ab6784291bdd6be4557cfac63bc23aa1b7c8695c304be3d0",
+      "segmentationLabels": [
+        41
+      ],
+      "processing": "fsaverage aseg; gaussian sigma 0.65 voxel; marching cubes level 0.5; tkregister RAS"
+    },
+    {
+      "name": "third-ventricle",
+      "kind": "ventricle",
+      "file": "third-ventricle.bin",
+      "vertices": 1544,
+      "triangles": 3084,
+      "bytes": 61724,
+      "sha256": "9611f3e45b228ea0cb532c73918b4ec5374929973a4bed7b9793622c6c81d864",
+      "segmentationLabels": [
+        14
+      ],
+      "processing": "fsaverage aseg; gaussian sigma 0.65 voxel; marching cubes level 0.5; tkregister RAS"
+    },
+    {
+      "name": "fourth-ventricle",
+      "kind": "ventricle",
+      "file": "fourth-ventricle.bin",
+      "vertices": 1770,
+      "triangles": 3532,
+      "bytes": 70716,
+      "sha256": "da8f90e4ff1b6ca7ed746b1f465f58a6995b9308d0d4c5670c650828e1dc7e3a",
+      "segmentationLabels": [
+        15
+      ],
+      "processing": "fsaverage aseg; gaussian sigma 0.65 voxel; marching cubes level 0.5; tkregister RAS"
+    },
+    {
+      "name": "corpus-callosum",
+      "kind": "subcortex",
+      "file": "corpus-callosum.bin",
+      "vertices": 3392,
+      "triangles": 6780,
+      "bytes": 135644,
+      "sha256": "89d079dd0d1648659f2c37aa941c69883b22c0010a5f79006f87cf3902ab4828",
+      "segmentationLabels": [
+        251,
+        252,
+        253,
+        254,
+        255
+      ],
+      "processing": "fsaverage aseg; gaussian sigma 0.65 voxel; marching cubes level 0.5; tkregister RAS"
+    }
+  ]
+}

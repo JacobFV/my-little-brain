@@ -1,0 +1,15 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Detector verification</title></head><body style="font:16px system-ui;padding:32px;background:#f7f8f5;color:#34463e"><h1>Local detector verification</h1><p>This developer check uses TensorFlow’s public fixture. No camera is accessed.</p><img id="fixture" src="./cat.jpg" style="max-width:480px"><p><button id="run">Run local detector</button></p><pre id="result">Ready</pre><script type="module">
+import {loadDetector,detectFrame} from '/src/camera/detector.ts';
+import {trackObjects,summarizeObservations} from '/src/camera/tracker.ts';
+const output=document.querySelector('#result');
+document.querySelector('#run').onclick=async()=>{
+ output.textContent='Loading bundled detector…';
+ try{
+  const image=document.querySelector('#fixture');await image.decode();
+  const model=await loadDetector();const canvas=document.createElement('canvas');canvas.width=480;canvas.height=Math.round(image.naturalHeight/image.naturalWidth*480);canvas.getContext('2d').drawImage(image,0,0,canvas.width,canvas.height);
+  const start=performance.now();const predictions=await detectFrame(model,canvas);const ms=Math.round(performance.now()-start);
+  const objects=trackObjects([],predictions.map(p=>({label:p.class,score:p.score,x:p.bbox[0]/canvas.width,y:p.bbox[1]/canvas.height,width:p.bbox[2]/canvas.width,height:p.bbox[3]/canvas.height})));
+  output.textContent=(objects.some(o=>o.label==='cat')?'PASS':'FAIL')+' — local detection in '+ms+' ms\n'+summarizeObservations(objects);
+ }catch(error){output.textContent='FAIL — '+error.message;}
+};
+</script></body></html>

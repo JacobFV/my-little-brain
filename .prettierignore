@@ -1,0 +1,10 @@
+node_modules
+dist
+release
+package-lock.json
+.expo
+.turbo
+
+apps/web/public/
+apps/web/checks/
+**/.wrangler/**

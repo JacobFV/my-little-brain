@@ -1,0 +1,21 @@
+{
+  "name": "@little-brain/brain",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.tsx"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "react": "19.1.0",
+    "three": "^0.179.1"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.0",
+    "@types/three": "^0.179.0",
+    "typescript": "^5.8.3"
+  }
+}

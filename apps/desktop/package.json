@@ -1,0 +1,83 @@
+{
+  "name": "@little-brain/desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "My Little Brain desktop companion",
+  "author": "My Little Brain",
+  "main": "dist/main.cjs",
+  "scripts": {
+    "dev": "npm run build && node scripts/dev.mjs",
+    "build": "node scripts/build.mjs",
+    "typecheck": "tsc --noEmit",
+    "package": "npm run build && electron-builder",
+    "package:smoke": "npm run build && electron-builder --dir"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "dotenv": "^16.5.0",
+    "electron": "^38.0.0",
+    "electron-builder": "^26.0.12",
+    "esbuild": "^0.25.5",
+    "typescript": "~5.9.2"
+  },
+  "build": {
+    "electronVersion": "38.8.6",
+    "appId": "com.mylittlebrain.desktop",
+    "productName": "My Little Brain",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../web/dist",
+        "to": "web",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "../server/dist",
+        "to": "server",
+        "filter": [
+          "**/*",
+          "!.env*"
+        ]
+      },
+      {
+        "from": "server-package.json",
+        "to": "server/package.json"
+      }
+    ],
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Utility",
+      "maintainer": "My Little Brain"
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "category": "public.app-category.productivity",
+      "extendInfo": {
+        "NSMicrophoneUsageDescription": "Use your microphone to talk with your brain.",
+        "NSCameraUsageDescription": "Let your brain notice objects through your camera. Frames are processed on this device."
+      }
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}

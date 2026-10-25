@@ -1,0 +1,39 @@
+{
+  "name": "my-little-brain",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "npm@10.9.8",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo run dev --filter=@little-brain/web --filter=@little-brain/server",
+    "dev:web": "npm run dev --workspace=@little-brain/web",
+    "dev:server": "npm run dev --workspace=@little-brain/server",
+    "dev:desktop": "turbo run dev --filter=@little-brain/web --filter=@little-brain/server --filter=@little-brain/desktop",
+    "dev:mobile": "npm run dev --workspace=@little-brain/mobile",
+    "build": "turbo run build --filter=@little-brain/web --filter=@little-brain/server --filter=@little-brain/desktop",
+    "typecheck": "turbo run typecheck",
+    "test": "vitest run",
+    "start": "npm run start --workspace=@little-brain/server",
+    "package:desktop": "npm run build && npm run package --workspace=@little-brain/desktop",
+    "export:mobile": "npm run export --workspace=@little-brain/mobile",
+    "format": "prettier --write \"apps/**/*.{ts,tsx,css,json,mjs}\" \"packages/**/*.{ts,tsx,json}\" --ignore-path .prettierignore",
+    "cloudflare:prepare": "npm run build && npm run dry-run -w @little-brain/worker",
+    "cloudflare:dev": "npm run dev -w @little-brain/worker"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.0",
+    "@testing-library/react": "^16.3.3",
+    "@types/node": "^22.18.0",
+    "jsdom": "^30.0.1",
+    "prettier": "^3.9.6",
+    "turbo": "^2.5.6",
+    "typescript": "~5.9.2",
+    "vitest": "^3.2.4"
+  },
+  "engines": {
+    "node": ">=22.13.0"
+  }
+}

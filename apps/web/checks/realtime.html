@@ -1,0 +1,12 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Realtime voice verification</title></head><body style="font:16px system-ui;padding:32px;background:#f7f8f5;color:#34463e"><h1>Realtime voice verification</h1><p>Receives a test voice response without accessing a microphone or playing sound.</p><button id="run">Test voice connection</button><pre id="result">Ready</pre><script type="module">
+const output=document.querySelector('#result');
+document.querySelector('#run').onclick=async()=>{
+ const peer=new RTCPeerConnection();peer.addTransceiver('audio',{direction:'recvonly'});const channel=peer.createDataChannel('oai-events');
+ const timer=setTimeout(()=>{peer.close();output.textContent='FAIL — timed out';},30000);let transcript='';let audio=false;
+ peer.ontrack=event=>{audio=event.track.kind==='audio';};
+ output.textContent='Connecting…';
+ channel.onopen=()=>{channel.send(JSON.stringify({type:'conversation.item.create',item:{type:'message',role:'user',content:[{type:'input_text',text:'Say: voice test complete.'}]}}));channel.send(JSON.stringify({type:'response.create'}));};
+ channel.onmessage=async({data})=>{const event=JSON.parse(data);if(event.type==='response.output_audio_transcript.delta')transcript+=event.delta;if(event.type==='error'){output.textContent='FAIL — '+event.error.message;clearTimeout(timer);peer.close();}if(event.type==='response.done'){clearTimeout(timer);output.textContent=(audio&&transcript?'PASS':'FAIL')+' — audio track: '+audio+'\n'+transcript;peer.close();}};
+ try{await peer.setLocalDescription(await peer.createOffer());const response=await fetch('/api/session',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sdp:peer.localDescription.sdp,brain:{name:'Pip',personality:'Be concise.'}})});if(!response.ok)throw new Error((await response.json()).error);await peer.setRemoteDescription({type:'answer',sdp:await response.text()});}catch(error){clearTimeout(timer);peer.close();output.textContent='FAIL — '+error.message;}
+};
+</script></body></html>
