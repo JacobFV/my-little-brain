@@ -209,8 +209,8 @@ export default function ResearchLab() {
 
           </div>
           <div className="cx-strip"><span>overlay opacity</span><input aria-label="overlay opacity" type="range" min={0} max={1} step={.01} value={opacity} onChange={e=>setOpacity(+e.target.value)}/><span>activity nodes: 8 · illustrative atlas mapping</span></div>
-          <div className="cx-signals"><div className="cx-signals-head"><b>eeg signatures</b><span>{live?'hardware stream':'synthetic preview'} · 4 channels</span></div>
-            {[0,1,2,3].map((i)=><div className="cx-signal-row" key={i}><span>ch {i+1}</span><Trace values={live && signal?.samples?.length ? signal.samples : sampleWave(phase,i)} tint={['#80ab9b','#b39bbd','#a4a8d0','#b8a084'][i]}/><small>{live ? 'live' : 'demo'}</small></div>)}
+          <div className="cx-signals"><div className="cx-signals-head"><b>eeg signatures</b><span>{live?'hardware stream':'synthetic preview'} · {live ? '1 acquired channel' : '4 simulated channels'}</span></div>
+            {(live ? [0] : [0,1,2,3]).map((i)=><div className="cx-signal-row" key={i}><span>ch {i+1}</span><Trace values={live && signal?.samples?.length ? signal.samples : sampleWave(phase,i)} tint={['#80ab9b','#b39bbd','#a4a8d0','#b8a084'][i]}/><small>{live ? 'live' : 'demo'}</small></div>)}
           </div>
         </> : <div className="cx-workbench">
           <div className="cx-section-head"><div><h2>quantum hypothesis exploration</h2><p>shared 8-bit binary energy objective · 4 neural parameters · 256 candidate configurations</p></div><Cpu size={22}/></div>
