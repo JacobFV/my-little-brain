@@ -8,6 +8,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import sys
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
@@ -22,10 +23,13 @@ QUEUE = os.environ.get("TASK_QUEUE", "cortex2-work")
 WORKER_URL = os.environ.get("WORKER_URL", "").rstrip("/")
 TASK_SA = os.environ.get("TASK_SERVICE_ACCOUNT", "")
 
-# Aer and JAX recurse deeply; macOS gives threads only 512 KB of stack by default (Linux: 8 MB).
-threading.stack_size(64 * 1024 * 1024)
+# Aer and JAX recurse deeply; macOS gives secondary threads only 512 KB of stack (Linux: 8 MB).
+if sys.platform == "darwin":
+    threading.stack_size(64 * 1024 * 1024)
 _pool = ThreadPoolExecutor(max_workers=int(os.environ.get("LOCAL_WORKERS", "4")), thread_name_prefix="cortex2")
 _handler = None
+_client = None
+STEPS = {"execute", "poll"}
 
 
 def set_local_handler(fn) -> None:
@@ -38,8 +42,33 @@ def cloud_mode() -> bool:
     return on_gcp() or os.environ.get("CORTEX_TASKS") == "cloud"
 
 
+def _tasks_client():
+    global _client
+    if _client is None:                    # one gRPC channel per process, not per enqueue
+        from google.cloud import tasks_v2
+
+        _client = tasks_v2.CloudTasksClient()
+    return _client
+
+
+def valid_payload(payload: object) -> dict:
+    """Validate a task body (it arrives over HTTP on the worker)."""
+    if not isinstance(payload, dict):
+        raise ValueError("task payload must be an object")
+    job_id, step = payload.get("job_id"), payload.get("step", "execute")
+    if not isinstance(job_id, str) or not (1 <= len(job_id) <= 64) or not job_id.replace("-", "").replace("_", "").isalnum():
+        raise ValueError("invalid job_id")
+    if step not in STEPS:
+        raise ValueError(f"invalid step {step!r}")
+    try:
+        attempt = int(payload.get("attempt", 0))
+    except (TypeError, ValueError) as exc:
+        raise ValueError("invalid attempt") from exc
+    return {"job_id": job_id, "step": step, "attempt": max(0, attempt)}
+
+
 def enqueue(job_id: str, step: str = "execute", delay: float = 0, attempt: int = 0) -> None:
-    payload = {"job_id": job_id, "step": step, "attempt": attempt}
+    payload = valid_payload({"job_id": job_id, "step": step, "attempt": attempt})
     if not cloud_mode():
         if _handler is None:
             raise RuntimeError("no local task handler registered")
@@ -61,7 +90,7 @@ def enqueue(job_id: str, step: str = "execute", delay: float = 0, attempt: int =
     from google.cloud import tasks_v2
     from google.protobuf import duration_pb2, timestamp_pb2
 
-    client = tasks_v2.CloudTasksClient()
+    client = _tasks_client()
     parent = client.queue_path(PROJECT, REGION, QUEUE)
     url = f"{WORKER_URL}/internal/tasks"
     task = {
@@ -72,6 +101,7 @@ def enqueue(job_id: str, step: str = "execute", delay: float = 0, attempt: int =
             "oidc_token": {"service_account_email": TASK_SA, "audience": WORKER_URL},
             "body": json.dumps(payload).encode(),
         },
+        # equal to the worker's Cloud Run request timeout; longer work must checkpoint
         "dispatch_deadline": duration_pb2.Duration(seconds=1800),
     }
     if delay:

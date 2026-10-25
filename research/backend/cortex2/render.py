@@ -91,3 +91,35 @@ def job_figure(exp: dict, job: dict) -> bytes:
     fig.savefig(buf, format="png", bbox_inches="tight")
     plt.close(fig)
     return buf.getvalue()
+
+
+def spectrogram_grid(src: dict, channels: list[str] | None = None, max_channels: int = 23) -> bytes:
+    """Stacked per-channel log spectrograms (1–45 Hz) with annotated events; what Gemini 'sees' in triage."""
+    from scipy.signal import spectrogram
+
+    names = src["names"]
+    idx = [names.index(c) for c in channels if c in names] if channels else list(range(len(names)))
+    idx = idx[:max_channels]
+    fs = src["fs"]
+    n = len(idx)
+    fig, axes = plt.subplots(n, 1, figsize=(12, 0.62 * n + 1.2), dpi=100, sharex=True, squeeze=False)
+    nper = int(min(fs * 2, src["data"].shape[1]))
+    for row, i in enumerate(idx):
+        ax = axes[row, 0]
+        f, t, S = spectrogram(src["data"][i], fs=fs, nperseg=nper, noverlap=int(nper * 0.75))
+        keep = (f >= 1) & (f <= 45)
+        ax.pcolormesh(src["start"] + t, f[keep], 10 * np.log10(S[keep] + 1e-12), shading="auto", cmap="magma")
+        ax.set_ylabel(names[i], rotation=0, ha="right", va="center", fontsize=7)
+        ax.set_yticks([4, 8, 13, 30])
+        ax.tick_params(labelsize=5)
+        for e in src.get("events", []):
+            if e["end"] > src["start"] and e["start"] < src["end"]:
+                ax.axvline(max(e["start"], src["start"]), color="#7ee0c3", lw=1)
+                ax.axvline(min(e["end"], src["end"]), color="#7ee0c3", lw=1, ls="--")
+    axes[-1, 0].set_xlabel("time (s)  ·  y: frequency (Hz, ticks at 4/8/13/30)  ·  green: annotated seizure", fontsize=8)
+    fig.suptitle(f"{src['label']} · {src['start']:.0f}–{src['end']:.0f} s · per-channel spectrograms (log power)", fontsize=10, color=INK)
+    fig.tight_layout(rect=(0, 0, 1, 0.98))
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png")
+    plt.close(fig)
+    return buf.getvalue()

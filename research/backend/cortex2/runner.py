@@ -13,7 +13,7 @@ from typing import Any
 import numpy as np
 
 from . import backends, eeg, inverse as inv, neural as nm, quantum as qm
-from .store import artifacts, now, store
+from .store import DocumentTooLarge, artifacts, now, store
 
 log = logging.getLogger("cortex2.runner")
 
@@ -22,6 +22,9 @@ PROVIDERS = {bid: {"label": b.label, "kind": b.kind} for bid, b in backends.REGI
 GATE_PROVIDERS = set(backends.ids(paradigm="gate"))
 HARDWARE_PROVIDERS = set(backends.ids(hardware=True))
 TERMINAL = {"completed", "failed", "cancelled"}
+MAX_POLL_ERRORS = 12          # consecutive transient provider-poll failures before giving up
+# Bulky, reproducible job fields that move to GCS if a job document nears Firestore's 1 MiB limit.
+OFFLOADABLE = ("isa_circuit", "circuit", "qasm_compiled", "ideal_distribution", "qasm", "counts", "tool_trace")
 SYNTHETIC_PRESETS = [
     {"bitstring": "10101011", "label": "alpha rhythm · P 3.0, c2 16, c1 16, τ 30 ms"},
     {"bitstring": "11111011", "label": "slow high-drive theta (seizure-like) · P 3.0, c2 16, c1 18, τ 55 ms"},
@@ -47,8 +50,19 @@ def create_experiment(uid: str, req: dict) -> dict:
         target = inv.synthetic_target(req.get("truth_bitstring"), rng_seed=req.get("random_seed"))
         title = req.get("title") or f"synthetic recovery · hidden {nm.bits_to_bitstring(target.truth_bits)}"
     elif source == "recording":
-        ds, ch, seg = req["dataset_id"], req.get("channel") or "FP1-F7", req.get("segment") or "ictal"
-        x, fs, meta = eeg.segment(ds, ch, seg)
+        ds, ch = req["dataset_id"], req.get("channel") or "FP1-F7"
+        if req.get("start") is not None and req.get("end") is not None:
+            src = eeg.load_source(uid, dataset_id=ds, start=req["start"], end=req["end"])
+            if ch not in src["names"]:
+                raise KeyError(f"channel {ch!r} not in {ds}")
+            x, fs = src["data"][src["names"].index(ch)], src["fs"]
+            seg = f"{src['start']:.0f}–{src['end']:.0f}s"
+            in_seizure = any(e["start"] < src["end"] and e["end"] > src["start"] for e in src["events"])
+            meta = {"dataset_id": ds, "channel": ch, "segment": "ictal" if in_seizure else "window",
+                    "start": src["start"], "end": src["end"], "selected_by": req.get("selected_by")}
+        else:
+            seg = req.get("segment") or "ictal"
+            x, fs, meta = eeg.segment(ds, ch, seg)
         target = inv.recording_target(x, fs, f"{eeg.dataset(ds)['label']} · {ch} · {seg}", meta)
         title = req.get("title") or f"{ds} {ch} {seg}"
     elif source == "openbci":
@@ -57,9 +71,17 @@ def create_experiment(uid: str, req: dict) -> dict:
             raise KeyError("recording not found")
         chans = rec["channel_names"]
         ch = req.get("channel") or chans[0]
-        x = eeg.preprocess(np.asarray(rec["data"][chans.index(ch)], dtype=float), float(rec["fs"]))
+        if ch not in chans:
+            raise KeyError(f"channel {ch!r} not in recording")
+        data = rec.get("data") if rec.get("data") is not None else artifacts().get_json(rec["data_path"])
+        if data is None:
+            raise KeyError("recording data missing")
+        x = eeg.preprocess(np.asarray(data[chans.index(ch)], dtype=float), float(rec["fs"]))
+        if req.get("start") is not None and req.get("end") is not None:
+            x = x[int(float(req["start"]) * float(rec["fs"])): int(float(req["end"]) * float(rec["fs"]))]
         target = inv.recording_target(x, float(rec["fs"]), f"OpenBCI · {rec['label']} · {ch}",
-                                      {"recording_id": rec["id"], "channel": ch})
+                                      {"recording_id": rec["id"], "channel": ch, "start": req.get("start"), "end": req.get("end"),
+                                       "selected_by": req.get("selected_by")})
         target.source = "openbci"
         title = req.get("title") or f"OpenBCI {rec['label']} {ch}"
     else:
@@ -189,6 +211,37 @@ def create_job(uid: str, exp_id: str, body: dict, created_by: str = "user", auto
     return store().get("jobs", job["id"])
 
 
+def save_job(jid: str, patch: dict) -> None:
+    """Write a job patch; if the document would exceed Firestore's 1 MiB limit, offload bulky
+    fields to GCS (`<field>_path`) and keep a pointer, so a result is never lost to size."""
+    try:
+        store().update("jobs", jid, patch)
+        return
+    except DocumentTooLarge:
+        pass
+    job = store().get("jobs", jid) or {}
+    merged = {**job, **patch}
+    slim = dict(patch)
+    for field in OFFLOADABLE:
+        if merged.get(field) is not None:
+            path = artifacts().put_json(
+                f"{merged.get('owner', 'unknown')}/{merged.get('experiment_id', 'x')}/jobs/{jid}.{field}.json.gz", merged[field])
+            slim[field] = None
+            slim[f"{field}_path"] = path
+    log.warning("job %s offloaded large fields to GCS", jid)
+    store().update("jobs", jid, slim)
+
+
+def set_status(jid: str, status: str, extra: dict | None = None, unless: tuple[str, ...] = ("cancelled",)) -> bool:
+    """Transactionally set a job's status unless it is already in one of `unless` (e.g. the user
+    cancelled while the worker was computing). Returns whether the status was written."""
+    def fn(cur):
+        if not cur or cur.get("status") in unless:
+            return None
+        return {"status": status, "updated_at": now(), **(extra or {})}
+    return store().transact("jobs", jid, fn) is not None
+
+
 def claim(job_id: str, from_status: str, to_status: str) -> dict | None:
     def fn(cur):
         if not cur or cur.get("status") != from_status:
@@ -216,11 +269,20 @@ def execute_sample_job(job: dict) -> dict:
         patch.update({"spec": {**options, **spec.to_json()} if spec else None, "qasm_source": source,
                       "circuit": qm.describe(qc), "qasm_compiled": qm.to_qasm(qc), "ideal": ideal_summary(target, ideal)})
         if backend.caps.mode == "async":
+            if (store().get("jobs", jid) or {}).get("status") != "running":
+                return store().get("jobs", jid)          # cancelled before we paid for a submission
             sub = backend.submit(qc, job["shots"], options, name=f"cortex2 {jid}")
             patch.update({"status": "submitted", "provider_job_id": sub["provider_job_id"], "backend": sub["backend"],
                           "transpiled": sub["transpiled"], "isa_circuit": sub.get("isa_circuit"), "ideal_distribution": ideal,
                           "provider_status": sub.get("provider_status"), "updated_at": now()})
-            store().update("jobs", jid, patch)
+            status = patch.pop("status")
+            save_job(jid, patch)
+            if not set_status(jid, status):
+                try:
+                    backend.cancel(sub["provider_job_id"])   # cancelled during submission: stop the paid job
+                except Exception:
+                    log.exception("could not cancel provider job %s", sub["provider_job_id"])
+                return store().get("jobs", jid)
             t = sub["transpiled"]
             feed(job["owner"], "result", f"Submitted to {backend.label} ({sub['backend']}) as {sub['provider_job_id']}: "
                  f"{t.get('gates')} physical gates, {t.get('two_qubit_gates')} two-qubit, connectivity {backend.caps.connectivity}.",
@@ -250,14 +312,14 @@ def finish_job(job, exp, target, q, counts, runner, patch) -> dict:
                                      already_validated=set(validated_history(exp, exclude_job=jid)))
     patch.update({"counts": counts, "evaluation": evaluation, "runner": runner, "updated_at": now(),
                   "timings": {**job.get("timings", {}), **patch.get("timings", {}), "finished": now()}})
-    store().update("jobs", jid, patch)
+    patch.pop("status", None)
+    save_job(jid, patch)
     try:
         render_job(store().get("jobs", jid))      # before "completed", so readers always see the image
     except Exception:
         log.exception("render failed for %s", jid)
-    # Transactional: a cancel that lands while we were evaluating/rendering wins.
-    if store().transact("jobs", jid, lambda cur: None if not cur or cur.get("status") == "cancelled"
-                        else {"status": "completed", "updated_at": now()}) is None:
+    if not set_status(jid, "completed"):
+        log.info("job %s was cancelled while running; results kept, status left cancelled", jid)
         return store().get("jobs", jid)
     best = evaluation["best"]
     improved = update_experiment_best(exp, best, jid)
@@ -297,14 +359,27 @@ def poll_provider_job(job: dict, attempt: int) -> dict:
     from . import tasks
 
     backend = backends.get(job["provider"])
-    res = backend.poll(job["provider_job_id"], job["shots"])
+    try:
+        res = backend.poll(job["provider_job_id"], job["shots"])
+    except Exception as exc:
+        # Network / provider API hiccup: the hardware job is still running and already paid for.
+        # Back off and retry instead of failing it; give up only after many consecutive errors.
+        errors = int(job.get("poll_errors", 0)) + 1
+        if errors > MAX_POLL_ERRORS:
+            raise
+        log.warning("poll %s failed (%d/%d): %s", job["id"], errors, MAX_POLL_ERRORS, exc)
+        store().update("jobs", job["id"], {"poll_errors": errors, "provider_status": f"poll error: {str(exc)[:200]}",
+                                           "updated_at": now()})
+        tasks.enqueue(job["id"], "poll", delay=min(600, 30 * 2 ** min(errors, 5)), attempt=attempt + 1)
+        return store().get("jobs", job["id"])
     if res["status"] == "pending":
-        store().update("jobs", job["id"], {"provider_status": res.get("provider_status"), "updated_at": now(), "poll_attempt": attempt})
+        store().update("jobs", job["id"], {"provider_status": res.get("provider_status"), "updated_at": now(),
+                                           "poll_attempt": attempt, "poll_errors": 0})
         tasks.enqueue(job["id"], "poll", delay=min(300, 20 * (min(attempt, 50) + 1)), attempt=attempt + 1)
         return store().get("jobs", job["id"])
     if res["status"] == "failed":
-        store().update("jobs", job["id"], {"status": "failed", "error": res["error"], "updated_at": now()})
-        feed(job["owner"], "error", res["error"], job["experiment_id"], job["id"])
+        if set_status(job["id"], "failed", {"error": res["error"]}):
+            feed(job["owner"], "error", res["error"], job["experiment_id"], job["id"])
         return store().get("jobs", job["id"])
     exp = store().get("experiments", job["experiment_id"])
     target, q, _, _ = build_problem(exp, job["approximation"], job.get("baseline"), job.get("trust_weight", 0.15))
@@ -318,9 +393,10 @@ def poll_provider_job(job: dict, attempt: int) -> dict:
 
 def handle_task(payload: dict) -> dict:
     """Entry point for Cloud Tasks (and local threads)."""
-    from . import agent
+    from . import agent, tasks
 
-    jid, step = payload["job_id"], payload.get("step", "execute")
+    payload = tasks.valid_payload(payload)
+    jid, step = payload["job_id"], payload["step"]
     job = store().get("jobs", jid)
     if not job:
         return {"missing": True}
@@ -343,10 +419,10 @@ def handle_task(payload: dict) -> dict:
         raise ValueError(f"unknown job kind {job['kind']}")
     except Exception as exc:
         log.exception("job %s failed", jid)
-        store().update("jobs", jid, {"status": "failed", "error": f"{type(exc).__name__}: {exc}"[:2000],
-                                     "traceback": traceback.format_exc()[-4000:], "updated_at": now()})
-        feed(job["owner"], "error", f"Job {jid[:8]} ({job.get('provider') or job['kind']}) failed: {exc}",
-             job.get("experiment_id"), jid)
+        if set_status(jid, "failed", {"error": f"{type(exc).__name__}: {exc}"[:2000],
+                                      "traceback": traceback.format_exc()[-4000:]}):
+            feed(job["owner"], "error", f"Job {jid[:8]} ({job.get('provider') or job['kind']}) failed: {exc}",
+                 job.get("experiment_id"), jid)
         return {"status": "failed"}
 
 
@@ -359,7 +435,7 @@ def cancel_job(uid: str, job_id: str) -> dict:
             backends.get(job["provider"]).cancel(job["provider_job_id"])
         except Exception as exc:
             log.warning("provider cancel failed: %s", exc)
-    store().update("jobs", job_id, {"status": "cancelled", "updated_at": now()})
+    set_status(job_id, "cancelled", unless=tuple(TERMINAL))
     return store().get("jobs", job_id)
 
 
