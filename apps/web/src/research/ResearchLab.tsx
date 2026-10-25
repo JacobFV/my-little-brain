@@ -3,10 +3,11 @@ import { BrainScene } from '@little-brain/brain';
 import { Activity, Brain, ChevronRight, CircleHelp, Cpu, FlaskConical, LogIn, LogOut, Play, Plus, Radio, RefreshCw, Send, SlidersHorizontal, Sparkles, X } from 'lucide-react';
 
 type Provider = 'classical' | 'ibm_simulator' | 'ibm_quantum' | 'extropic_simulator';
+type CircuitData = { qubits: number; logical_gates: number; depth: number; operations: Array<{ gate: string; qubits: number[] }>; truncated?: boolean };
 type Job = {
   id: string; provider: Provider; status: string; title: string;
   created_at?: string; provider_job_id?: string; objective?: number;
-  result?: Record<string, unknown>; error?: string;
+  result?: Record<string, unknown>; error?: string; circuit?: CircuitData;
 };
 type Signal = { channel: string; alpha: number; beta: number; theta: number; delta: number; quality: string; samples?: number[] };
 type AuthUser = { email?: string; name?: string; picture?: string };
@@ -66,6 +67,7 @@ export default function ResearchLab() {
   const [opacity, setOpacity] = useState(0.52);
   const clock = useRef(0);
   const selectedJob = jobs.find(j => j.id === selected) || jobs[0] || null;
+  const actualCircuit = (selectedJob?.result?.circuit as CircuitData | undefined) || selectedJob?.circuit;
   const bins = useMemo(() => {
     const counts = selectedJob?.result?.counts;
     return counts && typeof counts === 'object'
@@ -216,8 +218,16 @@ export default function ResearchLab() {
           <select value={provider} onChange={e => setProvider(e.target.value as Provider)}><option value="classical">classical exact enumeration</option><option value="ibm_simulator">qiskit statevector simulator</option><option value="ibm_quantum">ibm quantum physical qpu</option><option value="extropic_simulator">extropic-compatible thermodynamic simulator</option></select>
           <button className="cx-primary" disabled={!user || busy} onClick={()=>void send('/v1/jobs',{provider, kind:'inverse_search', title:'8-bit neural inverse search'})}><Play size={14}/> dispatch experiment</button>
           <div className="cx-circuit"><div className="cx-circuit-head"><b>qaoa circuit inspector</b><span>{selectedJob?.provider_job_id ? 'provider id: '+selectedJob.provider_job_id : 'awaiting execution'}</span></div>
-            {Array.from({length:8},(_,i)=><div className="cx-qubit" key={i}><code>q{i}</code><span className="cx-wire"/>{Array.from({length:7},(_,k)=><span className={k%3===0?'cx-gate accent':'cx-gate'} key={k}>{k%3===0?'h':k%3===1?'rz':'rx'}</span>)}</div>)}
-            <p>schematic only; replace with serialized actual transpiled circuit after a successful job.</p>
+            {actualCircuit ? <>
+              <div className="cx-circuit-meta">real compiled circuit · {actualCircuit.qubits} qubits · {actualCircuit.logical_gates} operations · depth {actualCircuit.depth}</div>
+              <div className="cx-ops">{actualCircuit.operations.map((op,k) =>
+                <div className="cx-operation" key={k}><span>{String(k+1).padStart(3,'0')}</span><b>{op.gate}</b><code>{op.qubits.map(q=>'q'+q).join(', ')}</code></div>)}
+              </div>
+              {actualCircuit.truncated && <p>first 240 operations shown; full circuit retained in job provenance.</p>}
+            </> : <>
+              {Array.from({length:8},(_,i)=><div className="cx-qubit" key={i}><code>q{i}</code><span className="cx-wire"/>{Array.from({length:7},(_,k)=><span className={k%3===0?'cx-gate accent':'cx-gate'} key={k}>{k%3===0?'h':k%3===1?'rz':'rx'}</span>)}</div>)}
+              <p>illustrative schematic only — select a completed qiskit/ibm job to inspect real gates.</p>
+            </>}
           </div>
           <div className="cx-hist-card"><b>sampled bitstrings</b>{bins.length?<Histogram bins={bins}/>:<p className="cx-empty">no measured results. launch a provider job to populate this histogram.</p>}</div>
           {selectedJob?.error && <p className="cx-error">{selectedJob.error}</p>}
@@ -256,7 +266,7 @@ export default function ResearchLab() {
       .cx-analysis-scroll{flex:1;min-height:0;overflow:auto;padding:13px}.cx-analysis-card{background:#fffaf9a6;border:1px solid #e0e7df;border-radius:15px;margin-bottom:11px;padding:15px;box-shadow:0 7px 30px #556c5908}.cx-card-kicker{display:flex;gap:6px;align-items:center;color:#849b8e;text-transform:uppercase;font-size:10px;letter-spacing:.04em}.cx-analysis-card h3{font-size:14px;color:#4f6554;margin:8px 0}.cx-analysis-card p{font-size:12px;color:#728174}.cx-analysis-card small{font-size:10px;color:#a0a9a0}.cx-analysis-card code{font-size:10px;overflow-wrap:anywhere}
       .cx-feature{justify-content:space-between;margin:9px 0;font-size:11px}.cx-feature span{width:35px}.cx-feature>div{height:6px;background:#e8ece9;border-radius:9px;flex:1;overflow:hidden}.cx-feature i{display:block;height:100%;background:#a8b6cf;border-radius:9px}.cx-feature b{width:38px;font-size:10px;text-align:right}
       .cx-agent{border-top:1px solid var(--line);padding:13px}.cx-agent-heading{font-weight:700;font-size:12px;margin-bottom:10px}.cx-agent-heading span{font-weight:400;font-size:10px;color:#a1aaa1;margin-left:auto}.cx-agent form{position:relative}.cx-agent textarea{width:100%;min-height:80px;max-height:170px;resize:vertical;border:1px solid #d7e3d7;border-radius:13px;background:#fff;padding:11px 38px 11px 11px;font-size:12px;color:#506654}.cx-agent form button{position:absolute;bottom:10px;right:9px;background:#dfeee0;border-radius:8px;padding:6px}.cx-agent>p{color:#92a094;font-size:10px;max-height:70px;overflow:auto}
-      .cx-workbench{flex:1;overflow:auto;padding:24px;max-width:900px;width:100%;margin:auto}.cx-section-head{display:flex;align-items:center;justify-content:space-between}.cx-section-head h2{font-size:20px;margin:0;color:#4e6554}.cx-section-head p{font-size:12px;color:#93a093}.cx-label{display:block;font-size:11px;font-weight:700;margin:22px 0 7px}.cx-workbench select{background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px;width:100%;color:#52665a}.cx-primary{background:#698a74!important;color:#fff!important;padding:10px 16px;border-radius:10px;display:flex;gap:8px;align-items:center;margin-top:14px}.cx-circuit,.cx-hist-card{border:1px solid var(--line);background:#fff9;border-radius:14px;padding:17px;margin-top:20px}.cx-circuit-head{justify-content:space-between;margin-bottom:14px}.cx-circuit-head span{font-size:10px;color:#a6aba6}.cx-qubit{height:28px;gap:6px;font-size:11px}.cx-qubit code{width:30px}.cx-wire{height:1px;flex:1;background:#a6acb0}.cx-gate{border:1px solid #a3b6ac;border-radius:5px;min-width:31px;text-align:center;background:#edf5ed;padding:2px}.cx-gate.accent{background:#eee7f8;border-color:#c9b5df}.cx-circuit>p{color:#9aa59b;font-size:10px}.cx-hist-row{display:flex;align-items:center;gap:8px;font-size:11px;margin:5px 0}.cx-hist-row code{width:72px}.cx-hist-track{flex:1;background:#e6eee6;height:7px;border-radius:5px}.cx-hist-track span{height:100%;background:#91acb7;display:block;border-radius:5px}.cx-hist-row>span{width:34px;text-align:right}.cx-error{color:#aa5050}
+      .cx-workbench{flex:1;overflow:auto;padding:24px;max-width:900px;width:100%;margin:auto}.cx-section-head{display:flex;align-items:center;justify-content:space-between}.cx-section-head h2{font-size:20px;margin:0;color:#4e6554}.cx-section-head p{font-size:12px;color:#93a093}.cx-label{display:block;font-size:11px;font-weight:700;margin:22px 0 7px}.cx-workbench select{background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px;width:100%;color:#52665a}.cx-primary{background:#698a74!important;color:#fff!important;padding:10px 16px;border-radius:10px;display:flex;gap:8px;align-items:center;margin-top:14px}.cx-circuit,.cx-hist-card{border:1px solid var(--line);background:#fff9;border-radius:14px;padding:17px;margin-top:20px}.cx-circuit-head{justify-content:space-between;margin-bottom:14px}.cx-circuit-head span{font-size:10px;color:#a6aba6}.cx-qubit{height:28px;gap:6px;font-size:11px}.cx-qubit code{width:30px}.cx-wire{height:1px;flex:1;background:#a6acb0}.cx-gate{border:1px solid #a3b6ac;border-radius:5px;min-width:31px;text-align:center;background:#edf5ed;padding:2px}.cx-gate.accent{background:#eee7f8;border-color:#c9b5df}.cx-circuit>p{color:#9aa59b;font-size:10px}.cx-circuit-meta{font-size:11px;color:#789480;padding:7px 0 12px}.cx-ops{max-height:250px;overflow:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:5px}.cx-operation{border:1px solid #e2e9e3;border-radius:7px;padding:5px;display:flex;gap:7px;align-items:center;font-size:10px}.cx-operation span{color:#9eaca2}.cx-operation b{background:#e9e7f5;color:#66608c;border-radius:4px;padding:2px 4px}.cx-operation code{color:#7a9182}.cx-hist-row{display:flex;align-items:center;gap:8px;font-size:11px;margin:5px 0}.cx-hist-row code{width:72px}.cx-hist-track{flex:1;background:#e6eee6;height:7px;border-radius:5px}.cx-hist-track span{height:100%;background:#91acb7;display:block;border-radius:5px}.cx-hist-row>span{width:34px;text-align:right}.cx-error{color:#aa5050}
       @media(max-width:950px){.cx-left{width:183px}.cx-right{width:300px}.cx-subtitle,.cx-head-status{display:none}}@media(max-width:700px){.cx-left{display:none}.cx-right{width:100%;position:absolute;right:0;top:61px;bottom:0;z-index:20;background:#fafcf8}.cx-strip span:last-child{display:none}}
     `}</style>
   </div>;
