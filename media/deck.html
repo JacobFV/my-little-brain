@@ -62,12 +62,25 @@
 
   <!-- 3 · it studies itself, on quantum hardware -->
   <section class="slide">
-    <canvas class="masked" id="collapse" width="900" height="900"></canvas>
-    <div class="word" style="left:150px">It studies</div>
-    <div class="word" style="left:1440px">itself</div>
-    <div class="small" style="left:154px">256 hypotheses · 8 qubits</div>
-    <div class="small" style="left:1444px">found in 48</div>
-    <div class="small" style="left:0;right:0;top:auto;bottom:56px;text-align:center;font-size:22px;opacity:.7">Gemini · IonQ · IBM · qBraid · Extropic — model hypotheses, not diagnoses</div>
+    <canvas id="collapse" width="1920" height="1080" style="position:absolute;inset:0"></canvas>
+    <video class="masked" src="brain/real-brain.webm" poster="brain/real-brain.png" autoplay loop muted playsinline
+           style="left:130px;top:280px;width:600px;height:600px"></video>
+    <div class="word" style="left:150px;top:96px">It studies itself</div>
+    <div id="qlogos"></div>
+    <div style="position:absolute;left:1270px;top:250px;width:600px">
+      <div class="met"><b>48 / 256</b><span>simulations to recover a hidden brain state</span></div>
+      <div class="met"><b>42 gates</b><span>a circuit Gemini wrote itself (from 106)</span></div>
+      <div class="met"><b>52 vs 454</b><span>gates on IonQ vs IBM, same problem</span></div>
+      <div class="met"><b>τ 16→55 ms</b><span>seizure windows point to slower synapses</span></div>
+    </div>
+    <style>
+      .met { margin-bottom:46px; } .met b { display:block; font-size:66px; font-weight:700; letter-spacing:-.03em; line-height:1; }
+      .met span { display:block; margin-top:8px; font-size:25px; font-weight:500; opacity:.88; }
+      .ql { position:absolute; width:230px; transform:translateY(-50%); }
+      .ql img { display:block; height:40px; max-width:170px; object-fit:contain; object-position:left center; }
+      .ql div { margin-top:8px; font-size:17px; font-weight:500; opacity:.85; white-space:nowrap; }
+    </style>
+    <div class="small" style="left:0;right:0;top:auto;bottom:30px;text-align:center;font-size:20px;opacity:.7">model hypotheses, not diagnoses · no quantum-advantage claim</div>
   </section>
 </div>
 <div class="pager" id="pager"></div>
@@ -109,19 +122,44 @@ function drawEEG(t) {
     eeg.stroke();
   }
 }
-// 256 hypotheses collapse onto one
+// the brain as an agent: operation packets fly out to quantum/AI infra, results come back
 const cc = document.getElementById('collapse').getContext('2d');
-const seed = Array.from({ length: 256 }, (_, i) => .25 + .75 * Math.abs(Math.sin(i * 12.9898) * 43758.5453 % 1));
+const QB = { x: 430, y: 580 };
+const QL = [
+  ['ionq-white.svg', 'IonQ · trapped ions'], ['ibm-white.svg', 'IBM · heavy-hex'],
+  ['qbraid-white.png', 'qBraid · Rigetti/IQM/AQT'], ['extropic-white.png', 'Extropic · THRML'],
+  ['google-gemini-white.svg', 'Gemini · vision + agent'], ['openbci-white.svg', 'OpenBCI · your EEG'],
+].map(([f, l], i) => {
+  const a = (-40 + i * 16) * Math.PI / 180, x = QB.x + 500 * Math.cos(a) + 20, y = QB.y + 500 * Math.sin(a);
+  const d = document.createElement('div'); d.className = 'ql'; d.style.left = x + 'px'; d.style.top = y + 'px';
+  d.innerHTML = `<img src="logos/${f}" alt=""><div>${l}</div>`; document.getElementById('qlogos').appendChild(d);
+  const S = { x: QB.x + 200, y: QB.y + (y - QB.y) * .2 }, E = { x: x - 22, y: y - 4 };
+  return { S, C1: { x: S.x + 160, y: S.y }, C2: { x: E.x - 170, y: E.y }, E };
+});
+function qpt(c, u) {
+  const v = 1 - u;
+  return [v*v*v*c.S.x + 3*v*v*u*c.C1.x + 3*v*u*u*c.C2.x + u*u*u*c.E.x, v*v*v*c.S.y + 3*v*v*u*c.C1.y + 3*v*u*u*c.C2.y + u*u*u*c.E.y];
+}
+function dot(x, y, r, a) { cc.fillStyle = W + a + ')'; cc.beginPath(); cc.arc(x, y, r, 0, 7); cc.fill(); }
 function drawCollapse(t) {
-  cc.clearRect(0, 0, 900, 900);
-  const k = Math.min(1, Math.max(0, (t - t0 - 700) / 3000)), e = k * k * (3 - 2 * k), target = 137;
-  for (let i = 0; i < 256; i++) {
-    const h = (1 - e) * seed[i] + e * (i === target ? 1 : Math.exp(-Math.abs(i - target) / 3) * .18);
-    const x = 150 + (i % 16) * 40, yy = 150 + Math.floor(i / 16) * 40;
-    cc.fillStyle = W + (.2 + .8 * h) + ')';
-    cc.beginPath(); cc.arc(x, yy, 3 + 11 * h, 0, 7); cc.fill();
-    if (i === target && e > .6) { cc.strokeStyle = W + '.6)'; cc.lineWidth = 3; cc.beginPath(); cc.arc(x, yy, 24 + 6 * Math.sin(t / 220), 0, 7); cc.stroke(); }
-  }
+  cc.clearRect(0, 0, 1920, 1080);
+  const intro = Math.min(1, Math.max(0, (t - t0 - 300) / 1400));
+  QL.forEach((c, i) => {
+    cc.strokeStyle = W + (.32 * intro) + ')'; cc.lineWidth = 1.6; cc.beginPath();
+    cc.moveTo(c.S.x, c.S.y); cc.bezierCurveTo(c.C1.x, c.C1.y, c.C2.x, c.C2.y, c.E.x, c.E.y); cc.stroke();
+    if (intro < 1) return;
+    const p = ((t - t0 + i * 470) % 2800) / 2800;
+    if (p < .42) {                       // operation out: bright packet with a short trail
+      const u = p / .42, e = u * u * (3 - 2 * u);
+      for (let k = 0; k < 6; k++) { const [x, y] = qpt(c, Math.max(0, e - k * .025)); dot(x, y, 7 - k, .95 - k * .15); }
+    } else if (p < .55) {                // the backend works: ring at the logo
+      const q = (p - .42) / .13;
+      cc.strokeStyle = W + (.8 * (1 - q)) + ')'; cc.lineWidth = 2; cc.beginPath(); cc.arc(c.E.x, c.E.y, 6 + 22 * q, 0, 7); cc.stroke();
+    } else {                             // result returns: small dots
+      const u = (p - .55) / .45, e = u * u * (3 - 2 * u);
+      for (let k = 0; k < 3; k++) { const [x, y] = qpt(c, Math.max(0, 1 - e - k * .05)); dot(x, y, 3.5, .85 - k * .25); }
+    }
+  });
 }
 function frame(t) {
   if (cur === 1) drawEEG(t);
