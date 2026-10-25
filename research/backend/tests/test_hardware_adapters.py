@@ -63,7 +63,7 @@ def test_ibm_quota_exhaustion_blocks_availability_and_submit(monkeypatch):
 
 
 def test_registry_reports_hardware_and_modes():
-    assert set(backends.ids(hardware=True)) == {"ibm_quantum", "ionq_qpu"}
-    assert set(backends.ids(mode="async")) == {"ibm_quantum", "ionq_qpu"}
+    assert set(backends.ids(hardware=True)) == {"ibm_quantum", "ionq_qpu", "qbraid_qpu"}
+    assert set(backends.ids(mode="async")) == {"ibm_quantum", "ionq_qpu", "qbraid_qpu"}
     assert "ionq_simulator" in backends.ids(paradigm="gate", mode="sync")
     assert np.isfinite(len(backends.agent_brief()))

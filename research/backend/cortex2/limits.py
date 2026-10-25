@@ -22,7 +22,7 @@ DEFAULTS = {
     "job":              (3600, 120),     # sampling jobs created by the user
     "hardware_job":     (86400, 4),      # physical QPU submissions (IBM / IonQ)
     "agent_iteration":  (86400, 40),     # agent design iterations (model calls)
-    "agent_message":    (3600, 60),      # operator messages (model calls)
+    "agent_message":    (3600, 60),      # chat/triage messages (model calls)
     "preview":          (60, 30),        # synchronous circuit compiles (CPU heavy)
     "experiment":       (86400, 200),
     "ingest_token":     (86400, 30),

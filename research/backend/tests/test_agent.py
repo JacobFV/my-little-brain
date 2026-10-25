@@ -77,25 +77,6 @@ def test_design_iteration_records_measured_verdict(fake):
     assert rev["model"] == "fake/scripted" and rev["provenance"]
 
 
-def test_operator_respects_budgets(fake):
-    uid = "op-user"
-    exp = runner.create_experiment(uid, {"source": "synthetic", "truth_bitstring": "00110010"})
-    agent.update_session(uid, {"max_autonomous_jobs": 1})
-    fake["install"]([
-        [("dispatch_job", {"experiment_id": exp["id"], "provider": "classical_anneal", "approximation": "secant"}),
-         ("dispatch_job", {"experiment_id": exp["id"], "provider": "classical_anneal", "approximation": "jacobian"}),
-         ("dispatch_job", {"experiment_id": exp["id"], "provider": "ibm_quantum", "approximation": "secant"})],
-        [("update_memory", {"memory": "testing budgets"})],
-        [],
-    ])
-    job = store().create("jobs", {"owner": uid, "kind": "agent_operator", "status": "running", "created_at": "x",
-                                  "created_by": "agent", "command": "tick"})
-    done = agent.run_operator(store().get("jobs", job["id"]))
-    actions = done["result"]["actions"]
-    assert len([a for a in actions if a["action"] == "dispatch"]) == 1     # second denied by budget, QPU denied
-    assert agent.session(uid)["operator_memory"] == "testing budgets"
-
-
 class Failing:
     family, model = "fake", "x"
 

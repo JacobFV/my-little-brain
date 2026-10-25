@@ -1,4 +1,4 @@
-"""The AI quantum engineer (design loop) and the long-running research operator.
+"""The AI quantum engineer (design loop) and the one-shot EEG triage agent.
 
 Design iteration (one Revision):
     inspect state → build/compile circuits with tools (structured QAOA spec or the model's own
@@ -6,8 +6,8 @@ Design iteration (one Revision):
     record observation, diagnosis, change, rationale. The verdict is computed here from the
     measured metrics of the jobs it ran; the model cannot mark its own work as an improvement.
 
-Operator: keeps a rolling memory across ticks, sees every job of the user, and can dispatch,
-cancel, retry or poll work and start design iterations within the session's budgets.
+Triage: one user-initiated job that looks at EEG spectrograms, splinters channels into experiments
+and dispatches simulator searches on them.
 Physical QPU submissions by the agent require the user to enable `allow_autonomous_qpu`.
 """
 from __future__ import annotations
@@ -37,9 +37,8 @@ ORACLE = os.environ.get("AGENT_ORACLE") == "1"
 from . import backends  # noqa: E402
 # classical_exact simulates all 256 hypotheses: it is the evaluator's reference, not a search move.
 SYNC_PROVIDERS = set(backends.ids(mode="sync")) - {"classical_exact"}
-DEFAULT_SESSION = {"autopilot": False, "max_autonomous_jobs": 12, "autonomous_jobs_total": 0,
-                   "allow_autonomous_qpu": False, "qpu_jobs_budget": 2, "qpu_jobs_total": 0,
-                   "operator_memory": "", "last_tick": None}
+DEFAULT_SESSION = {"max_autonomous_jobs": 12, "autonomous_jobs_total": 0,
+                   "allow_autonomous_qpu": False, "qpu_jobs_budget": 2, "qpu_jobs_total": 0}
 
 
 def agent_configured() -> bool:
@@ -59,7 +58,7 @@ def session(uid: str) -> dict:
 
 
 def update_session(uid: str, patch: dict) -> dict:
-    allowed = {"autopilot": bool, "max_autonomous_jobs": int, "allow_autonomous_qpu": bool, "qpu_jobs_budget": int}
+    allowed = {"max_autonomous_jobs": int, "allow_autonomous_qpu": bool, "qpu_jobs_budget": int}
     clean = {k: allowed[k](v) for k, v in patch.items() if k in allowed}
     if "max_autonomous_jobs" in clean:
         clean["max_autonomous_jobs"] = max(0, min(clean["max_autonomous_jobs"], 200))
@@ -67,8 +66,6 @@ def update_session(uid: str, patch: dict) -> dict:
         clean["qpu_jobs_budget"] = max(0, min(clean["qpu_jobs_budget"], 20))
     session(uid)
     store().update("sessions", uid, {**clean, "updated_at": now()})
-    if clean.get("autopilot"):
-        schedule_operator(uid, "autopilot enabled: review the research state and plan next steps")
     return session(uid)
 
 
@@ -399,7 +396,7 @@ class DesignSession:
         job = runner.create_job(self.uid, self.exp["id"], self._job_body(provider, approximation, baseline, trust_weight, spec, qasm, shots),
                                 created_by="agent", autonomous=True)
         self.ran.append(job["id"])
-        return {"queued": compact_job(job), "note": "asynchronous; results arrive later and the operator will review them"}, None
+        return {"queued": compact_job(job), "note": "asynchronous; results arrive later"}, None
 
     def record_revision(self, observation, diagnosis, change, rationale, reference_job_id=None, revised_job_id=None, next_step="", **_):
         self.revision = {"observation": observation, "diagnosis": diagnosis, "change": change, "rationale": rationale,
@@ -570,7 +567,6 @@ def run_iteration(job: dict) -> dict:
     delta = f" ({mb[0]:.3f} → {ma[0]:.3f})" if mb and ma else ""
     runner.feed(job["owner"], "agent", f"Revision {num} [{v}]{delta}: {rev.get('change') or rev.get('observation')}", exp["id"], job["id"],
                 {"revision_id": r["id"]})
-    after_job(job["owner"], job["id"])
     return store().get("jobs", job["id"])
 
 
@@ -587,22 +583,14 @@ def start_iteration(uid: str, exp_id: str, instruction: str | None = None, creat
     return job
 
 
-# ---------------------------------------------------------------- long-running operator
+# ---------------------------------------------------------------- EEG triage job (user-initiated, one shot)
 
-OPERATOR_TOOLS = [
-    _fn("list_experiments", "All of the user's experiments with best result so far.", {}),
+TRIAGE_TOOLS = [
     _fn("list_jobs", "Recent jobs (all experiments) with status and measured metrics.", {"status": {"type": ["string", "null"]}}),
     _fn("get_job", "Full details of one job.", {"job_id": {"type": "string"}}, ["job_id"]),
-    _fn("dispatch_job", "Queue a sampling job on an experiment (consumes autonomous budget unless the user asked for it in this message).",
-        {"experiment_id": {"type": "string"}, "provider": {"type": "string", "enum": list(runner.PROVIDERS)}, **CIRCUIT_PROPS,
-         "shots": {"type": "integer"}}, ["experiment_id", "provider", "approximation"]),
-    _fn("start_design_iteration", "Ask the circuit engineer to run one revision on an experiment.",
-        {"experiment_id": {"type": "string"}, "instruction": {"type": "string"}}, ["experiment_id"]),
-    _fn("cancel_job", "Cancel a queued/running/submitted job.", {"job_id": {"type": "string"}}, ["job_id"]),
-    _fn("retry_job", "Re-queue a failed job with the same configuration.", {"job_id": {"type": "string"}}, ["job_id"]),
-    _fn("create_experiment", "Create a new experiment.", {"source": {"type": "string", "enum": ["synthetic", "recording"]},
-        "truth_bitstring": {"type": ["string", "null"]}, "dataset_id": {"type": ["string", "null"]},
-        "channel": {"type": ["string", "null"]}, "segment": {"type": ["string", "null"]}}, ["source"]),
+    _fn("dispatch_job", "Queue a simulator sampling job on an experiment.",
+        {"experiment_id": {"type": "string"}, "provider": {"type": "string", "enum": sorted(set(runner.PROVIDERS) - set(runner.HARDWARE_PROVIDERS))},
+         **CIRCUIT_PROPS, "shots": {"type": "integer"}}, ["experiment_id", "provider", "approximation"]),
     _fn("list_eeg_sources", "EEG sources for triage: CHB-MIT excerpts (channels, seizure annotations, time bounds) and the user's OpenBCI recordings.", {}),
     _fn("render_spectrograms", "Render per-channel spectrograms of an EEG source/window and LOOK at them (you receive the image) plus per-channel band-power numbers.",
         {"dataset_id": {"type": ["string", "null"]}, "recording_id": {"type": ["string", "null"]},
@@ -615,41 +603,25 @@ OPERATOR_TOOLS = [
              "required": ["channel", "start", "end", "why"]}}}, ["picks"]),
     _fn("compare_experiments", "Compare best hypotheses, parameter values and consistent hypothesis sets across experiments (e.g. channels).",
         {"experiment_ids": {"type": "array", "items": {"type": "string"}}}, ["experiment_ids"]),
-    _fn("update_memory", "Replace your rolling research memory (≤1500 chars): goals, open questions, what's running, next steps.",
-        {"memory": {"type": "string"}}, ["memory"]),
 ]
 
-OPERATOR_INSTRUCTIONS = """You are the cortex² research operator: a long-running assistant that supervises a user's
-quantum/thermodynamic/classical experiments on an 8-qubit neural-mass inverse problem (Wilson–Cowan model fitted to EEG
-features). You keep a rolling memory across ticks. On each tick you see the user's message (if any), your memory, and can
-list/inspect jobs. Babysit the backend: notice failed or stuck jobs and retry or cancel them, follow up on finished IBM jobs,
-compare providers on equal footing (same approximation/spec/shots), and start design iterations when an experiment has a
-clear failure to fix. Make good use of the budget: prefer cheap simulators to test ideas and reserve physical QPU runs for
-circuits that are within the gate budget and already validated on the noisy simulator. Never fabricate results, never claim
-quantum advantage (256 states are classically enumerable), and keep clinical language out: these are model hypotheses.
-
-EEG triage ("AI eyes + quantum search"): when asked to analyse EEG, call list_eeg_sources, then render_spectrograms and
-actually look at the image (rhythmic bands, onset times, which channels change, artefacts vs. physiology). Choose 2–4
-channel/window picks that best discriminate the phenomenon (e.g. seizure onset vs. pre-ictal baseline, eyes-closed alpha
-on O1/O2), state why for each, call create_channel_experiments, dispatch a quantum search on each new experiment
-(prefer ionq_simulator for the full unpruned problem, or aer_noisy) plus a classical_exact reference, and finally
-compare_experiments to report which neural-mass hypotheses each channel/window supports and where they diverge.
-Finish with a short reply to the user (2–6 sentences, concrete numbers from tools) and update_memory."""
+TRIAGE_INSTRUCTIONS = """You run one EEG triage ("AI eyes + quantum search") for a user on an 8-qubit neural-mass inverse
+problem (Wilson–Cowan model fitted to EEG features). Call list_eeg_sources, then render_spectrograms and actually look at
+the image (rhythmic bands, onset times, which channels change, artefacts vs. physiology). Choose 2–4 channel/window picks
+that best discriminate the phenomenon (e.g. seizure onset vs. pre-ictal baseline, eyes-closed alpha on O1/O2), state why
+for each, call create_channel_experiments, dispatch a quantum search on each new experiment (prefer ionq_simulator for the
+full unpruned problem, or aer_noisy) plus a classical_exact reference, and finally compare_experiments to report which
+neural-mass hypotheses each channel/window supports and where they diverge. Never fabricate results, never claim quantum
+advantage, keep clinical language out. Finish with a short reply (2–6 sentences, concrete numbers from tools)."""
 
 
-def run_operator(job: dict) -> dict:
+def run_triage(job: dict) -> dict:
     uid = job["owner"]
-    s = session(uid)
-    user_initiated = job.get("created_by") == "user"
     if not agent_configured():
         raise PermissionError("no model provider configured")
     actions: list[dict] = []
 
     def dispatch(name, args):
-        if name == "list_experiments":
-            exps = store().query("experiments", uid, limit=30)
-            return {"experiments": [{"id": e["id"], "title": e["title"], "source": e["target"]["source"], "best": e.get("best"),
-                                     "rounds": e.get("rounds"), "status": e.get("status"), "updated_at": e.get("updated_at")} for e in exps]}, None
         if name == "list_jobs":
             jobs = store().query("jobs", uid, limit=60)
             if args.get("status"):
@@ -658,120 +630,44 @@ def run_operator(job: dict) -> dict:
         if name == "get_job":
             return {"job": compact_job(runner.owned("jobs", args["job_id"], uid))}, None
         if name == "dispatch_job":
-            qpu = args["provider"] in runner.HARDWARE_PROVIDERS
-            if not user_initiated or qpu:
-                if not reserve_budget(uid, qpu=qpu):
-                    return {"denied": "autonomous budget exhausted or autonomous QPU disabled"}, None
+            if args["provider"] in runner.HARDWARE_PROVIDERS:
+                return {"denied": "triage uses simulators only"}, None
             body = {k: args.get(k) for k in ("provider", "approximation", "baseline", "trust_weight", "spec", "qasm", "shots") if args.get(k) is not None}
-            j = runner.create_job(uid, args["experiment_id"], body, created_by="agent", autonomous=not user_initiated)
+            j = runner.create_job(uid, args["experiment_id"], body, created_by="agent")
             actions.append({"action": "dispatch", "job_id": j["id"], "provider": j["provider"]})
             return {"queued": compact_job(j)}, None
-        if name == "start_design_iteration":
-            if not user_initiated and not reserve_budget(uid):
-                return {"denied": "autonomous budget exhausted"}, None
-            j = start_iteration(uid, args["experiment_id"], args.get("instruction"), created_by="agent", autonomous=not user_initiated)
-            actions.append({"action": "iterate", "job_id": j["id"]})
-            return {"queued": {"id": j["id"], "kind": "agent_iteration"}}, None
-        if name == "cancel_job":
-            j = runner.cancel_job(uid, args["job_id"])
-            actions.append({"action": "cancel", "job_id": j["id"]})
-            return {"status": j["status"]}, None
-        if name == "retry_job":
-            old = runner.owned("jobs", args["job_id"], uid)
-            if old.get("kind") != "sample" or old.get("status") != "failed":
-                return {"error": "only failed sampling jobs can be retried"}, None
-            if old["provider"] in runner.HARDWARE_PROVIDERS and not user_initiated and not reserve_budget(uid, qpu=True):
-                return {"denied": "autonomous QPU disabled or budget exhausted"}, None
-            body = {k: old.get(k) for k in ("provider", "approximation", "baseline", "trust_weight", "spec", "qasm", "shots")}
-            j = runner.create_job(uid, old["experiment_id"], body, created_by="agent", autonomous=not user_initiated)
-            actions.append({"action": "retry", "job_id": j["id"], "of": old["id"]})
-            return {"queued": compact_job(j)}, None
-        if name == "create_experiment":
-            e = runner.create_experiment(uid, {k: v for k, v in args.items() if v is not None})
-            actions.append({"action": "create_experiment", "experiment_id": e["id"]})
-            return {"experiment": {"id": e["id"], "title": e["title"]}}, None
-        if name == "update_memory":
-            store().update("sessions", uid, {"operator_memory": args["memory"][:1500]})
-            return {"ok": True}, None
         if name in ("list_eeg_sources", "render_spectrograms", "create_channel_experiments", "compare_experiments"):
             return triage_tool(uid, name, args, actions)
         return {"error": f"unknown tool {name}"}, None
 
-    recent_feed = store().query("feed", uid, order="time", limit=16)
-    convo = "\n".join(f"[{f['kind']}] {f['text'][:400]}" for f in reversed(recent_feed))
-    text = (f"Now: {now()}\nYour memory:\n{s.get('operator_memory') or '(empty)'}\n\nRecent activity:\n{convo}\n\n"
-            f"Budgets: autonomous jobs {s['autonomous_jobs_total']}/{s['max_autonomous_jobs']}, "
-            f"autonomous QPU {'allowed' if s['allow_autonomous_qpu'] else 'not allowed'} ({s['qpu_jobs_total']}/{s['qpu_jobs_budget']}). "
-            f"Backends:\n{backends.agent_brief()}\n\n"
-            + (f"User message: {job['command']}" if user_initiated else f"Automatic tick: {job.get('command') or 'review state'}")
-            + (f"\nFocused experiment: {job['experiment_id']}" if job.get("experiment_id") else ""))
-    provenance, reply, _ = llm.run_tools(OPERATOR_INSTRUCTIONS, {"role": "user", "text": text}, OPERATOR_TOOLS, dispatch,
+    text = f"Now: {now()}\nBackends:\n{backends.agent_brief()}\n\nTask: {job['command']}"
+    provenance, reply, _ = llm.run_tools(TRIAGE_INSTRUCTIONS, {"role": "user", "text": text}, TRIAGE_TOOLS, dispatch,
                                          max_steps=14, effort=REASONING)
     reply = reply.strip() or "(no reply)"
     runner.feed(uid, "agent", reply, job.get("experiment_id"), job["id"], {"actions": actions})
-    store().update("sessions", uid, {"last_tick": now()})
     store().update("jobs", job["id"], {"status": "completed", "result": {"reply": reply, "actions": actions},
                                        "provenance": provenance, "model": provenance[-1]["provider"] if provenance else None,
                                        "updated_at": now()})
     return store().get("jobs", job["id"])
 
 
-def schedule_operator(uid: str, command: str, experiment_id: str | None = None, created_by: str = "agent") -> dict | None:
+def start_triage(uid: str, command: str) -> dict | None:
     from . import tasks
 
     if not agent_configured():
         return None
-    if created_by == "agent":
-        pending = [j for j in store().query("jobs", uid, limit=40) if j.get("kind") == "agent_operator" and j.get("status") in ("queued", "running")]
-        if pending:
-            return None
-    job = store().create("jobs", {"owner": uid, "experiment_id": experiment_id, "kind": "agent_operator", "provider": None,
-                                  "title": "research operator" if created_by == "agent" else "operator reply",
-                                  "status": "queued", "created_at": now(), "updated_at": now(), "created_by": created_by,
-                                  "autonomous": created_by == "agent", "command": command, "timings": {"queued": now()}})
-    tasks.enqueue(job["id"], delay=2 if created_by == "agent" else 0)
+    job = store().create("jobs", {"owner": uid, "experiment_id": None, "kind": "agent_triage", "provider": None,
+                                  "title": "EEG triage", "status": "queued", "created_at": now(), "updated_at": now(),
+                                  "created_by": "user", "autonomous": False, "command": command, "timings": {"queued": now()}})
+    tasks.enqueue(job["id"])
     return job
-
-
-def after_job(uid: str, job_id: str) -> None:
-    """Autopilot hook: let the operator review finished work (not jobs run inside an iteration)."""
-    job = store().get("jobs", job_id)
-    if not job or job.get("in_iteration") or job.get("kind") == "agent_operator":
-        return
-    if session(uid).get("autopilot"):
-        schedule_operator(uid, f"Job {job_id} ({job.get('provider') or job.get('kind')}) finished with status {job.get('status')}. Review and decide next steps.",
-                          job.get("experiment_id"))
-
-
-def heartbeat() -> dict:
-    """Cloud Scheduler: repair stuck work and wake autopilot operators."""
-    from . import tasks
-
-    cutoff_running = (datetime.now(timezone.utc) - timedelta(minutes=45)).isoformat()
-    cutoff_poll = (datetime.now(timezone.utc) - timedelta(minutes=12)).isoformat()
-    stats = {"repolled": 0, "failed_stuck": 0, "ticks": 0}
-    for status in ("submitted", "running"):
-        for j in store().where("jobs", "status", status, limit=500):
-            if status == "submitted" and (j.get("updated_at") or "") < cutoff_poll:
-                tasks.enqueue(j["id"], "poll", attempt=int(time.time()))  # unique task name
-                stats["repolled"] += 1
-            if status == "running" and (j.get("updated_at") or "") < cutoff_running:
-                store().update("jobs", j["id"], {"status": "failed", "error": "worker timed out (no progress for 45 min)", "updated_at": now()})
-                runner.feed(j["owner"], "error", f"Job {j['id'][:8]} timed out and was marked failed.", j.get("experiment_id"), j["id"])
-                stats["failed_stuck"] += 1
-    for s in store().where("sessions", "autopilot", True, limit=200):
-        last = s.get("last_tick") or ""
-        if last < (datetime.now(timezone.utc) - timedelta(minutes=20)).isoformat():
-            if schedule_operator(s["id"], "Periodic heartbeat: check running jobs and research progress."):
-                stats["ticks"] += 1
-    return stats
 
 
 # ---------------------------------------------------------------- EEG triage tools (spectrogram vision → quantum)
 
 def triage_command(dataset_id: str | None = None, recording_id: str | None = None, start: float | None = None,
                    end: float | None = None, instruction: str | None = None) -> str:
-    """The operator command for an EEG triage (used by POST /v1/eeg/triage and the chat brain)."""
+    """The command for an EEG triage job (used by POST /v1/eeg/triage and the chat brain)."""
     if not (dataset_id or recording_id):
         raise ValueError("give dataset_id or recording_id")
     src = f"dataset_id={dataset_id}" if dataset_id else f"recording_id={recording_id}"

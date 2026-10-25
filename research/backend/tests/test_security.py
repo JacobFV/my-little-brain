@@ -74,7 +74,6 @@ def test_other_users_cannot_touch_my_resources():
     assert c.post(f"/v1/experiments/{eid}/jobs", json={"provider": "random"}).status_code == 404
     assert c.post("/v1/circuits/preview", json={"experiment_id": eid}).status_code == 404
     assert c.post(f"/v1/experiments/{eid}/snapshot", json={"png": "data:image/png;base64,iVBORw0KGgo="}).status_code == 404
-    assert c.post("/v1/agent/messages", json={"text": "hi", "experiment_id": eid}).status_code == 404
     assert c.get(f"/v1/jobs?experiment_id={eid}").json()["jobs"] == []
     assert c.get(f"/v1/feed?experiment_id={eid}").json()["items"] == []
     assert c.get(f"/v1/artifacts/alice/{eid}/jobs/{jid}.png").status_code == 404
@@ -94,7 +93,6 @@ def test_snapshot_requires_real_png():
 def test_internal_routes_hidden_on_public_service(monkeypatch):
     monkeypatch.setattr(appmod, "SERVICE_ROLE", "api")
     assert c.post("/internal/tasks", json={"job_id": "x", "step": "execute"}).status_code == 404
-    assert c.post("/internal/heartbeat").status_code == 404
 
 
 def test_malformed_task_payloads_are_rejected_without_retry():
@@ -162,9 +160,8 @@ def test_hardware_allowlist_and_daily_cap(monkeypatch):
 
 def test_self_service_budgets_are_capped(monkeypatch):
     monkeypatch.setattr(appmod, "CAP_QPU_JOBS", 3)
-    monkeypatch.setattr(appmod, "CAP_AUTONOMOUS_JOBS", 10)
-    s = c.post("/v1/session", headers=DEV, json={"qpu_jobs_budget": 20, "max_autonomous_jobs": 200}).json()
-    assert s["qpu_jobs_budget"] == 3 and s["max_autonomous_jobs"] == 10
+    s = c.post("/v1/session", headers=DEV, json={"qpu_jobs_budget": 20}).json()
+    assert s["qpu_jobs_budget"] == 3
 
 
 # ---------------------------------------------------------------- device tokens

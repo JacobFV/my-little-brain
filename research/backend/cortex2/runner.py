@@ -329,8 +329,6 @@ def finish_job(job, exp, target, q, counts, runner, patch) -> dict:
             + (f"; hidden truth recovered" if evaluation.get("truth", {}).get("recovered_exactly") else "")
             + (" — new best for this experiment." if improved else "."))
     feed(job["owner"], "result", text, job["experiment_id"], jid)
-    from . import agent
-    agent.after_job(job["owner"], jid)
     return store().get("jobs", jid)
 
 
@@ -412,8 +410,8 @@ def handle_task(payload: dict) -> dict:
             return {"status": execute_sample_job(job)["status"]}
         if job["kind"] == "agent_iteration":
             return {"status": agent.run_iteration(job)["status"]}
-        if job["kind"] == "agent_operator":
-            return {"status": agent.run_operator(job)["status"]}
+        if job["kind"] == "agent_triage":
+            return {"status": agent.run_triage(job)["status"]}
         raise ValueError(f"unknown job kind {job['kind']}")
     except Exception as exc:
         log.exception("job %s failed", jid)

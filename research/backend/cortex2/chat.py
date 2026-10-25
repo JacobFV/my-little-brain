@@ -152,10 +152,10 @@ TOOLS = [
         "the user sees it in the chat) plus per-channel band-power numbers.",
         {"dataset_id": NULL_STR, "recording_id": NULL_STR, "start": {**NULL_NUM, "description": "seconds (source clock)"},
          "end": NULL_NUM, "channels": {"type": ["array", "null"], "items": {"type": "string"}}}),
-    _fn("triage_eeg", "Full EEG triage, dispatched asynchronously: the research operator looks at every channel, picks 2–4 "
+    _fn("triage_eeg", "Full EEG triage, dispatched asynchronously: the triage agent looks at every channel, picks 2–4 "
         "channel/windows, creates one experiment each and runs quantum searches on them. Use for 'analyse my EEG/this dataset'.",
         {"dataset_id": NULL_STR, "recording_id": NULL_STR, "start": NULL_NUM, "end": NULL_NUM,
-         "instruction": {**NULL_STR, "description": "extra guidance for the operator"}}),
+         "instruction": {**NULL_STR, "description": "extra guidance for the triage"}}),
     _fn("create_experiment", "Create one inverse-model experiment: fit the 4-parameter Wilson–Cowan model (P, c2, c1, tau) to "
         "EEG features. source=synthetic (hidden known truth, for demos), recording (CHB-MIT dataset_id + channel + optional "
         "start/end or segment) or openbci (recording_id + channel + optional start/end).",
@@ -168,10 +168,9 @@ TOOLS = [
         {"experiment_id": {"type": "string"}, "provider": {"type": "string", "enum": sorted(runner.PROVIDERS)},
          "approximation": {"type": "string", "enum": list(agent.inv.APPROXIMATIONS)},
          "shots": {"type": "integer", "minimum": 64, "maximum": 8192}, "spec": agent.SPEC_SCHEMA}, ["experiment_id"]),
-    _fn("start_research_campaign", "Long-running research, dispatched asynchronously. With experiment_id: the circuit engineer "
-        "runs one design iteration (builds, compiles, runs and critiques circuits). Without: the research operator plans and "
-        "babysits work across experiments toward `goal`.",
-        {"experiment_id": NULL_STR, "goal": {"type": "string"}}, ["goal"]),
+    _fn("start_research_campaign", "Dispatched asynchronously: the circuit engineer runs one design iteration on an "
+        "experiment (builds, compiles, runs and critiques circuits) toward `goal`.",
+        {"experiment_id": {"type": "string"}, "goal": {"type": "string"}}, ["experiment_id", "goal"]),
     _fn("check_jobs", "The user's recent experiments and jobs with status and best results so far.",
         {"experiment_id": NULL_STR, "status": NULL_STR}),
     _fn("job_result", "Detailed result of one job (or an experiment's best so far): best validated hypothesis, its loss, the "
@@ -283,11 +282,11 @@ class ChatTurn:
         limits.consume(self.uid, "agent_message")
         text = agent.triage_command(dataset_id, recording_id, start, end, instruction)
         runner.feed(self.uid, "user", text)
-        job = agent.schedule_operator(self.uid, text, None, created_by="user")
+        job = agent.start_triage(self.uid, text)
         if not job:
-            return {"error": "no model provider configured for the operator"}, None
+            return {"error": "no model provider configured for the triage"}, None
         self.event("triage_eeg", f"dispatched EEG triage of {dataset_id or recording_id}", job_id=job["id"])
-        return {"queued": {"job_id": job["id"], "kind": "agent_operator"},
+        return {"queued": {"job_id": job["id"], "kind": "agent_triage"},
                 "note": "runs in the background; new per-channel experiments and jobs appear in the sidebar"}, None
 
     def create_experiment(self, **args):
@@ -323,20 +322,15 @@ class ChatTurn:
         return {"queued": agent.compact_job(job), "note": "asynchronous; check back with job_result"}, None
 
     def start_research_campaign(self, goal, experiment_id=None, **_):
-        if experiment_id:
-            limits.consume(self.uid, "agent_iteration")
-            job = agent.start_iteration(self.uid, experiment_id, goal)
-            runner.feed(self.uid, "user", goal, experiment_id, job["id"])
-            self.event("start_research_campaign", "the circuit engineer started a design iteration",
-                       experiment_id=experiment_id, job_id=job["id"])
-            return {"queued": {"job_id": job["id"], "kind": "agent_iteration", "experiment_id": experiment_id}}, None
-        limits.consume(self.uid, "agent_message")
-        runner.feed(self.uid, "user", goal)
-        job = agent.schedule_operator(self.uid, goal, None, created_by="user")
-        if not job:
-            return {"error": "no model provider configured for the operator"}, None
-        self.event("start_research_campaign", "the research operator is on it", job_id=job["id"])
-        return {"queued": {"job_id": job["id"], "kind": "agent_operator"}}, None
+        if not experiment_id:
+            return {"error": "give experiment_id (create_experiment first)"}, None
+        runner.owned("experiments", experiment_id, self.uid)
+        limits.consume(self.uid, "agent_iteration")
+        job = agent.start_iteration(self.uid, experiment_id, goal)
+        runner.feed(self.uid, "user", goal, experiment_id, job["id"])
+        self.event("start_research_campaign", "the circuit engineer started a design iteration",
+                   experiment_id=experiment_id, job_id=job["id"])
+        return {"queued": {"job_id": job["id"], "kind": "agent_iteration", "experiment_id": experiment_id}}, None
 
     def check_jobs(self, experiment_id=None, status=None, **_):
         eq = {"experiment_id": experiment_id} if experiment_id else {}
@@ -406,13 +400,10 @@ TOOL_NAMES = {t.name for t in TOOLS}
 def _system(uid: str) -> str:
     digest = docs_digest(uid)
     mem = notes(uid)
-    s = agent.session(uid)
     parts = [SYSTEM, f"\nNow: {now()}."]
     parts.append("\nWhat I know about you from your documents (digest; use read_about_me for full text):\n"
                  + (digest or "(no documents uploaded yet — you can invite the user to add some)"))
     parts.append("\nMy memory notes:\n" + ("\n".join(f"- {n['text']}" for n in reversed(mem)) or "(none yet)"))
-    if s.get("operator_memory"):
-        parts.append("\nResearch operator's rolling memory:\n" + s["operator_memory"][:1500])
     return "\n".join(parts)
 
 

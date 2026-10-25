@@ -104,7 +104,7 @@ import json, os, sys
 names = ["GOOGLE_CLOUD_PROJECT", "REGION", "TASK_QUEUE", "WORKER_URL", "TASK_SERVICE_ACCOUNT", "ARTIFACT_BUCKET",
          "GOOGLE_OAUTH_CLIENT_ID", "ALLOWED_EMAILS", "HARDWARE_EMAILS", "AGENT_PROVIDERS", "GEMINI_MODEL", "OPENAI_MODEL",
          "AGENT_REASONING_EFFORT", "IBM_QUANTUM_INSTANCE", "IBM_BACKEND", "IONQ_QPU_BACKEND", "IONQ_NOISE_MODEL", "QBRAID_SIM_DEVICE", "QBRAID_QPU_DEVICE",
-         "MAX_BODY_BYTES", "CAP_AUTONOMOUS_JOBS", "CAP_QPU_JOBS", "INGEST_MIN_INTERVAL", "LOG_LEVEL"]
+         "MAX_BODY_BYTES", "CAP_QPU_JOBS", "INGEST_MIN_INTERVAL", "LOG_LEVEL"]
 names += sorted(k for k in os.environ if k.startswith("LIMIT_"))
 env = {k: os.environ.get(k, "") for k in names}
 env["CORS_ORIGINS"] = ""            # same-origin in production
@@ -125,11 +125,8 @@ $G run deploy $SERVICE --image "$IMAGE" --region $R --service-account $API_SA \
   --env-vars-file "$ENVFILE" ${SECRET_ARG[@]+"${SECRET_ARG[@]}"} >/dev/null
 $G run services add-iam-policy-binding $SERVICE --region $R --member=serviceAccount:$TASK_SA --role=roles/run.invoker >/dev/null
 
-echo "▸ heartbeat schedule"
-if $G scheduler jobs describe $SERVICE-heartbeat --location $R >/dev/null 2>&1; then verb=update; else verb=create; fi
-$G scheduler jobs $verb http $SERVICE-heartbeat --location $R --schedule "*/5 * * * *" \
-  --uri "$WORKER_URL/internal/heartbeat" --http-method POST --attempt-deadline 300s \
-  --oidc-service-account-email $TASK_SA --oidc-token-audience "$WORKER_URL" >/dev/null
+echo "▸ removing the retired heartbeat schedule (if any)"
+$G scheduler jobs describe my-little-brain-heartbeat --location $R >/dev/null 2>&1 && $G scheduler jobs delete my-little-brain-heartbeat --location $R --quiet >/dev/null || true
 
 echo
 echo "✓ My Little Brain deployed:  $PUBLIC_URL   (image $IMAGE)"

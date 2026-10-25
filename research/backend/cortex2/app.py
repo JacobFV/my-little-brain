@@ -2,7 +2,7 @@
 
 One image, two Cloud Run services (SERVICE_ROLE):
   api      cortex2         public: /v1 API + the built /lab web app (same origin); /internal/* is 404
-  worker   cortex2-worker  private: /internal/tasks (Cloud Tasks, OIDC) and /internal/heartbeat (Scheduler)
+  worker   cortex2-worker  private: /internal/tasks (Cloud Tasks, OIDC)
 Locally (SERVICE_ROLE=all, the default) one process does both and runs tasks on threads.
 """
 from __future__ import annotations
@@ -61,8 +61,7 @@ WEB_DIST = Path((os.environ.get("WEB_DIST") or Path(__file__).resolve().parents[
 VERSION = (os.environ.get("CORTEX_VERSION") or "dev")
 SERVICE_ROLE = (os.environ.get("SERVICE_ROLE") or "all")            # api | worker | all
 MAX_BODY_BYTES = int(os.environ.get("MAX_BODY_BYTES") or str(6 * 1024 * 1024))
-# Self-service budget ceilings: users can lower their autonomous budgets, never raise past these.
-CAP_AUTONOMOUS_JOBS = int(os.environ.get("CAP_AUTONOMOUS_JOBS") or "50")
+# Self-service budget ceiling: users can lower their QPU budget, never raise past this.
 CAP_QPU_JOBS = int(os.environ.get("CAP_QPU_JOBS") or "4")
 INGEST_MIN_INTERVAL = float(os.environ.get("INGEST_MIN_INTERVAL") or "0.8")   # Firestore: ~1 write/s/doc
 INGEST_TOKEN_HOURS = 12
@@ -238,8 +237,6 @@ def get_session(user=Depends(current_user)):
 @app.post("/v1/session")
 def post_session(body: dict, user=Depends(current_user)):
     clean = dict(body)
-    if "max_autonomous_jobs" in clean:
-        clean["max_autonomous_jobs"] = min(int(clean["max_autonomous_jobs"]), CAP_AUTONOMOUS_JOBS)
     if "qpu_jobs_budget" in clean:
         clean["qpu_jobs_budget"] = min(int(clean["qpu_jobs_budget"]), CAP_QPU_JOBS)
     if clean.get("allow_autonomous_qpu") and not limits.hardware_allowed(user.get("email")):
@@ -389,7 +386,7 @@ def eeg_triage(body: TriageRequest, user=Depends(current_user)):
         raise HTTPException(503, "no model provider configured")
     text = agent.triage_command(body.dataset_id, body.recording_id, body.start, body.end, body.instruction)
     item = runner.feed(user["uid"], "user", text)
-    job = agent.schedule_operator(user["uid"], text, None, created_by="user")
+    job = agent.start_triage(user["uid"], text)
     return {"item": item, "job": job}
 
 
@@ -428,23 +425,6 @@ def iterate(exp_id: str, body: Instruction, user=Depends(current_user)):
 def revisions(exp_id: str, user=Depends(current_user)):
     guard(runner.owned, "experiments", exp_id, user["uid"])
     return {"revisions": store().query("revisions", user["uid"], experiment_id=exp_id, limit=100)}
-
-
-class Message(BaseModel):
-    text: str = Field(min_length=1, max_length=4000)
-    experiment_id: str | None = Field(default=None, max_length=64)
-
-
-@app.post("/v1/agent/messages")
-def message(body: Message, user=Depends(current_user)):
-    if body.experiment_id:
-        guard(runner.owned, "experiments", body.experiment_id, user["uid"])
-    if not agent.agent_configured():
-        raise HTTPException(503, "no model provider configured: set GEMINI_API_KEY or AGENT_PROVIDERS")
-    limits.consume(user["uid"], "agent_message")
-    item = runner.feed(user["uid"], "user", body.text, body.experiment_id)
-    job = agent.schedule_operator(user["uid"], body.text, body.experiment_id, created_by="user")
-    return {"item": item, "job": job}
 
 
 @app.get("/v1/feed")
@@ -686,11 +666,6 @@ def internal_task(payload: dict):
         log.error("rejected task payload: %s", exc)
         return {"rejected": str(exc)}
     return runner.handle_task(payload)
-
-
-@app.post("/internal/heartbeat", dependencies=[Depends(internal_caller)])
-def internal_heartbeat():
-    return agent.heartbeat()
 
 
 # ---------------------------------------------------------------- web app (same origin)
