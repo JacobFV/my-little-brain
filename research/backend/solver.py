@@ -107,13 +107,23 @@ def circuit(problem, gamma=0.65, beta=0.43):
     return qc
 
 
+def describe_circuit(qc, cap=240):
+    operations=[]
+    for inst in qc.data[:cap]:
+        operations.append({"gate":inst.operation.name,
+                           "qubits":[qc.find_bit(q).index for q in inst.qubits]})
+    return {"qubits":qc.num_qubits,"logical_gates":qc.size(),
+            "depth":qc.depth(),"operations":operations,
+            "truncated":len(qc.data)>cap}
+
+
 def local_qiskit(problem, shots=1024):
     from qiskit.primitives import StatevectorSampler
     qc=circuit(problem)
     counts=StatevectorSampler(seed=19).run([qc],shots=shots).result()[0].data.meas.get_counts()
     states=list(Counter({k:int(v) for k,v in counts.items()}).elements())
     result=summarize(states,problem,"ibm_simulator",gate_count=qc.size())
-    result["circuit_qasm"]="qiskit generated, inspect via serialized circuit in future builds"
+    result["circuit"]=describe_circuit(qc)
     return result
 
 
@@ -126,7 +136,7 @@ def submit_ibm(problem, shots=1024):
     job=Sampler(backend).run([isa],shots=shots)
     return {"provider_job_id":job.job_id(),"backend":backend.name,
             "transpiled_gate_count":isa.size(),
-            "logical_gate_count":circuit(problem).size(),"status":"submitted"}
+            "logical_gate_count":circuit(problem).size(),"circuit":describe_circuit(isa),"status":"submitted"}
 
 
 def poll_ibm(provider_job_id,problem):
