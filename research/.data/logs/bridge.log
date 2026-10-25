@@ -1,6 +1,0 @@
-[connecting] playback
-lab websocket on ws://127.0.0.1:8765
-[streaming] playback at 250 Hz · Fp1, Fp2, C3, C4, P7, P8, O1, O2
-
-stopping …
-[stopped]
