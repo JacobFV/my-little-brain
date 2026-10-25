@@ -1,0 +1,62 @@
+{
+ "id": "chbmit-chb01_03",
+ "label": "CHB-MIT chb01_03 \u00b7 seizure 2996\u20133036 s",
+ "kind": "recording",
+ "subject": "chb01",
+ "file": "chb01_03.edf",
+ "fs": 256,
+ "units": "uV",
+ "channels": [
+  "FP1-F7",
+  "F7-T7",
+  "T7-P7",
+  "P7-O1",
+  "FP1-F3",
+  "F3-C3",
+  "C3-P3",
+  "P3-O1",
+  "FP2-F4",
+  "F4-C4",
+  "C4-P4",
+  "P4-O2",
+  "FP2-F8",
+  "F8-T8",
+  "T8-P8",
+  "P8-O2",
+  "FZ-CZ",
+  "CZ-PZ",
+  "P7-T7",
+  "T7-FT9",
+  "FT9-FT10",
+  "FT10-T8",
+  "T8-P8-2"
+ ],
+ "excerpt_start": 2880,
+ "excerpt_end": 3100,
+ "seizures": [
+  {
+   "start": 2996,
+   "end": 3036
+  }
+ ],
+ "segments": {
+  "preictal": {
+   "start": 2900,
+   "end": 2960,
+   "label": "pre-ictal baseline (96\u201336 s before onset)"
+  },
+  "ictal": {
+   "start": 2996,
+   "end": 3036,
+   "label": "annotated seizure"
+  },
+  "postictal": {
+   "start": 3040,
+   "end": 3100,
+   "label": "post-ictal"
+  }
+ },
+ "source": "https://physionet.org/content/chbmit/1.0.0/chb01/chb01_03.edf",
+ "license": "Open Data Commons Attribution License v1.0",
+ "citation": "Shoeb AH. Application of Machine Learning to Epileptic Seizure Onset Detection and Treatment. PhD Thesis, MIT, 2009; Goldberger AL et al. PhysioBank, PhysioToolkit, and PhysioNet. Circulation 101(23):e215\u2013e220, 2000."
+}
