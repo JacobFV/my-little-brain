@@ -25,6 +25,8 @@ export interface BrainSceneProps {
   onPluginFocus?: (id: string) => void;
   activePluginInteractionId?: string | null;
   distraction?: DistractionKind | null;
+  /** Hackathon-only illustrative field propagation; not anatomical source localization. */
+  researchOverlay?: { intensities: number[]; opacity: number };
   /** At most four frames/second, copied to a stable canvas. Portal surfaces are
    * excluded from snapshots, bounding reciprocal viewing to one environment. */
   onFrame?: (canvas: HTMLCanvasElement) => void;
@@ -102,6 +104,45 @@ export function BrainScene(props: BrainSceneProps) {
     const { group, eyes, eyeRoots, cortex, subcortex } = createBrain(props.color);
     group.visible = false;
     scene.add(group);
+    // Cortex² research overlay: translucent stylized pathways and traveling activity pulses.
+    // These coordinates are anatomical illustrations, not EEG inverse localizations.
+    const activityNodes = [
+      [-0.53, 0.38, 0.20], [0.53, 0.38, 0.20],
+      [-0.74, 0.03, -0.08], [0.74, 0.03, -0.08],
+      [-0.36, 0.03, 0.43], [0.36, 0.03, 0.43],
+      [-0.35, -0.31, -0.38], [0.35, -0.31, -0.38],
+    ].map((v) => new THREE.Vector3(...(v as [number, number, number])));
+    const activityRoot = new THREE.Group();
+    group.add(activityRoot);
+    const activityBeads: THREE.Mesh[] = [];
+    const activityEdges: Array<{ mesh: THREE.Mesh; curve: THREE.CatmullRomCurve3; a: number; b: number; pulse: THREE.Mesh }> = [];
+    const activityLinks = [[0,4],[1,5],[2,4],[3,5],[4,6],[5,7],[4,5],[0,1],[6,7],[2,6],[3,7]];
+    for (const [a,b] of activityLinks) {
+      const start = activityNodes[a], end = activityNodes[b];
+      const curve = new THREE.CatmullRomCurve3([
+        start, start.clone().lerp(end, .35).add(new THREE.Vector3(0,.18,-.12)),
+        start.clone().lerp(end,.67).add(new THREE.Vector3(0,-.13,.08)), end,
+      ]);
+      const mesh = new THREE.Mesh(
+        new THREE.TubeGeometry(curve, 32, .008, 6, false),
+        new THREE.MeshBasicMaterial({color:'#65a8ab',transparent:true,opacity:.22,depthWrite:false}),
+      );
+      const pulse = new THREE.Mesh(
+        new THREE.SphereGeometry(.028, 10, 8),
+        new THREE.MeshBasicMaterial({color:'#e4ae69',transparent:true,opacity:.5,depthWrite:false}),
+      );
+      activityRoot.add(mesh,pulse);
+      activityEdges.push({mesh,curve,a,b,pulse});
+    }
+    for (const point of activityNodes) {
+      const bead = new THREE.Mesh(
+        new THREE.SphereGeometry(.046, 12, 10),
+        new THREE.MeshBasicMaterial({color:'#80d1bb',transparent:true,opacity:.75,depthWrite:false}),
+      );
+      bead.position.copy(point);
+      activityRoot.add(bead);
+      activityBeads.push(bead);
+    }
     const distraction = createDistraction();
     scene.add(distraction.root);
     const pluginInteractions = createPluginInteractions();
@@ -175,6 +216,20 @@ export function BrainScene(props: BrainSceneProps) {
         cortex.add(loaded.cortex);
         subcortex.add(loaded.subcortex);
         setAnatomyMode(cortex, subcortex, anatomyMode);
+        // On the lab route, the original meshes are drawn as a see-through shell.
+        // Material instances come from the separately loaded anatomy assets.
+        if (current.current.researchOverlay) {
+          for (const root of [loaded.cortex, loaded.subcortex])
+            root.traverse((obj) => {
+              if (!(obj instanceof THREE.Mesh)) return;
+              for (const material of Array.isArray(obj.material) ? obj.material : [obj.material]) {
+                material.transparent = true;
+                material.opacity = .28;
+                material.depthWrite = false;
+                material.needsUpdate = true;
+              }
+            });
+        }
         group.visible = true;
         setAnatomyState('ready');
       })
@@ -225,6 +280,27 @@ export function BrainScene(props: BrainSceneProps) {
       if (Boolean(p.anatomyMode) !== anatomyMode) {
         anatomyMode = Boolean(p.anatomyMode);
         setAnatomyMode(cortex, subcortex, anatomyMode);
+      }
+      const overlay = p.researchOverlay;
+      activityRoot.visible = Boolean(overlay);
+      if (overlay) {
+        const opacity = clamp(overlay.opacity, 0, 1);
+        for (let i = 0; i < activityBeads.length; i++) {
+          const intensity = clamp(overlay.intensities[i] ?? 0, 0, 1);
+          const bead = activityBeads[i];
+          bead.scale.setScalar(.65 + .9 * intensity);
+          const material = bead.material as THREE.MeshBasicMaterial;
+          material.opacity = opacity * (.3 + .7 * intensity);
+        }
+        for (let i = 0; i < activityEdges.length; i++) {
+          const edge = activityEdges[i];
+          const signal = clamp(((overlay.intensities[edge.a] ?? 0)+(overlay.intensities[edge.b] ?? 0)) / 2,0,1);
+          (edge.mesh.material as THREE.MeshBasicMaterial).opacity = opacity * (.16 + .58*signal);
+          (edge.pulse.material as THREE.MeshBasicMaterial).opacity = opacity * (.28 + .65*signal);
+          const progress = ((now * (.00016 + signal*.00015) + i*.117) % 1);
+          edge.pulse.position.copy(edge.curve.getPoint(progress));
+          edge.pulse.scale.setScalar(.55 + signal);
+        }
       }
       const energy = clamp(p.energy ?? 1, 0, 1);
       if (!p.paused) {
