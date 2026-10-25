@@ -1926,3 +1926,174 @@ svg {
 .focused-browser-screen {
   touch-action: none;
 }
+
+/* Connections and reciprocal portal views share the same touch-first workspace. */
+.connections-section-title {
+  font-size: 17px;
+  margin: 26px 0 16px;
+}
+.connection-progress {
+  color: #617b65;
+  font-size: 13px;
+}
+.portal-picker {
+  padding: 22px;
+  border: 1px solid #fff;
+  border-radius: 22px;
+  background: #ffffffa0;
+  margin: 16px 0;
+}
+.portal-picker h2 {
+  font-size: 19px;
+  margin-top: 0;
+}
+.portal-picker p {
+  color: #738071;
+  line-height: 1.6;
+}
+.portal-picker label {
+  display: grid;
+  gap: 8px;
+}
+.portal-picker select {
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid #d5ded4;
+  background: #fff9;
+  color: inherit;
+  font: inherit;
+  min-height: 44px;
+}
+.portal-render-source {
+  position: fixed;
+  left: -10000px;
+  top: 0;
+  width: 512px;
+  height: 512px;
+  pointer-events: none;
+}
+.portal-render-source > header,
+.portal-render-source > :not(.portal-world) {
+  display: none;
+}
+.portal-world {
+  position: relative;
+  flex: 1;
+  min-height: 180px;
+  overflow: hidden;
+  background: radial-gradient(ellipse at 50% 45%, #f6e7f18a, #f4f8f0);
+}
+.portal-render-source .portal-world {
+  width: 512px;
+  height: 512px;
+}
+.portal-world > .brain-scene {
+  position: absolute;
+  inset: 0;
+}
+.portal-world-label {
+  position: absolute;
+  left: 16px;
+  bottom: 12px;
+  font-size: 12px;
+  color: #748272;
+  pointer-events: none;
+}
+.portal-conversation {
+  max-height: 23%;
+  overflow: auto;
+  padding: 8px 20px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.portal-conversation p {
+  margin: 7px 0;
+  overflow-wrap: anywhere;
+}
+.portal-conversation strong {
+  color: #829079;
+  margin-right: 7px;
+}
+.portal-message {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid #e2e8df;
+}
+.portal-message input {
+  flex: 1;
+  min-width: 120px;
+  border: 1px solid #dde5d8;
+  border-radius: 14px;
+  background: #fff9;
+  padding: 10px 14px;
+  font: inherit;
+  font-size: 16px;
+  color: inherit;
+}
+.portal-message button {
+  padding: 8px 14px;
+  min-height: 44px;
+}
+.persistent-camera[hidden] {
+  display: none;
+}
+.connection-feedback {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(440px, calc(100% - 32px));
+  border-radius: 18px;
+  padding: 10px 15px;
+  background: #fffc;
+  backdrop-filter: blur(20px);
+  border: 1px solid white;
+  z-index: 14;
+  font-size: 13px;
+}
+.connection-feedback p {
+  margin: 4px 0;
+}
+.connection-feedback button {
+  padding: 6px 10px;
+  min-height: 36px;
+  margin-left: 8px;
+  border: 1px solid #dbe4d7;
+  border-radius: 10px;
+  background: white;
+}
+@media (max-width: 600px) {
+  .portal-conversation {
+    max-height: 25%;
+    padding: 8px 14px;
+  }
+  .portal-message {
+    padding: 10px;
+    gap: 6px;
+  }
+  .portal-message input {
+    flex-basis: calc(100% - 84px);
+  }
+  .portal-message button:last-child {
+    width: 100%;
+  }
+  .portal-picker {
+    padding: 16px;
+  }
+  .portal-picker .dialog-actions {
+    flex-wrap: wrap;
+  }
+}
+.scene-render-source {
+  position: fixed !important;
+  left: -12000px !important;
+  top: 0 !important;
+  width: 512px !important;
+  height: 512px !important;
+  pointer-events: none;
+}
+.scene-render-source > :not(.brain-scene) {
+  display: none;
+}

@@ -27,7 +27,7 @@ export const plugins: Plugin[] = [
   },
   {
     id: 'files',
-    name: 'Pocket files',
+    name: 'Open a file',
     description: 'Pick a text file, preview it, and share a passage with your brain.',
     platforms: all,
     ready: true,
@@ -35,12 +35,13 @@ export const plugins: Plugin[] = [
       'Only the passage you choose to share is sent. No folder scanning or background file access.',
   },
   {
-    id: 'circle',
-    name: 'Brain circle',
-    description: 'Let your brains explore an idea together, or give one a quiet task.',
+    id: 'portal',
+    name: 'Brain portal',
+    description: 'Open a window to another brain and let your environments meet.',
     platforms: all,
     ready: true,
-    privacy: 'The task and circle transcript go to OpenAI. Results are saved on this device.',
+    privacy:
+      'Connected brains share messages and snapshots of their rendered workspaces through OpenAI. Conversations stay on this device.',
   },
   {
     id: 'browser',
@@ -49,7 +50,7 @@ export const plugins: Plugin[] = [
     platforms: ['desktop'],
     ready: true,
     privacy:
-      'Visited sites receive normal browser requests. If you allow brain control, requested page text enters OpenAI context. Session screenshots stay on this device.',
+      'Visited sites receive normal browser requests. If you allow brain control, requested page text enters OpenAI context. An open brain portal can share a rendered workspace image, including this browser surface, with its peer through OpenAI.',
   },
   {
     id: 'computer',

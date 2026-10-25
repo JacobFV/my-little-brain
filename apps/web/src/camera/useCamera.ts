@@ -22,6 +22,7 @@ export function useCamera({
   const stream = useRef<MediaStream | null>(null);
   const generation = useRef(0);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cancelStartup = useRef<(() => void) | null>(null);
   const frame = useRef<ReturnType<typeof setTimeout> | null>(null);
   const facing = useRef<'environment' | 'user'>('environment');
   const observations = useRef<CameraObject[]>([]);
@@ -29,6 +30,8 @@ export function useCamera({
   callback.current = onObservations;
   const cleanup = useCallback(() => {
     generation.current++;
+    cancelStartup.current?.();
+    cancelStartup.current = null;
     if (timer.current) clearTimeout(timer.current);
     if (frame.current) clearTimeout(frame.current);
     stream.current?.getTracks().forEach((track) => track.stop());
@@ -39,6 +42,7 @@ export function useCamera({
   const stop = useCallback(() => {
     cleanup();
     setStatus('off');
+    setError('');
     setProgress('');
     setObjects([]);
     callback.current?.([]);
@@ -60,7 +64,18 @@ export function useCamera({
       setProgress('');
       setError(failure instanceof Error ? failure.message : 'Camera could not start.');
     };
-    try {
+    const cancelled = new Promise<void>((resolve) => {
+      cancelStartup.current = resolve;
+    });
+    const armStartup = (duration: number, message: string) => {
+      if (timer.current) clearTimeout(timer.current);
+      timer.current = setTimeout(() => fail(new Error(message)), duration);
+    };
+    armStartup(
+      30000,
+      'Camera permission request timed out. Check the browser permission prompt, then try again.',
+    );
+    const run = async () => {
       if (!navigator.mediaDevices?.getUserMedia)
         throw new Error('Camera access needs HTTPS or the desktop app.');
       const media = await navigator.mediaDevices.getUserMedia({
@@ -82,13 +97,15 @@ export function useCamera({
       if (!video)
         throw new Error('The camera preview is not mounted. Open the camera view and try again.');
       video.srcObject = media;
+      setProgress('Starting the camera preview…');
+      armStartup(
+        15000,
+        'Camera preview timed out. Check that the camera is available, then try again.',
+      );
       await video.play();
       if (!active()) return;
       setProgress('Preparing the local object detector…');
-      timer.current = setTimeout(
-        () => fail(new Error('The detector took too long to load. Try again.')),
-        45000,
-      );
+      armStartup(45000, 'The detector took too long to load. Try again.');
       const model = await loadDetector();
       if (!active()) return;
       if (timer.current) clearTimeout(timer.current);
@@ -138,14 +155,22 @@ export function useCamera({
         }
       };
       void detect();
+    };
+    try {
+      await Promise.race([run(), cancelled]);
     } catch (failure) {
-      fail(
-        failure instanceof DOMException && failure.name === 'NotAllowedError'
-          ? new Error(
-              'Camera permission was denied. Allow camera access in your browser or system settings, then retry.',
-            )
-          : failure,
-      );
+      const name = failure && typeof failure === 'object' && 'name' in failure ? failure.name : '';
+      const message =
+        name === 'NotAllowedError' || name === 'SecurityError'
+          ? 'Camera permission was denied. Allow camera access in your browser or system settings, then retry.'
+          : name === 'NotFoundError'
+            ? 'No camera was found. Connect a camera and try again.'
+            : name === 'NotReadableError' || name === 'AbortError'
+              ? 'The camera is unavailable or in use by another app. Check system camera access and try again.'
+              : null;
+      fail(message ? new Error(message) : failure);
+    } finally {
+      if (active()) cancelStartup.current = null;
     }
   }, [cleanup]);
   const switchCamera = useCallback(async () => {

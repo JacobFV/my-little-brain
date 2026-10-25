@@ -1,23 +1,39 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import { Camera, Mic, FileText, Users, Globe, Monitor, Image, Activity, Plug } from 'lucide-react';
 import { plugins, pluginStatus, readPocketFile, passageMessage, type Platform } from './catalog';
 const icons = [Camera, Mic, FileText, Users, Globe, Monitor, Image, Activity];
 export function PluginsPanel({
   platform,
+  resting = false,
+  onWake,
   cameraActive,
   voiceActive,
   onCamera,
   onVoice,
-  onCircle,
+  onPortal,
+  portalPicker,
+  accounts,
+  cameraStatus,
+  cameraError,
+  voiceStatus,
+  voiceError,
   onShare,
   openBrowser,
 }: {
   platform: Platform;
+  resting?: boolean;
+  onWake?: () => void;
   cameraActive: boolean;
   voiceActive: boolean;
   onCamera: () => void;
   onVoice: () => void;
-  onCircle: () => void;
+  onPortal: () => void;
+  portalPicker?: ReactNode;
+  accounts?: ReactNode;
+  cameraStatus?: string;
+  cameraError?: string;
+  voiceStatus?: string;
+  voiceError?: string;
   onShare: (text: string) => Promise<boolean>;
   openBrowser?: (url: string, options?: { allowControl?: boolean }) => Promise<void>;
 }) {
@@ -33,7 +49,7 @@ export function PluginsPanel({
     setNotice('');
     if (id === 'camera') onCamera();
     if (id === 'voice') onVoice();
-    if (id === 'circle') onCircle();
+    if (id === 'portal') onPortal();
     if (id === 'files') picker.current?.click();
     if (id === 'browser' && openBrowser)
       void openBrowser(url, { allowControl })
@@ -45,8 +61,8 @@ export function PluginsPanel({
       <header>
         <Plug size={25} />
         <div>
-          <h1>Little connections</h1>
-          <p>Give your brains a few new senses and tools.</p>
+          <h1>Connections</h1>
+          <p>Your accounts, senses, and windows to other brains.</p>
         </div>
       </header>
       <p className="feature-note">
@@ -112,6 +128,10 @@ export function PluginsPanel({
                     setFile(null);
                     setNotice('Passage shared with your brain.');
                   } else setError('The passage was not sent. Check the connection and try again.');
+                } catch (failure) {
+                  setError(
+                    failure instanceof Error ? failure.message : 'Could not share this file.',
+                  );
                 } finally {
                   setSharing(false);
                 }
@@ -122,6 +142,17 @@ export function PluginsPanel({
           </div>
         </section>
       )}
+      {resting && (
+        <p className="feature-note">
+          Your brain is resting.{' '}
+          <button className="outline-button" onClick={onWake}>
+            Wake brain
+          </button>
+        </p>
+      )}
+      {accounts}
+      {portalPicker}
+      <h2 className="connections-section-title">In your workspace</h2>
       <div className="plugin-grid">
         {plugins.map((plugin, index) => {
           const status = pluginStatus(plugin, platform),
@@ -132,9 +163,9 @@ export function PluginsPanel({
           const label = active
             ? 'Disconnect'
             : plugin.id === 'files'
-              ? 'Choose a file'
-              : plugin.id === 'circle'
-                ? 'Open circle'
+              ? 'Open a file'
+              : plugin.id === 'portal'
+                ? 'Open portal'
                 : plugin.id === 'browser'
                   ? 'Open browser'
                   : 'Connect';
@@ -167,6 +198,26 @@ export function PluginsPanel({
                   />
                 </>
               )}
+              {plugin.id === 'camera' && cameraStatus && (
+                <p role="status" className="connection-progress">
+                  {cameraStatus}
+                </p>
+              )}
+              {plugin.id === 'camera' && cameraError && (
+                <p role="alert" className="form-error">
+                  {cameraError}
+                </p>
+              )}
+              {plugin.id === 'voice' && voiceStatus && (
+                <p role="status" className="connection-progress">
+                  {voiceStatus}
+                </p>
+              )}
+              {plugin.id === 'voice' && voiceError && (
+                <p role="alert" className="form-error">
+                  {voiceError}
+                </p>
+              )}
               <footer>
                 <span>
                   {plugin.platforms.length === 4
@@ -177,7 +228,9 @@ export function PluginsPanel({
                 </span>
                 <button
                   className={active ? 'outline-button' : 'primary-button'}
-                  disabled={!available}
+                  disabled={
+                    !available || (resting && ['camera', 'voice', 'portal'].includes(plugin.id))
+                  }
                   onClick={() => action(plugin.id)}
                 >
                   {status === 'other-platform'

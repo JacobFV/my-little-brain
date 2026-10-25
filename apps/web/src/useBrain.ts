@@ -31,6 +31,7 @@ export function useBrain(
   const [status, setStatus] = useState<ConnectionStatus>('disconnected');
   const [thinking, setThinking] = useState(false);
   const [voice, setVoice] = useState(false);
+  const [voiceProgress, setVoiceProgress] = useState('');
   const [paused, setPaused] = useState(false);
   const [error, setError] = useState('');
   const [activeThoughtId, setActiveThoughtId] = useState<string | null>(null);
@@ -80,6 +81,7 @@ export function useBrain(
     connected.current = false;
     setStatus('disconnected');
     setVoice(false);
+    setVoiceProgress('');
     busy.current = false;
     setThinking(false);
     clearTimer();
@@ -398,7 +400,12 @@ export function useBrain(
         if (isCurrent()) {
           connected.current = value === 'connected';
           setStatus(value);
+          if (value !== 'connected') setVoice(false);
+          if (value !== 'connecting') setVoiceProgress('');
         }
+      },
+      onProgress: (message) => {
+        if (isCurrent()) setVoiceProgress(nextMode === 'audio' ? message : '');
       },
       onError: (message) => {
         if (isCurrent()) fail(message);
@@ -493,6 +500,8 @@ export function useBrain(
     status,
     thinking,
     voice,
+    voiceConnecting: status === 'connecting' && mode.current === 'audio',
+    voiceProgress,
     paused,
     error,
     setError,

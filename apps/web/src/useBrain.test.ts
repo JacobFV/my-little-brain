@@ -185,6 +185,45 @@ describe('useBrain lifecycle', () => {
     );
     expect(hook.getTwin().messages.map((m) => m.id)).toEqual(['spoken', 'reply']);
   });
+  it('shows microphone startup progress and clears it on cancellation', async () => {
+    const hook = setup();
+    let connecting!: Promise<void>;
+    act(() => {
+      connecting = hook.result.current.toggleVoice();
+    });
+    expect(hook.result.current.voiceConnecting).toBe(true);
+    act(() => transport.options!.onProgress?.('Requesting microphone permission…'));
+    expect(hook.result.current.voiceProgress).toMatch(/microphone permission/i);
+    await act(async () => {
+      await hook.result.current.toggleVoice();
+    });
+    expect(hook.result.current.voiceConnecting).toBe(false);
+    expect(hook.result.current.voiceProgress).toBe('');
+    await act(async () => {
+      transport.resolve?.();
+      await connecting;
+    });
+    expect(hook.result.current.voice).toBe(false);
+  });
+  it('turns off the active voice state when its connection ends', async () => {
+    const hook = setup();
+    let connecting!: Promise<void>;
+    act(() => {
+      connecting = hook.result.current.toggleVoice();
+    });
+    await act(async () => {
+      transport.resolve?.();
+      await connecting;
+    });
+    expect(hook.result.current.voice).toBe(true);
+    act(() => {
+      transport.options!.onStatus('disconnected');
+      transport.options!.onError('Voice connection was lost.');
+    });
+    expect(hook.result.current.voice).toBe(false);
+    expect(hook.result.current.voiceConnecting).toBe(false);
+    expect(hook.result.current.error).toMatch(/connection was lost/i);
+  });
 });
 
 describe('camera context', () => {

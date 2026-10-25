@@ -3,12 +3,14 @@ export interface PluginInteraction {
   id: string;
   pluginId: string;
   label: string;
-  kind: 'icon' | 'browser';
+  kind: 'icon' | 'browser' | 'portal';
   status: 'active' | 'complete' | 'error';
   x: number;
   y: number;
   startedAt: number;
   imageUrl?: string;
+  /** Stable scene snapshot canvas. Never retained after this interaction is disposed. */
+  liveCanvas?: HTMLCanvasElement;
 }
 export function interactionScale(age: number, exiting: boolean, reducedMotion: boolean) {
   const t = reducedMotion ? 1 : Math.min(1, Math.max(0, age / 500));
@@ -60,6 +62,7 @@ interface Entry {
   focusFrom: number;
   focusTo: number;
   focusStarted: number;
+  paintedAt?: number;
 }
 export function createPluginInteractions() {
   const root = new THREE.Group();
@@ -72,7 +75,34 @@ export function createPluginInteractions() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = '#fff9ef';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    if (data.kind === 'browser') {
+    if (data.kind === 'portal') {
+      ctx.fillStyle = '#e8f0ec';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      if (data.liveCanvas?.width && data.liveCanvas.height) {
+        const scale = Math.min(
+          canvas.width / data.liveCanvas.width,
+          (canvas.height - 38) / data.liveCanvas.height,
+        );
+        const width = data.liveCanvas.width * scale,
+          height = data.liveCanvas.height * scale;
+        ctx.drawImage(
+          data.liveCanvas,
+          (canvas.width - width) / 2,
+          38 + (canvas.height - 38 - height) / 2,
+          width,
+          height,
+        );
+      } else {
+        ctx.fillStyle = '#657b73';
+        ctx.font = '22px system-ui';
+        ctx.textAlign = 'center';
+        ctx.fillText('Opening environment…', canvas.width / 2, canvas.height / 2);
+      }
+      ctx.fillStyle = '#51685f';
+      ctx.font = '500 19px system-ui';
+      ctx.textAlign = 'left';
+      ctx.fillText(data.label.slice(0, 45), 18, 27, canvas.width - 50);
+    } else if (data.kind === 'browser') {
       ctx.fillStyle = '#ede9e5';
       ctx.fillRect(0, 0, 640, 44);
       ['#e8a5a8', '#e6cb8b', '#a8cbb5'].forEach((color, i) => {
@@ -179,14 +209,15 @@ export function createPluginInteractions() {
         let entry = entries.get(data.id);
         if (!entry) {
           const canvas = document.createElement('canvas');
-          canvas.width = data.kind === 'browser' ? 640 : 256;
-          canvas.height = data.kind === 'browser' ? 360 : 256;
+          canvas.width = data.kind !== 'icon' ? 640 : 256;
+          canvas.height = data.kind === 'portal' ? 640 : data.kind === 'browser' ? 360 : 256;
           const texture = new THREE.CanvasTexture(canvas);
           texture.colorSpace = THREE.SRGBColorSpace;
           const group = new THREE.Group();
           group.name = `plugin-${data.id}`;
-          const width = data.kind === 'browser' ? 1.05 : 0.42,
-            height = data.kind === 'browser' ? 0.62 : 0.46;
+          group.userData.portal = data.kind === 'portal';
+          const width = data.kind !== 'icon' ? 1.05 : 0.42,
+            height = data.kind === 'portal' ? 1.05 : data.kind === 'browser' ? 0.62 : 0.46;
           const frame = new THREE.Mesh(
             roundedPlane(width + 0.055, height + 0.055, 0.055),
             new THREE.MeshBasicMaterial({ color: '#d7cddd', side: THREE.DoubleSide }),
@@ -222,10 +253,15 @@ export function createPluginInteractions() {
           const changed =
             entry.data.imageUrl !== data.imageUrl ||
             entry.data.status !== data.status ||
-            entry.data.label !== data.label;
+            entry.data.label !== data.label ||
+            entry.data.liveCanvas !== data.liveCanvas;
           entry.data = data;
           entry.exiting = undefined;
           if (changed) imageUpdate(entry);
+        }
+        if (data.kind === 'portal' && now - (entry.paintedAt ?? -Infinity) >= 250) {
+          paint(entry);
+          entry.paintedAt = now;
         }
       }
       let target: THREE.Vector3 | undefined;
@@ -252,8 +288,9 @@ export function createPluginInteractions() {
           (entry.focusTo - entry.focusFrom) * focusTime * focusTime * (3 - 2 * focusTime);
         const focusedDistance = distance * (1 - entry.focus * 0.2);
         const viewHeight = 2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * focusedDistance;
-        const width = entry.data.kind === 'browser' ? 1.105 : 0.475,
-          height = entry.data.kind === 'browser' ? 0.675 : 0.515;
+        const width = entry.data.kind !== 'icon' ? 1.105 : 0.475,
+          height =
+            entry.data.kind === 'portal' ? 1.105 : entry.data.kind === 'browser' ? 0.675 : 0.515;
         const enlarged = Math.min(
           (viewHeight * camera.aspect * 0.86) / width,
           (viewHeight * 0.8) / height,
@@ -280,8 +317,9 @@ export function createPluginInteractions() {
     bounds(camera: THREE.PerspectiveCamera) {
       return [...entries.values()].map((entry) => {
         entry.group.updateMatrixWorld(true);
-        const width = entry.data.kind === 'browser' ? 1.105 : 0.475,
-          height = entry.data.kind === 'browser' ? 0.675 : 0.515;
+        const width = entry.data.kind !== 'icon' ? 1.105 : 0.475,
+          height =
+            entry.data.kind === 'portal' ? 1.105 : entry.data.kind === 'browser' ? 0.675 : 0.515;
         const a = entry.group
           .localToWorld(new THREE.Vector3(-width / 2, height / 2, 0))
           .project(camera);

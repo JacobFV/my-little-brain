@@ -4,7 +4,8 @@ export type PluginInteraction = {
   twinId: string;
   pluginId: string;
   label: string;
-  kind: 'icon' | 'browser';
+  kind: 'icon' | 'browser' | 'portal';
+  liveCanvas?: HTMLCanvasElement;
   status: 'active' | 'complete' | 'error';
   x: number;
   y: number;
