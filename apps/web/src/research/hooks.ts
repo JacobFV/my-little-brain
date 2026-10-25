@@ -112,6 +112,13 @@ export function useAuth() {
     return () => window.clearTimeout(t);
   }, [token, setToken]);
 
+  const signInDev = useCallback(() => setToken('dev'), [setToken]);
+  // Stable identity: callers put this in effect dependency lists.
+  const onUnauthorized = useCallback(() => {
+    setToken(null);
+    setAuthError('Your sign-in expired. Sign in again.');
+  }, [setToken]);
+
   /** Renders the Google button into `host` (script is only loaded when a client id is configured). */
   const mountGoogle = useCallback(
     (host: HTMLElement | null) => {
@@ -153,13 +160,10 @@ export function useAuth() {
     client,
     authError,
     setAuthError,
-    signInDev: () => setToken('dev'),
+    signInDev,
     signOut,
     mountGoogle,
-    onUnauthorized: () => {
-      setToken(null);
-      setAuthError('Your sign-in expired. Sign in again.');
-    },
+    onUnauthorized,
   };
 }
 

@@ -301,12 +301,14 @@ export default function ResearchLab() {
   const signedIn = !!me && !!token;
   const { status: bridgeStatus, live } = useBridge(signedIn ? client : null, signedIn);
 
+  const { onUnauthorized } = auth;
+  // Must keep a stable identity: it is a dependency of the bootstrap effect below.
   const fail = useCallback(
     (e: unknown) => {
-      if (e instanceof ApiError && e.status === 401) auth.onUnauthorized();
+      if (e instanceof ApiError && e.status === 401) onUnauthorized();
       setError(e instanceof Error ? e.message : String(e));
     },
-    [auth],
+    [onUnauthorized],
   );
 
   useEffect(() => {

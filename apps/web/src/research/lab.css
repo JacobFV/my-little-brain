@@ -1626,9 +1626,8 @@ p.cx-dim {
 }
 .cx-chips {
   display: flex;
+  flex-wrap: wrap;
   gap: 5px;
-  overflow-x: auto;
-  scrollbar-width: none;
 }
 .cx-chips button {
   display: inline-flex;
