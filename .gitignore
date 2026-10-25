@@ -27,3 +27,5 @@ research/.data/
 media/build/
 media/stills/
 media/app-clips/
+media/*.mp4
+!media/my-little-brain-45s.mp4

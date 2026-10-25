@@ -230,7 +230,7 @@ def r_spec(tl, dur, p, T):
     bx = 300 + 900 * ((tl * 0.9) % 1); by = 260 + 120 * math.sin(tl * 4)
     for (x0, y0b, sx, sy) in [(bx, by, 1, 1), (bx + 520, by, -1, 1), (bx, by + 360, 1, -1), (bx + 520, by + 360, -1, -1)]:
         d.line([(x0, y0b), (x0 + 70 * sx, y0b)], fill=CYAN, width=8); d.line([(x0, y0b), (x0, y0b + 70 * sy)], fill=CYAN, width=8)
-    d.text((bx + 10, by - 56), "GEMINI VISION ▸ ch T7-P7", font=font(40, "cond"), fill=CYAN)
+    d.text((bx + 10, by - 56), "GEMINI VISION > ch T7-P7", font=font(40, "cond"), fill=CYAN)
     caption(im, p.get("cap", "REAL DATA · CHB-MIT chb01_03 · TRIAGE"), CYAN)
     return im
 
