@@ -14,6 +14,7 @@ from fastapi import FastAPI, HTTPException, Header, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from firebase_admin import initialize_app, firestore
+from google.cloud.firestore_v1 import transactional
 from google.auth.transport.requests import Request as GoogleRequest
 from google.oauth2 import id_token
 from google.cloud import tasks_v2
@@ -96,11 +97,12 @@ def enqueue(job_id: str,uid:str,step="execute",delay=0,attempt=0):
         from google.api_core.exceptions import AlreadyExists
         if not isinstance(exc,AlreadyExists):raise
 
-def make_job(uid:str,provider:str,title:str,kind="inverse_search"):
+def make_job(uid:str,provider:str,title:str,kind="inverse_search",extra=None):
     job_id=uuid4().hex
     record={"owner":uid,"provider":provider,"title":title,"kind":kind,
             "status":"queued","created_at":now().isoformat(),"updated_at":now().isoformat(),
             "attempt":0,"result":None,"error":None}
+    record.update(extra or {})
     ref=db.collection("research_jobs").document(job_id)
     ref.create(record)
     try:enqueue(job_id,uid)
@@ -138,8 +140,7 @@ def analyses(user=Depends(user_from_header)):
 @app.post("/v1/agent/commands")
 def command(req:CommandRequest,user=Depends(user_from_header)):
     a=append_analysis(user["uid"],"research request",req.command)
-    job=make_job(user["uid"],"agent","research operator command","agent")
-    db.collection("research_jobs").document(job["id"]).update({"command":req.command})
+    job=make_job(user["uid"],"agent","research operator command","agent",{"command":req.command})
     return {"analysis":a,"job":job,"message":"agent work scheduled, persisted in firestore"}
 
 @app.post("/v1/eeg/ingest-token")
@@ -207,7 +208,7 @@ def execute(task:TaskMessage):
     if task.step=="poll" and state["status"]!="submitted":return {"not_pollable":True}
     if task.step=="execute":
         # Idempotency: transactionally acquire queued -> running before external dispatch.
-        @firestore.transactional
+        @transactional
         def acquire(tx):
             s=ref.get(transaction=tx)
             if s.to_dict().get("status")!="queued":return False
