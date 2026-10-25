@@ -58,6 +58,8 @@ export default function ResearchLab() {
   const [live, setLive] = useState(false);
   const [signal, setSignal] = useState<Signal | null>(null);
   const [busy, setBusy] = useState(false);
+  const [autopilot, setAutopilot] = useState(false);
+  const [ingestToken, setIngestToken] = useState('');
   const [info, setInfo] = useState('preview mode: illustrative eeg. hardware and cloud jobs require authentication and a deployed api.');
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
@@ -93,7 +95,7 @@ export default function ResearchLab() {
     return () => { script.remove(); };
   }, [token]);
   useEffect(() => {
-    if (!token) { setUser(null); setJobs([]); return; }
+    if (!token) { setUser(null); setJobs([]); setIngestToken(''); setAutopilot(false); return; }
     let alive = true;
     fetch(`${API}/v1/me`, { headers: { Authorization: `Bearer ${token}` } })
       .then(async r => { if (!r.ok) throw new Error(`sign-in rejected (${r.status})`); return r.json(); })
@@ -136,9 +138,29 @@ export default function ResearchLab() {
       if (!r.ok) throw new Error(payload.detail || `http ${r.status}`);
       setInfo(payload.message || 'request accepted');
       if (payload.job) { setJobs(j => [payload.job, ...j]); setSelected(payload.job.id); }
+      if (payload.token) setIngestToken(payload.token);
       if (payload.analysis) setAnalyses(a => [payload.analysis, ...a]);
     } catch(e) { setInfo(String(e)); }
     finally { setBusy(false); }
+  };
+  useEffect(() => {
+    if (!token) return;
+    fetch(`${API}/v1/session`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : Promise.reject(new Error('session settings unavailable')))
+      .then(v => setAutopilot(Boolean(v.autopilot)))
+      .catch(e => setInfo(String(e)));
+  }, [token]);
+  const toggleAutopilot = async (enabled: boolean) => {
+    if (!token) return;
+    try {
+      const r = await fetch(`${API}/v1/session`, { method: 'POST',
+        headers: {'Content-Type':'application/json',Authorization:`Bearer ${token}`},
+        body: JSON.stringify({autopilot:enabled}) });
+      if (!r.ok) throw new Error(`autopilot update failed (${r.status})`);
+      const result = await r.json();
+      setAutopilot(Boolean(result.autopilot));
+      setInfo(result.autopilot ? 'bounded research autopilot enabled (max 4 automatic software jobs)' : 'autopilot disabled');
+    } catch (e) { setInfo(String(e)); }
   };
   const project = sources.map((n, i) => ({
     ...n,
@@ -158,6 +180,8 @@ export default function ResearchLab() {
         <div className="cx-side-title">research workspace <button title="add experiment" onClick={() => setInfo('create a job from the quantum pane or ask the agent to investigate a hypothesis.')}><Plus size={16}/></button></div>
         <div className="cx-group-title"><Radio size={14}/> acquisition</div>
         <div className="cx-item selected"><Activity size={16}/><span>eeg session<small>{live ? 'connected • real samples' : 'synthetic demonstration'}</small></span></div>
+        <button className="cx-item" disabled={!user || busy} onClick={()=>void send('/v1/eeg/ingest-token',{})}><Radio size={16}/> pair openbci bridge</button>
+        {ingestToken && <div className="cx-ingest"><b>45-minute bridge token</b><code>{ingestToken}</code><button onClick={()=>void navigator.clipboard?.writeText(ingestToken)}>copy token</button><small>run the local bridge with CORTEX_INGEST_TOKEN. keep this token private.</small></div>}
         <div className="cx-group-title"><FlaskConical size={14}/> experiments</div>
         <div className="cx-job-list">
           {jobs.length === 0 ? <p className="cx-empty">no experiments yet. sign in, then dispatch a benchmark or solver job.</p> : jobs.map(job => <button key={job.id} className={selectedJob?.id === job.id ? 'cx-item selected' : 'cx-item'} onClick={() => {setSelected(job.id);setActiveTab('quantum');}}>
@@ -210,6 +234,7 @@ export default function ResearchLab() {
           {analyses.map(a => <div className="cx-analysis-card" key={a.id}><div className="cx-card-kicker"><Sparkles size={13}/> {a.kind}</div><p>{a.text}</p><small>{a.time}</small></div>)}
         </div>
         <div className="cx-agent"><div className="cx-agent-heading"><Sparkles size={15}/> gpt research operator <span>{user?'authenticated':'sign in required'}</span></div>
+          <label className="cx-autopilot"><input type="checkbox" checked={autopilot} disabled={!user} onChange={e=>void toggleAutopilot(e.target.checked)}/> allow bounded autonomous follow-ups <small>software only · max 4</small></label>
           <form onSubmit={e=>{e.preventDefault();if(!prompt.trim())return;void send('/v1/agent/commands',{command:prompt.trim()});setPrompt('');}}><textarea aria-label="agent command" placeholder="ask the agent to design, run, inspect or revise an experiment…" value={prompt} onChange={e=>setPrompt(e.target.value)}/><button disabled={!user || busy || !prompt.trim()} aria-label="send agent command"><Send size={16}/></button></form>
           <p>{info}</p>
         </div>
@@ -223,7 +248,7 @@ export default function ResearchLab() {
       .cx-head-status{font-size:12px;color:#849184}.cx-divider{color:#cad5c9}.cx-dot{width:8px;height:8px;border-radius:50%;background:#d3b77e}.cx-dot.live{background:#4ba984}.cx-auth{font-size:11px;white-space:nowrap}.cx-auth button{gap:5px}
       .cx-body{flex:1;min-height:0;display:flex}.cx-side{display:flex;flex-direction:column;min-width:0;background:var(--glass);backdrop-filter:blur(22px)}.cx-left{width:242px;flex-shrink:0;border-right:1px solid var(--line)}.cx-right{width:354px;flex-shrink:0;border-left:1px solid var(--line)}
       .cx-side-title{justify-content:space-between;font-weight:700;font-size:12px;padding:17px 17px 15px;border-bottom:1px solid var(--line)}.cx-group-title{padding:25px 18px 9px;color:#8f9a91;font-size:11px;letter-spacing:.04em;text-transform:uppercase}
-      .cx-item{border-radius:12px;text-align:left;min-height:42px;width:calc(100% - 20px);margin:3px 10px;padding:9px 11px;color:#647668}.cx-item.selected{background:#e8f0e6;color:#446b52}.cx-item span{flex:1}.cx-item small{display:block;font-size:10px;opacity:.72}.cx-job-list{overflow-y:auto;max-height:38vh}.cx-empty{font-size:12px;color:#9aaa9b;padding:10px 14px;line-height:1.7}.cx-left-bottom{margin-top:auto;padding:16px;display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--line);font-size:11px}.cx-left-bottom span{color:#a0aa9d}
+      .cx-item{border-radius:12px;text-align:left;min-height:42px;width:calc(100% - 20px);margin:3px 10px;padding:9px 11px;color:#647668}.cx-item.selected{background:#e8f0e6;color:#446b52}.cx-item span{flex:1}.cx-item small{display:block;font-size:10px;opacity:.72}.cx-job-list{overflow-y:auto;max-height:38vh}.cx-empty{font-size:12px;color:#9aaa9b;padding:10px 14px;line-height:1.7}.cx-ingest{margin:8px 16px;padding:9px;border-radius:10px;background:#e9f2ea;font-size:10px;overflow-wrap:anywhere}.cx-ingest code{display:block;padding:7px 0;word-break:break-all}.cx-ingest small{display:block;color:#849586}.cx-autopilot{font-size:11px;display:flex;align-items:center;gap:7px;margin-bottom:10px}.cx-autopilot small{color:#99a69b;margin-left:auto}.cx-left-bottom{margin-top:auto;padding:16px;display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--line);font-size:11px}.cx-left-bottom span{color:#a0aa9d}
       .cx-center{flex:1;min-width:0;display:flex;flex-direction:column}.cx-stage-toolbar{height:49px;border-bottom:1px solid var(--line);justify-content:space-between;padding:0 19px;font-size:11px;color:#92a092}.cx-tabs{height:100%;gap:18px}.cx-tabs button{height:100%;border-bottom:2px solid transparent;color:#879789}.cx-tabs button.current{color:#53695a;border-color:#819c84;font-weight:700}
       .cx-stage{flex:1;position:relative;min-height:220px;overflow:hidden;background:radial-gradient(ellipse at 50% 42%,#fcfffa,#eaf2e9)}.cx-stage-controls{position:absolute;top:15px;right:17px;padding:4px;background:#fffc;border:1px solid #dce7dd;border-radius:12px;z-index:8}.cx-stage-controls button{padding:5px 11px;border-radius:8px;font-size:11px}.cx-stage-controls button.active{background:#e5eee3;color:#477357}
       .cx-legend{position:absolute;bottom:16px;left:17px;z-index:8;display:flex;flex-direction:column;gap:2px;font-size:11px}.cx-legend span{font-size:10px;color:#8b9b8e}.cx-marker-layer{position:absolute;inset:0;pointer-events:none;z-index:7}.cx-marker{position:absolute;pointer-events:auto;border:1px solid #729e9b;background:#68a9b366;width:11px;height:11px;border-radius:50%;box-shadow:0 0 0 5px #5ea9b213}.cx-tooltip{position:absolute;bottom:20px;left:15px;width:155px;padding:10px;text-align:left;background:#fff;border:1px solid var(--line);border-radius:11px;box-shadow:0 12px 35px #49614a22;font-size:11px;z-index:9}.cx-tooltip strong{display:block;font-size:17px}.cx-tooltip small{display:block;color:#9daa9e}
