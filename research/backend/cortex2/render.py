@@ -93,6 +93,66 @@ def job_figure(exp: dict, job: dict) -> bytes:
     return buf.getvalue()
 
 
+def agent_figure(exp: dict, job: dict, observed: dict[str, float]) -> bytes:
+    """Search-side figure for the design agent: only hypotheses that were actually forward-simulated.
+
+    Unlike `job_figure` (the evaluator view for humans) it shows no loss landscape, no global minimum and
+    no hidden truth, so the agent cannot steer its search with oracle information.
+    """
+    ev = job["evaluation"]
+    best_known = min(observed, key=observed.get) if observed else ev["best"]["bitstring"]
+    fig = plt.figure(figsize=(12, 6.6), dpi=100)
+    gs = fig.add_gridspec(2, 3, height_ratios=[1, 1.05], hspace=0.45, wspace=0.3)
+    fig.suptitle(f"{job['provider']} · {job.get('approximation')} · job best validated {ev['best']['bitstring']} "
+                 f"(loss {ev['best_nonlinear_loss']:.3f}) · experiment best {best_known} "
+                 f"({observed.get(best_known, float('nan')):.3f})", color=INK, fontsize=10)
+
+    ax = fig.add_subplot(gs[0, :2])
+    obs = np.asarray(exp["observed_trace"]["samples"])
+    t_obs = np.arange(len(obs)) / exp["observed_trace"]["fs"]
+    sim = inv.simulated_trace(best_known, seconds=min(4.0, t_obs[-1] if len(t_obs) else 2.0))
+    ax.plot(t_obs, obs, color=INK, lw=0.9, label="observed (z-scored)")
+    ax.plot(np.arange(len(sim)) / nm.SIM_FS, sim - 4, color=ACCENT, lw=0.9, label=f"best validated {best_known} (offset)")
+    ax.set_yticks([]); ax.set_xlabel("s")
+    ax.legend(loc="upper left", bbox_to_anchor=(1.0, 1.0), fontsize=7, frameon=False)
+    ax.set_title("waveform: observed vs best validated hypothesis", fontsize=9, color=MUTED)
+
+    ax = fig.add_subplot(gs[0, 2])
+    x = np.arange(nm.N_FEATURES)
+    ax.bar(x - 0.2, exp["target"]["features"], 0.4, color=INK, label="observed")
+    ax.bar(x + 0.2, nm.forward_table().features[nm.grid_index(nm.bitstring_to_bits(best_known))], 0.4,
+           color=ACCENT, label="best validated")
+    ax.set_xticks(x, [n.replace("rel_logpow_", "").replace("Hz", "") for n in nm.FEATURE_NAMES], rotation=70, fontsize=6)
+    ax.legend(fontsize=7, frameon=False)
+    ax.set_title("features", fontsize=9, color=MUTED)
+
+    ax = fig.add_subplot(gs[1, 0])
+    cands = sorted(ev["candidates"], key=lambda c: -c["samples"])[:16]
+    labels = [f"{c['bitstring']}  " + (f"L={observed[c['bitstring']]:.2f}" if c["bitstring"] in observed else "unsimulated")
+              for c in cands]
+    ax.barh(range(len(cands))[::-1], [c["probability"] for c in cands],
+            color=[ACCENT if c["bitstring"] in observed else MUTED for c in cands])
+    ax.set_yticks(range(len(cands))[::-1], labels, fontsize=6, family="monospace")
+    ax.set_title("most-sampled states (blue = forward-simulated)", fontsize=9, color=MUTED)
+
+    ax = fig.add_subplot(gs[1, 1:])
+    new = {c["bitstring"] for c in ev.get("validated", [])}
+    items = list(observed.items())
+    ax.scatter(range(len(items)), [np.log10(v + 1e-3) for _, v in items],
+               c=[WARM if s in new else ACCENT for s, _ in items], s=14)
+    ax.set_xlabel("forward simulation # (validation order)")
+    ax.set_ylabel("log10 loss")
+    ax.set_title(f"every hypothesis simulated so far ({len(items)}/256; orange = this job)", fontsize=9, color=MUTED)
+    tr = job.get("transpiled") or {}
+    if tr:
+        fig.text(0.01, 0.005, f"physical gates {tr.get('gates')} (budget {tr.get('budget')}), 2q gates {tr.get('two_qubit_gates')}, "
+                 f"2q depth {tr.get('two_qubit_depth')}, target {tr.get('backend')}", fontsize=8, color=MUTED)
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png", bbox_inches="tight")
+    plt.close(fig)
+    return buf.getvalue()
+
+
 def spectrogram_grid(src: dict, channels: list[str] | None = None, max_channels: int = 23) -> bytes:
     """Stacked per-channel log spectrograms (1–45 Hz) with annotated events; what Gemini 'sees' in triage."""
     from scipy.signal import spectrogram

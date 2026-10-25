@@ -1,0 +1,1407 @@
+{
+ "preset": "alpha",
+ "experiment": {
+  "title": "synthetic alpha rhythm 10101011",
+  "target": {
+   "source": "synthetic",
+   "label": "synthetic hidden configuration (noise seed 1234)",
+   "weights": [
+    0.9145372238030175,
+    0.7297346288050502,
+    0.605654530125223,
+    0.5497234750879668,
+    0.5963850768894926,
+    0.769219179580417,
+    1.0554056117883575,
+    0.8251622322538075,
+    0.5464648895923916,
+    0.49616088500706346,
+    3.9115522670672127
+   ],
+   "feature_names": [
+    "rel_logpow_1.0-1.5Hz",
+    "rel_logpow_1.5-2.1Hz",
+    "rel_logpow_2.1-3.1Hz",
+    "rel_logpow_3.1-4.6Hz",
+    "rel_logpow_4.6-6.7Hz",
+    "rel_logpow_6.7-9.8Hz",
+    "rel_logpow_9.8-14.4Hz",
+    "rel_logpow_14.4-21.0Hz",
+    "rel_logpow_21.0-30.8Hz",
+    "rel_logpow_30.8-45.0Hz",
+    "log_amplitude"
+   ],
+   "truth_bitstring": "10101011",
+   "truth_params": {
+    "excitatory_drive": 3.0,
+    "inhibitory_gain": 16.0,
+    "recurrent_excitation": 16.0,
+    "synaptic_tau_ms": 30.0
+   },
+   "meta": {
+    "noise_seed": 1234
+   }
+  },
+  "features": [
+   -4.066681981150158,
+   -3.9763899640612905,
+   -3.9146618572549907,
+   -3.4854919829579467,
+   -2.7316504186449917,
+   -0.03219425520465503,
+   -1.8091382375818135,
+   -1.2875315822467945,
+   -2.9368154586890136,
+   -3.1487556771808842,
+   -0.9743529181668711
+  ]
+ },
+ "model_version": {
+  "levels": [
+   [
+    1.5,
+    2.0,
+    2.5,
+    3.0
+   ],
+   [
+    10.0,
+    13.0,
+    16.0,
+    19.0
+   ],
+   [
+    12.0,
+    14.0,
+    16.0,
+    18.0
+   ],
+   [
+    8.0,
+    16.0,
+    30.0,
+    55.0
+   ]
+  ],
+  "sim_seconds": 9.0,
+  "noise_seed": 7,
+  "fs": 2000.0,
+  "features": [
+   "rel_logpow_1.0-1.5Hz",
+   "rel_logpow_1.5-2.1Hz",
+   "rel_logpow_2.1-3.1Hz",
+   "rel_logpow_3.1-4.6Hz",
+   "rel_logpow_4.6-6.7Hz",
+   "rel_logpow_6.7-9.8Hz",
+   "rel_logpow_9.8-14.4Hz",
+   "rel_logpow_14.4-21.0Hz",
+   "rel_logpow_21.0-30.8Hz",
+   "rel_logpow_30.8-45.0Hz",
+   "log_amplitude"
+  ]
+ },
+ "agent_information": "blind",
+ "model_chain": [
+  {
+   "provider": "gemini/gemini-4-argon (GEMINI_API_KEY)",
+   "family": "gemini",
+   "model": "gemini-4-argon",
+   "configured": true,
+   "cooling_down": null
+  },
+  {
+   "provider": "gemini/gemini-4-argon (GEMINI_API_KEY_B)",
+   "family": "gemini",
+   "model": "gemini-4-argon",
+   "configured": true,
+   "cooling_down": null
+  },
+  {
+   "provider": "gemini/gemini-4-argon (GEMINI_API_KEY_C)",
+   "family": "gemini",
+   "model": "gemini-4-argon",
+   "configured": true,
+   "cooling_down": null
+  },
+  {
+   "provider": "gemini/gemini-4-argon (GEMINI_API_KEY_D)",
+   "family": "gemini",
+   "model": "gemini-4-argon",
+   "configured": true,
+   "cooling_down": null
+  },
+  {
+   "provider": "gemini/gemini-4-argon (GEMINI_API_KEY_E)",
+   "family": "gemini",
+   "model": "gemini-4-argon",
+   "configured": true,
+   "cooling_down": null
+  },
+  {
+   "provider": "gemini/gemini-3.8-flash (GEMINI_API_KEY_B)",
+   "family": "gemini",
+   "model": "gemini-3.8-flash",
+   "configured": true,
+   "cooling_down": null
+  },
+  {
+   "provider": "gemini/gemini-3.8-flash (GEMINI_API_KEY_C)",
+   "family": "gemini",
+   "model": "gemini-3.8-flash",
+   "configured": true,
+   "cooling_down": null
+  },
+  {
+   "provider": "openai/gpt-6.1-sol (OPENAI_API_KEY)",
+   "family": "openai",
+   "model": "gpt-6.1-sol",
+   "configured": false,
+   "cooling_down": null
+  }
+ ],
+ "baseline": {
+  "job_id": "172d22780adb4c1b85b6",
+  "provider": "aer_noisy",
+  "approximation": "trust_region",
+  "baseline": "00000000",
+  "trust_weight": 0.15,
+  "shots": 1024,
+  "spec": {
+   "reps": 1,
+   "max_couplings": 6,
+   "optimization_level": 3,
+   "prune_threshold": 0.0,
+   "warm_start": null,
+   "warm_epsilon": 0.25,
+   "coupling_order": "strength",
+   "seed_transpiler": 11
+  },
+  "qasm_source": "spec",
+  "created_by": "user",
+  "best_validated": "01100000",
+  "best_validated_loss": 3.095958868250985,
+  "new_validations": 8,
+  "approximation_ratio": 0.15953445596354632,
+  "p_consistent": 0.001953125,
+  "physical_gates": 106,
+  "two_qubit_gates": 15,
+  "two_qubit_depth": 11,
+  "transpile_target": "fake_torino",
+  "tvd_vs_ideal": 0.16041634755768258,
+  "truth_recovered": false,
+  "error": null
+ },
+ "iterations": [
+  {
+   "iteration": 1,
+   "seconds": 61.5,
+   "verdict": "improved",
+   "comparison_basis": "model_specified",
+   "new_best": true,
+   "metric_before": 3.095958868250985,
+   "metric_after": 1.9765249887204563,
+   "best_known_before": 3.095958868250985,
+   "best_known_after": 1.9765249887204563,
+   "forward_simulations_after": 16,
+   "experiment_best": "01110100",
+   "experiment_best_loss": 1.9765249887204563,
+   "experiment_best_rank": 10,
+   "providers": [
+    "gemini/gemini-4-argon (GEMINI_API_KEY)"
+   ],
+   "model_turns": 7,
+   "observation": "Prior job 172d22780adb4c1b85b6 (aer_noisy, 1024 shots, trust_region around baseline 00000000, trust_weight=0.15, max_couplings=6, reps=1) achieved best validated loss 3.0960 at 01100000 using 8 forward simulations (106 physical gates, 15 two-qubit gates, TVD vs ideal 0.1604).",
+   "diagnosis": "The initial job (172d22780adb4c1b85b6) linearised the trust-region QUBO around 00000000 and found 01100000 (loss 3.0960), which was also the argmin of that QUBO. Keeping the baseline at 00000000 would leave the quadratic expansion centred far from the best known region.",
+   "change": "Updated the trust_region baseline linearisation point from 00000000 to the best validated hypothesis 01100000 while keeping provider=aer_noisy, shots=1024, trust_weight=0.15, and spec (reps=1, max_couplings=6, coupling_order=strength, optimization_level=3, warm_epsilon=0.25) identical.",
+   "rationale": "Re-centring the trust-region expansion on 01100000 updates the local gradient and curvature around the current best point and shifts 58.99% of the top-16 ideal probability mass onto unsimulated neighbours of 01100000 within a 93-gate physical circuit (15 CZs, 2q depth 13).",
+   "next_step": "Re-centre the trust_region baseline on the new best validated hypothesis 01110100 (loss 1.9765, Spearman 0.7824 across the 16 simulated points) and evaluate whether warm-starting or adjusting coupling retention/trust_weight concentrates more probability on unsimulated neighbours of 01110100.",
+   "custom_qasm": false,
+   "secondary": {
+    "p_consistent_before": 0.001953125,
+    "p_consistent_after": 0.0,
+    "physical_gates_before": 106,
+    "physical_gates_after": 93,
+    "approximation_ratio_before": 0.15953445596354632,
+    "approximation_ratio_after": 0.4002981250903227,
+    "provider_before": "aer_noisy",
+    "provider_after": "aer_noisy"
+   },
+   "reference": {
+    "job_id": "172d22780adb4c1b85b6",
+    "provider": "aer_noisy",
+    "approximation": "trust_region",
+    "baseline": "00000000",
+    "trust_weight": 0.15,
+    "shots": 1024,
+    "spec": {
+     "reps": 1,
+     "max_couplings": 6,
+     "optimization_level": 3,
+     "prune_threshold": 0.0,
+     "warm_start": null,
+     "warm_epsilon": 0.25,
+     "coupling_order": "strength",
+     "seed_transpiler": 11
+    },
+    "qasm_source": "spec",
+    "created_by": "user",
+    "best_validated": "01100000",
+    "best_validated_loss": 3.095958868250985,
+    "new_validations": 8,
+    "approximation_ratio": 0.15953445596354632,
+    "p_consistent": 0.001953125,
+    "physical_gates": 106,
+    "two_qubit_gates": 15,
+    "two_qubit_depth": 11,
+    "transpile_target": "fake_torino",
+    "tvd_vs_ideal": 0.16041634755768258,
+    "truth_recovered": false,
+    "error": null
+   },
+   "revised": {
+    "job_id": "097355190a044b5cb9b0",
+    "provider": "aer_noisy",
+    "approximation": "trust_region",
+    "baseline": "01100000",
+    "trust_weight": 0.15,
+    "shots": 1024,
+    "spec": {
+     "prune_threshold": 0.0,
+     "warm_epsilon": 0.25,
+     "optimization_level": 3,
+     "max_couplings": 6,
+     "reps": 1,
+     "coupling_order": "strength",
+     "warm_start": null,
+     "seed_transpiler": 11
+    },
+    "qasm_source": "spec",
+    "created_by": "agent",
+    "best_validated": "01110100",
+    "best_validated_loss": 1.9765249887204563,
+    "new_validations": 8,
+    "approximation_ratio": 0.4002981250903227,
+    "p_consistent": 0.0,
+    "physical_gates": 93,
+    "two_qubit_gates": 15,
+    "two_qubit_depth": 13,
+    "transpile_target": "fake_torino",
+    "tvd_vs_ideal": 0.14477788234917113,
+    "truth_recovered": false,
+    "error": null
+   },
+   "jobs_run": [
+    {
+     "job_id": "097355190a044b5cb9b0",
+     "provider": "aer_noisy",
+     "approximation": "trust_region",
+     "baseline": "01100000",
+     "trust_weight": 0.15,
+     "shots": 1024,
+     "spec": {
+      "prune_threshold": 0.0,
+      "warm_epsilon": 0.25,
+      "optimization_level": 3,
+      "max_couplings": 6,
+      "reps": 1,
+      "coupling_order": "strength",
+      "warm_start": null,
+      "seed_transpiler": 11
+     },
+     "qasm_source": "spec",
+     "created_by": "agent",
+     "best_validated": "01110100",
+     "best_validated_loss": 1.9765249887204563,
+     "new_validations": 8,
+     "approximation_ratio": 0.4002981250903227,
+     "p_consistent": 0.0,
+     "physical_gates": 93,
+     "two_qubit_gates": 15,
+     "two_qubit_depth": 13,
+     "transpile_target": "fake_torino",
+     "tvd_vs_ideal": 0.14477788234917113,
+     "truth_recovered": false,
+     "error": null
+    }
+   ],
+   "tool_trace": [
+    {
+     "tool": "inspect_state",
+     "args": {}
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "baseline": "00000000",
+      "approximation": "trust_region",
+      "trust_weight": 0.15
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "approximation": "trust_region",
+      "baseline": "01100000",
+      "trust_weight": 0.15
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "baseline": "01100000",
+      "trust_weight": 0,
+      "approximation": "trust_region"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "baseline": "01100000",
+      "approximation": "secant"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "baseline": "01100000",
+      "approximation": "feature_regression"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "baseline": "01100000",
+      "trust_weight": 0.15,
+      "approximation": "trust_region",
+      "spec": {
+       "warm_epsilon": 0.25,
+       "prune_threshold": 0,
+       "reps": 1,
+       "coupling_order": "strength",
+       "optimization_level": 3,
+       "max_couplings": 6
+      }
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "approximation": "jacobian",
+      "baseline": "01100000"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "approximation": "surrogate",
+      "baseline": "01100000"
+     }
+    },
+    {
+     "tool": "run_experiment",
+     "args": {
+      "provider": "aer_noisy",
+      "spec": {
+       "prune_threshold": 0,
+       "warm_epsilon": 0.25,
+       "optimization_level": 3,
+       "max_couplings": 6,
+       "reps": 1,
+       "coupling_order": "strength"
+      },
+      "shots": 1024,
+      "trust_weight": 0.15,
+      "baseline": "01100000",
+      "approximation": "trust_region"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "trust_weight": 0.15,
+      "approximation": "trust_region",
+      "baseline": "01110100"
+     }
+    },
+    {
+     "tool": "record_revision",
+     "args": {
+      "revised_job_id": "097355190a044b5cb9b0",
+      "diagnosis": "The initial job (172d22780adb4c1b85b6) linearised the trust-region QUBO around 00000000 and found 01100000 (loss 3.0960), which was also the argmin of that QUBO. Keeping the baseline at 00000000 would leave the quadratic expansion centred far from the best known region.",
+      "reference_job_id": "172d22780adb4c1b85b6",
+      "rationale": "Re-centring the trust-region expansion on 01100000 updates the local gradient and curvature around the current best point and shifts 58.99% of the top-16 ideal probability mass onto unsimulated neighbours of 01100000 within a 93-gate physical circuit (15 CZs, 2q depth 13).",
+      "observation": "Prior job 172d22780adb4c1b85b6 (aer_noisy, 1024 shots, trust_region around baseline 00000000, trust_weight=0.15, max_couplings=6, reps=1) achieved best validated loss 3.0960 at 01100000 using 8 forward simulations (106 physical gates, 15 two-qubit gates, TVD vs ideal 0.1604).",
+      "next_step": "Re-centre the trust_region baseline on the new best validated hypothesis 01110100 (loss 1.9765, Spearman 0.7824 across the 16 simulated points) and evaluate whether warm-starting or adjusting coupling retention/trust_weight concentrates more probability on unsimulated neighbours of 01110100.",
+      "change": "Updated the trust_region baseline linearisation point from 00000000 to the best validated hypothesis 01100000 while keeping provider=aer_noisy, shots=1024, trust_weight=0.15, and spec (reps=1, max_couplings=6, coupling_order=strength, optimization_level=3, warm_epsilon=0.25) identical."
+     }
+    }
+   ],
+   "qasm_diff": "--- circuit.before.qasm\n+++ circuit.after.qasm\n@@ -12,24 +12,24 @@\n h q[7];\n-rz(-1.0633276044154547) q[0];\n-rz(-1.3475909285233012) q[1];\n-rz(-0.21259061101146057) q[2];\n-rz(-0.224779937928283) q[3];\n-rz(-0.30368593934361343) q[4];\n-rz(-0.37214708376209055) q[5];\n-rz(0.0038801995255722576) q[6];\n-rz(-0.7362849678810253) q[7];\n-rzz(0.6638629781287263) q[4],q[5];\n-rzz(0.47479285597161225) q[0],q[1];\n-rzz(0.4586300205058247) q[1],q[5];\n-rzz(-0.39231187059078654) q[5],q[7];\n-rzz(0.3653032631616716) q[6],q[7];\n-rzz(0.34075674374104375) q[1],q[4];\n-rx(-0.9783048496377111) q[0];\n-rx(-0.9783048496377111) q[1];\n-rx(-0.9783048496377111) q[2];\n-rx(-0.9783048496377111) q[3];\n-rx(-0.9783048496377111) q[4];\n-rx(-0.9783048496377111) q[5];\n-rx(-0.9783048496377111) q[6];\n-rx(-0.9783048496377111) q[7];\n+rz(-0.7010994484221216) q[0];\n+rz(-1.0378644164698316) q[1];\n+rz(-0.1544946921816165) q[2];\n+rz(-0.24680572633753647) q[3];\n+rz(-0.3850507495603117) q[4];\n+rz(1.2683688133464284) q[5];\n+rz(0.6639609373362276) q[6];\n+rz(-1.8597324986945682) q[7];\n+rzz(-0.3633711403734675) q[5],q[7];\n+rzz(0.17857376923923973) q[4],q[7];\n+rzz(-0.164369086736584) q[1],q[5];\n+rzz(-0.16247453776071014) q[1],q[6];\n+rzz(0.14995307801512142) q[1],q[7];\n+rzz(0.13395276986519541) q[0],q[1];\n+rx(4.748487034534822) q[0];\n+rx(4.748487034534822) q[1];\n+rx(4.748487034534822) q[2];\n+rx(4.748487034534822) q[3];\n+rx(4.748487034534822) q[4];\n+rx(4.748487034534822) q[5];\n+rx(4.748487034534822) q[6];\n+rx(4.748487034534822) q[7];\n barrier q[0],q[1],q[2],q[3],q[4],q[5],q[6],q[7];",
+   "spec_diff": "--- spec.before\n+++ spec.after\n@@ -2,3 +2,3 @@\n  \"betas\": [\n-  -0.48915242481885557\n+  2.374243517267411\n  ],\n@@ -6,3 +6,3 @@\n  \"gammas\": [\n-  0.6737954642616506\n+  0.9298662493472841\n  ],"
+  },
+  {
+   "iteration": 2,
+   "seconds": 95.6,
+   "verdict": "unchanged",
+   "comparison_basis": "model_specified",
+   "new_best": false,
+   "metric_before": 1.9765249887204563,
+   "metric_after": 3.285361709159553,
+   "best_known_before": 1.9765249887204563,
+   "best_known_after": 1.9765249887204563,
+   "forward_simulations_after": 24,
+   "experiment_best": "01110100",
+   "experiment_best_loss": 1.9765249887204563,
+   "experiment_best_rank": 10,
+   "providers": [
+    "gemini/gemini-4-argon (GEMINI_API_KEY)"
+   ],
+   "model_turns": 7,
+   "observation": "Executing the re-centred circuit on aer_noisy (job 43ec71a598694e0fa913, 107 physical gates, 18 two-qubit gates, 2q depth 16, TVD vs ideal 0.1646) sampled 01110100 most frequently overall, and among the 8 newly validated states found 01110101 with loss 3.2854 (57 samples), followed by 01100101 (8.1148), 01011100 (8.7656), 01111101 (9.5347), 00100100 (12.1075), 00111100 (12.4986), 00110100 (13.0690), and 01000100 (19.4359). The experiment best remains 01110100 (loss 1.9765) after 24/256 forward simulations.",
+   "diagnosis": "With baseline=01100000 (job 097355190a044b5cb9b0), the trust_region QUBO ranked the best validated state 01110100 (loss 1.9765) 6th among the 16 simulated points (Spearman 0.7382) and kept its argmin at 01100000 (loss 3.0960). Re-centring the trust_region linearisation on 01110100 improved Spearman correlation across the 16 simulated points to 0.7824 and placed 01110100 at QUBO rank 1, putting ideal probability mass on unsimulated Hamming neighbours such as 01110101 (p=0.0555), 01111101 (p=0.0348), and 00110100 (p=0.0315).",
+   "change": "Updated the trust_region baseline linearisation point from 01100000 to the best validated hypothesis 01110100 while keeping provider=aer_noisy, shots=1024, trust_weight=0.15, and spec (reps=1, max_couplings=6, coupling_order=strength, optimization_level=3, warm_epsilon=0.25) identical.",
+   "rationale": "Re-centring only the trust_region baseline isolates the effect of linearising around the new best hypothesis (01110100) on equal footing with job 097355190a044b5cb9b0. Inspection of the sampled distribution shows that pruning to max_couplings=6 dropped all couplings on qubits 3 and 4 and allowed probability mass to leak into q[6]=0 states (00100100, 00111100, 00110100, losses 12.11\u201313.07), narrowly crowding out promising unsimulated tau=16ms neighbours (01110110, 01111001, 01100001) from the top-8 validation cutoff.",
+   "next_step": "Keep baseline=01110100 on aer_noisy (shots=1024) and add warm_start='01110100' (or increase max_couplings within the 130-gate physical budget / use custom QASM) so probability concentrates on unsimulated tau=16ms (q[7:6]=01) neighbours such as 01110110 and 01111001 instead of leaking into high-loss tau=8ms (q[7:6]=00) states.",
+   "custom_qasm": false,
+   "secondary": {
+    "p_consistent_before": 0.0,
+    "p_consistent_after": 0.0,
+    "physical_gates_before": 93,
+    "physical_gates_after": 107,
+    "approximation_ratio_before": 0.4002981250903227,
+    "approximation_ratio_after": 0.3924242109756815,
+    "provider_before": "aer_noisy",
+    "provider_after": "aer_noisy"
+   },
+   "reference": {
+    "job_id": "097355190a044b5cb9b0",
+    "provider": "aer_noisy",
+    "approximation": "trust_region",
+    "baseline": "01100000",
+    "trust_weight": 0.15,
+    "shots": 1024,
+    "spec": {
+     "prune_threshold": 0.0,
+     "warm_epsilon": 0.25,
+     "optimization_level": 3,
+     "max_couplings": 6,
+     "reps": 1,
+     "coupling_order": "strength",
+     "warm_start": null,
+     "seed_transpiler": 11
+    },
+    "qasm_source": "spec",
+    "created_by": "agent",
+    "best_validated": "01110100",
+    "best_validated_loss": 1.9765249887204563,
+    "new_validations": 8,
+    "approximation_ratio": 0.4002981250903227,
+    "p_consistent": 0.0,
+    "physical_gates": 93,
+    "two_qubit_gates": 15,
+    "two_qubit_depth": 13,
+    "transpile_target": "fake_torino",
+    "tvd_vs_ideal": 0.14477788234917113,
+    "truth_recovered": false,
+    "error": null
+   },
+   "revised": {
+    "job_id": "43ec71a598694e0fa913",
+    "provider": "aer_noisy",
+    "approximation": "trust_region",
+    "baseline": "01110100",
+    "trust_weight": 0.15,
+    "shots": 1024,
+    "spec": {
+     "max_couplings": 6,
+     "warm_epsilon": 0.25,
+     "optimization_level": 3,
+     "reps": 1,
+     "prune_threshold": 0.0,
+     "coupling_order": "strength",
+     "warm_start": null,
+     "seed_transpiler": 11
+    },
+    "qasm_source": "spec",
+    "created_by": "agent",
+    "best_validated": "01110101",
+    "best_validated_loss": 3.285361709159553,
+    "new_validations": 8,
+    "approximation_ratio": 0.3924242109756815,
+    "p_consistent": 0.0,
+    "physical_gates": 107,
+    "two_qubit_gates": 18,
+    "two_qubit_depth": 16,
+    "transpile_target": "fake_torino",
+    "tvd_vs_ideal": 0.16464164343536528,
+    "truth_recovered": false,
+    "error": null
+   },
+   "jobs_run": [
+    {
+     "job_id": "43ec71a598694e0fa913",
+     "provider": "aer_noisy",
+     "approximation": "trust_region",
+     "baseline": "01110100",
+     "trust_weight": 0.15,
+     "shots": 1024,
+     "spec": {
+      "max_couplings": 6,
+      "warm_epsilon": 0.25,
+      "optimization_level": 3,
+      "reps": 1,
+      "prune_threshold": 0.0,
+      "coupling_order": "strength",
+      "warm_start": null,
+      "seed_transpiler": 11
+     },
+     "qasm_source": "spec",
+     "created_by": "agent",
+     "best_validated": "01110101",
+     "best_validated_loss": 3.285361709159553,
+     "new_validations": 8,
+     "approximation_ratio": 0.3924242109756815,
+     "p_consistent": 0.0,
+     "physical_gates": 107,
+     "two_qubit_gates": 18,
+     "two_qubit_depth": 16,
+     "transpile_target": "fake_torino",
+     "tvd_vs_ideal": 0.16464164343536528,
+     "truth_recovered": false,
+     "error": null
+    }
+   ],
+   "tool_trace": [
+    {
+     "tool": "inspect_state",
+     "args": {}
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "approximation": "trust_region",
+      "baseline": "01110100",
+      "trust_weight": 0.15
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "trust_weight": 0.15,
+      "approximation": "trust_region",
+      "baseline": "01100000"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "trust_weight": 0.15,
+      "spec": {
+       "optimization_level": 3,
+       "warm_epsilon": 0.25,
+       "max_couplings": 6,
+       "prune_threshold": 0,
+       "coupling_order": "strength",
+       "reps": 1
+      },
+      "baseline": "01110100",
+      "approximation": "trust_region"
+     }
+    },
+    {
+     "tool": "run_experiment",
+     "args": {
+      "spec": {
+       "max_couplings": 6,
+       "warm_epsilon": 0.25,
+       "optimization_level": 3,
+       "reps": 1,
+       "prune_threshold": 0,
+       "coupling_order": "strength"
+      },
+      "shots": 1024,
+      "baseline": "01110100",
+      "approximation": "trust_region",
+      "trust_weight": 0.15,
+      "provider": "aer_noisy"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "trust_weight": 0,
+      "baseline": "01110100",
+      "approximation": "trust_region"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "approximation": "secant",
+      "baseline": "01110100"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "baseline": "01110100",
+      "approximation": "feature_regression"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "approximation": "surrogate"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "baseline": "01110100",
+      "approximation": "jacobian"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "baseline": "01110100",
+      "approximation": "regression"
+     }
+    },
+    {
+     "tool": "record_revision",
+     "args": {
+      "change": "Updated the trust_region baseline linearisation point from 01100000 to the best validated hypothesis 01110100 while keeping provider=aer_noisy, shots=1024, trust_weight=0.15, and spec (reps=1, max_couplings=6, coupling_order=strength, optimization_level=3, warm_epsilon=0.25) identical.",
+      "next_step": "Keep baseline=01110100 on aer_noisy (shots=1024) and add warm_start='01110100' (or increase max_couplings within the 130-gate physical budget / use custom QASM) so probability concentrates on unsimulated tau=16ms (q[7:6]=01) neighbours such as 01110110 and 01111001 instead of leaking into high-loss tau=8ms (q[7:6]=00) states.",
+      "rationale": "Re-centring only the trust_region baseline isolates the effect of linearising around the new best hypothesis (01110100) on equal footing with job 097355190a044b5cb9b0. Inspection of the sampled distribution shows that pruning to max_couplings=6 dropped all couplings on qubits 3 and 4 and allowed probability mass to leak into q[6]=0 states (00100100, 00111100, 00110100, losses 12.11\u201313.07), narrowly crowding out promising unsimulated tau=16ms neighbours (01110110, 01111001, 01100001) from the top-8 validation cutoff.",
+      "reference_job_id": "097355190a044b5cb9b0",
+      "observation": "Executing the re-centred circuit on aer_noisy (job 43ec71a598694e0fa913, 107 physical gates, 18 two-qubit gates, 2q depth 16, TVD vs ideal 0.1646) sampled 01110100 most frequently overall, and among the 8 newly validated states found 01110101 with loss 3.2854 (57 samples), followed by 01100101 (8.1148), 01011100 (8.7656), 01111101 (9.5347), 00100100 (12.1075), 00111100 (12.4986), 00110100 (13.0690), and 01000100 (19.4359). The experiment best remains 01110100 (loss 1.9765) after 24/256 forward simulations.",
+      "revised_job_id": "43ec71a598694e0fa913",
+      "diagnosis": "With baseline=01100000 (job 097355190a044b5cb9b0), the trust_region QUBO ranked the best validated state 01110100 (loss 1.9765) 6th among the 16 simulated points (Spearman 0.7382) and kept its argmin at 01100000 (loss 3.0960). Re-centring the trust_region linearisation on 01110100 improved Spearman correlation across the 16 simulated points to 0.7824 and placed 01110100 at QUBO rank 1, putting ideal probability mass on unsimulated Hamming neighbours such as 01110101 (p=0.0555), 01111101 (p=0.0348), and 00110100 (p=0.0315)."
+     }
+    }
+   ],
+   "qasm_diff": "--- circuit.before.qasm\n+++ circuit.after.qasm\n@@ -12,24 +12,24 @@\n h q[7];\n-rz(-0.7010994484221216) q[0];\n-rz(-1.0378644164698316) q[1];\n-rz(-0.1544946921816165) q[2];\n-rz(-0.24680572633753647) q[3];\n-rz(-0.3850507495603117) q[4];\n-rz(1.2683688133464284) q[5];\n-rz(0.6639609373362276) q[6];\n-rz(-1.8597324986945682) q[7];\n-rzz(-0.3633711403734675) q[5],q[7];\n-rzz(0.17857376923923973) q[4],q[7];\n-rzz(-0.164369086736584) q[1],q[5];\n-rzz(-0.16247453776071014) q[1],q[6];\n-rzz(0.14995307801512142) q[1],q[7];\n-rzz(0.13395276986519541) q[0],q[1];\n-rx(4.748487034534822) q[0];\n-rx(4.748487034534822) q[1];\n-rx(4.748487034534822) q[2];\n-rx(4.748487034534822) q[3];\n-rx(4.748487034534822) q[4];\n-rx(4.748487034534822) q[5];\n-rx(4.748487034534822) q[6];\n-rx(4.748487034534822) q[7];\n+rz(0.4568114748937863) q[0];\n+rz(1.0390160934343964) q[1];\n+rz(-0.6975525710243268) q[2];\n+rz(0.23142143276044658) q[3];\n+rz(-0.3214927647388065) q[4];\n+rz(-0.7544262979454435) q[5];\n+rz(-0.6999387528466178) q[6];\n+rz(1.8983748189267715) q[7];\n+rzz(0.30997047446037324) q[2],q[7];\n+rzz(0.24010299192001802) q[5],q[7];\n+rzz(0.18311480626486384) q[1],q[6];\n+rzz(-0.17639243749521008) q[1],q[7];\n+rzz(-0.14481579211250253) q[0],q[1];\n+rzz(0.0793368801481436) q[0],q[6];\n+rx(1.5143154359676798) q[0];\n+rx(1.5143154359676798) q[1];\n+rx(1.5143154359676798) q[2];\n+rx(1.5143154359676798) q[3];\n+rx(1.5143154359676798) q[4];\n+rx(1.5143154359676798) q[5];\n+rx(1.5143154359676798) q[6];\n+rx(1.5143154359676798) q[7];\n barrier q[0],q[1],q[2],q[3],q[4],q[5],q[6],q[7];",
+   "spec_diff": "--- spec.before\n+++ spec.after\n@@ -2,3 +2,3 @@\n  \"betas\": [\n-  2.374243517267411\n+  0.7571577179838399\n  ],\n@@ -6,3 +6,3 @@\n  \"gammas\": [\n-  0.9298662493472841\n+  -0.9491874094633858\n  ],"
+  },
+  {
+   "iteration": 3,
+   "seconds": 334.3,
+   "verdict": "improved",
+   "comparison_basis": "model_specified",
+   "new_best": true,
+   "metric_before": 3.285361709159553,
+   "metric_after": 0.08599788545305999,
+   "best_known_before": 1.9765249887204563,
+   "best_known_after": 0.08599788545305999,
+   "forward_simulations_after": 32,
+   "experiment_best": "10101011",
+   "experiment_best_loss": 0.08599788545305999,
+   "experiment_best_rank": 1,
+   "providers": [
+    "gemini/gemini-4-argon (GEMINI_API_KEY)"
+   ],
+   "model_turns": 13,
+   "observation": "Reference job 43ec71a598694e0fa913 (aer_noisy, shots=1024, trust_region, baseline=01110100, trust_weight=0.15) achieved a job best validated loss of 3.2854 (01110101) and left the experiment best unchanged at 1.9765 (01110100). Revised job f8fdb905db1b4f259c25 reduced physical gates from 107 to 42 (two-qubit gates from 18 to 5, two-qubit depth from 16 to 3, tvd_vs_ideal from 0.1646 to 0.1139, distinct_states_sampled from 140 to 52), increased ideal mass_on_unsimulated_among_top16 from 0.0181 to 0.9351, and found three hypotheses beating the prior global best: 10101011 (loss 0.0860, 350 samples), 10111011 (loss 1.6718, 22 samples), and 10101010 (loss 1.8452, 40 samples).",
+   "diagnosis": "In reference job 43ec71a598694e0fa913, all 8 top ideal states were already simulated (mass_on_unsimulated_among_top16=0.0181) because the diagonal fields h[7]=-32.75 and h[1]=-17.92 pinned probability to the heavily explored (q[7:6]=01, q[1:0]=00) region where 14/16 states were already validated. Moreover, 5 of the 6 retained couplings connected to q[6] and q[7], requiring SWAP routing (107 physical gates, 18 CZ gates, two-qubit depth 16, tvd_vs_ideal=0.1646) that leaked probability into high-loss tau=8ms (q[7:6]=00) states (losses 12.11\u201313.07) instead of following the off-diagonal Hessian couplings (J[2,7]=-5.35, J[1,6]=-3.16, J[1,7]=+3.04, J[0,1]=+2.50) across the (q[7:6]=01, 10) alpha-rhythm degeneracy. Adding spec warm_start='01110100' exceeded the 130-gate physical budget (132 physical gates) and still left mass_on_unsimulated_among_top16=0.0281.",
+   "change": "Replaced the structured QAOA spec (reps=1, max_couplings=6) with a SWAP-free 5-CX custom OpenQASM 2.0 circuit (42 physical gates, 5 CZ gates, two-qubit depth 3 on fake_torino) while keeping provider=aer_noisy, shots=1024, approximation=trust_region, baseline=01110100, and trust_weight=0.15 identical.",
+   "rationale": "A degree-<=2 tree/path of 5 CX gates routed without SWAPs on fake_torino anti-correlates (q[7], q[6]) into {01, 10} (eliminating tau=8ms and tau=55ms leakage), fixes q[5]=1 (c1 in {16, 18}), and couples q[7] to (q[4], q[3], q[2], q[0]) along the off-diagonal Hessian couplings J[2,7], J[1,6], J[1,7], and J[0,1], concentrating 93.51% of top-16 ideal mass on unsimulated states in both the tau=16ms (01110110) and tau=30ms high-drive/high-inhibition (10101011, 10111011, 10101010) branches.",
+   "next_step": "Re-centre the trust_region baseline on the new best validated hypothesis 10101011 (loss 0.0860) on aer_noisy (shots=1024) and evaluate whether any unsimulated neighbours in the tau=30ms (q[7:6]=10) basin (such as 10101111, 10111010, or 10011011) achieve even lower loss.",
+   "custom_qasm": true,
+   "secondary": {
+    "p_consistent_before": 0.0,
+    "p_consistent_after": 0.341796875,
+    "physical_gates_before": 107,
+    "physical_gates_after": 42,
+    "approximation_ratio_before": 0.3924242109756815,
+    "approximation_ratio_after": 0.62665321622358,
+    "provider_before": "aer_noisy",
+    "provider_after": "aer_noisy"
+   },
+   "reference": {
+    "job_id": "43ec71a598694e0fa913",
+    "provider": "aer_noisy",
+    "approximation": "trust_region",
+    "baseline": "01110100",
+    "trust_weight": 0.15,
+    "shots": 1024,
+    "spec": {
+     "max_couplings": 6,
+     "warm_epsilon": 0.25,
+     "optimization_level": 3,
+     "reps": 1,
+     "prune_threshold": 0.0,
+     "coupling_order": "strength",
+     "warm_start": null,
+     "seed_transpiler": 11
+    },
+    "qasm_source": "spec",
+    "created_by": "agent",
+    "best_validated": "01110101",
+    "best_validated_loss": 3.285361709159553,
+    "new_validations": 8,
+    "approximation_ratio": 0.3924242109756815,
+    "p_consistent": 0.0,
+    "physical_gates": 107,
+    "two_qubit_gates": 18,
+    "two_qubit_depth": 16,
+    "transpile_target": "fake_torino",
+    "tvd_vs_ideal": 0.16464164343536528,
+    "truth_recovered": false,
+    "error": null
+   },
+   "revised": {
+    "job_id": "f8fdb905db1b4f259c25",
+    "provider": "aer_noisy",
+    "approximation": "trust_region",
+    "baseline": "01110100",
+    "trust_weight": 0.15,
+    "shots": 1024,
+    "spec": null,
+    "qasm_source": "agent_qasm",
+    "created_by": "agent",
+    "best_validated": "10101011",
+    "best_validated_loss": 0.08599788545305999,
+    "new_validations": 8,
+    "approximation_ratio": 0.62665321622358,
+    "p_consistent": 0.341796875,
+    "physical_gates": 42,
+    "two_qubit_gates": 5,
+    "two_qubit_depth": 3,
+    "transpile_target": "fake_torino",
+    "tvd_vs_ideal": 0.11393017396542256,
+    "truth_recovered": true,
+    "error": null
+   },
+   "jobs_run": [
+    {
+     "job_id": "f8fdb905db1b4f259c25",
+     "provider": "aer_noisy",
+     "approximation": "trust_region",
+     "baseline": "01110100",
+     "trust_weight": 0.15,
+     "shots": 1024,
+     "spec": null,
+     "qasm_source": "agent_qasm",
+     "created_by": "agent",
+     "best_validated": "10101011",
+     "best_validated_loss": 0.08599788545305999,
+     "new_validations": 8,
+     "approximation_ratio": 0.62665321622358,
+     "p_consistent": 0.341796875,
+     "physical_gates": 42,
+     "two_qubit_gates": 5,
+     "two_qubit_depth": 3,
+     "transpile_target": "fake_torino",
+     "tvd_vs_ideal": 0.11393017396542256,
+     "truth_recovered": true,
+     "error": null
+    }
+   ],
+   "tool_trace": [
+    {
+     "tool": "inspect_state",
+     "args": {}
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "trust_weight": 0.15,
+      "approximation": "trust_region",
+      "baseline": "01110100"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "approximation": "trust_region",
+      "trust_weight": 0.15,
+      "spec": {
+       "warm_epsilon": 0.25,
+       "coupling_order": "strength",
+       "max_couplings": 6,
+       "prune_threshold": 0,
+       "reps": 1,
+       "optimization_level": 3,
+       "warm_start": "01110100"
+      },
+      "baseline": "01110100"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "approximation": "trust_region",
+      "trust_weight": 0,
+      "baseline": "01110100"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "baseline": "01110100",
+      "approximation": "secant"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "approximation": "feature_regression",
+      "baseline": "01110100"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "approximation": "surrogate"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "approximation": "jacobian",
+      "baseline": "01110100"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "approximation": "trust_region",
+      "trust_weight": 0,
+      "baseline": "01110101"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "approximation": "trust_region",
+      "baseline": "01111000",
+      "trust_weight": 0
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "baseline": "01110100",
+      "approximation": "regression"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "approximation": "trust_region",
+      "baseline": "01110100",
+      "trust_weight": 0.15,
+      "spec": {
+       "max_couplings": 6,
+       "reps": 1,
+       "warm_epsilon": 0.25,
+       "optimization_level": 3,
+       "prune_threshold": 0,
+       "coupling_order": "strength"
+      }
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "approximation": "trust_region",
+      "spec": {
+       "prune_threshold": 0,
+       "reps": 1,
+       "max_couplings": 8,
+       "warm_epsilon": 0.25,
+       "coupling_order": "strength",
+       "optimization_level": 3
+      },
+      "trust_weight": 0.15,
+      "baseline": "01110100"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "approximation": "trust_region",
+      "spec": {
+       "reps": 1,
+       "max_couplings": 8,
+       "prune_threshold": 0,
+       "coupling_order": "greedy_coloring",
+       "optimization_level": 3,
+       "warm_epsilon": 0.25
+      },
+      "trust_weight": 0.15,
+      "baseline": "01110100"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "spec": {
+       "max_couplings": 6,
+       "optimization_level": 3,
+       "coupling_order": "strength",
+       "prune_threshold": 0,
+       "warm_epsilon": 0.25,
+       "reps": 1
+      },
+      "approximation": "feature_regression",
+      "baseline": "01110100"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "baseline": "01110100",
+      "trust_weight": 0.15,
+      "approximation": "trust_region",
+      "qasm": "(custom)"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "approximation": "trust_region",
+      "trust_weight": 0.15,
+      "baseline": "01110100",
+      "qasm": "(custom)"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "baseline": "01110100",
+      "trust_weight": 0.15,
+      "approximation": "trust_region",
+      "qasm": "(custom)"
+     }
+    },
+    {
+     "tool": "run_experiment",
+     "args": {
+      "provider": "aer_noisy",
+      "baseline": "01110100",
+      "trust_weight": 0.15,
+      "shots": 1024,
+      "approximation": "trust_region",
+      "qasm": "(custom)"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "trust_weight": 0.15,
+      "approximation": "trust_region",
+      "baseline": "10101011"
+     }
+    },
+    {
+     "tool": "record_revision",
+     "args": {
+      "diagnosis": "In reference job 43ec71a598694e0fa913, all 8 top ideal states were already simulated (mass_on_unsimulated_among_top16=0.0181) because the diagonal fields h[7]=-32.75 and h[1]=-17.92 pinned probability to the heavily explored (q[7:6]=01, q[1:0]=00) region where 14/16 states were already validated. Moreover, 5 of the 6 retained couplings connected to q[6] and q[7], requiring SWAP routing (107 physical gates, 18 CZ gates, two-qubit depth 16, tvd_vs_ideal=0.1646) that leaked probability into high-loss tau=8ms (q[7:6]=00) states (losses 12.11\u201313.07) instead of following the off-diagonal Hessian couplings (J[2,7]=-5.35, J[1,6]=-3.16, J[1,7]=+3.04, J[0,1]=+2.50) across the (q[7:6]=01, 10) alpha-rhythm degeneracy. Adding spec warm_start='01110100' exceeded the 130-gate physical budget (132 physical gates) and still left mass_on_unsimulated_among_top16=0.0281.",
+      "reference_job_id": "43ec71a598694e0fa913",
+      "next_step": "Re-centre the trust_region baseline on the new best validated hypothesis 10101011 (loss 0.0860) on aer_noisy (shots=1024) and evaluate whether any unsimulated neighbours in the tau=30ms (q[7:6]=10) basin (such as 10101111, 10111010, or 10011011) achieve even lower loss.",
+      "rationale": "A degree-<=2 tree/path of 5 CX gates routed without SWAPs on fake_torino anti-correlates (q[7], q[6]) into {01, 10} (eliminating tau=8ms and tau=55ms leakage), fixes q[5]=1 (c1 in {16, 18}), and couples q[7] to (q[4], q[3], q[2], q[0]) along the off-diagonal Hessian couplings J[2,7], J[1,6], J[1,7], and J[0,1], concentrating 93.51% of top-16 ideal mass on unsimulated states in both the tau=16ms (01110110) and tau=30ms high-drive/high-inhibition (10101011, 10111011, 10101010) branches.",
+      "revised_job_id": "f8fdb905db1b4f259c25",
+      "observation": "Reference job 43ec71a598694e0fa913 (aer_noisy, shots=1024, trust_region, baseline=01110100, trust_weight=0.15) achieved a job best validated loss of 3.2854 (01110101) and left the experiment best unchanged at 1.9765 (01110100). Revised job f8fdb905db1b4f259c25 reduced physical gates from 107 to 42 (two-qubit gates from 18 to 5, two-qubit depth from 16 to 3, tvd_vs_ideal from 0.1646 to 0.1139, distinct_states_sampled from 140 to 52), increased ideal mass_on_unsimulated_among_top16 from 0.0181 to 0.9351, and found three hypotheses beating the prior global best: 10101011 (loss 0.0860, 350 samples), 10111011 (loss 1.6718, 22 samples), and 10101010 (loss 1.8452, 40 samples).",
+      "change": "Replaced the structured QAOA spec (reps=1, max_couplings=6) with a SWAP-free 5-CX custom OpenQASM 2.0 circuit (42 physical gates, 5 CZ gates, two-qubit depth 3 on fake_torino) while keeping provider=aer_noisy, shots=1024, approximation=trust_region, baseline=01110100, and trust_weight=0.15 identical."
+     }
+    }
+   ],
+   "qasm_diff": "--- circuit.before.qasm\n+++ circuit.after.qasm\n@@ -4,32 +4,16 @@\n creg meas[8];\n-h q[0];\n-h q[1];\n-h q[2];\n-h q[3];\n-h q[4];\n-h q[5];\n-h q[6];\n-h q[7];\n-rz(0.4568114748937863) q[0];\n-rz(1.0390160934343964) q[1];\n-rz(-0.6975525710243268) q[2];\n-rz(0.23142143276044658) q[3];\n-rz(-0.3214927647388065) q[4];\n-rz(-0.7544262979454435) q[5];\n-rz(-0.6999387528466178) q[6];\n-rz(1.8983748189267715) q[7];\n-rzz(0.30997047446037324) q[2],q[7];\n-rzz(0.24010299192001802) q[5],q[7];\n-rzz(0.18311480626486384) q[1],q[6];\n-rzz(-0.17639243749521008) q[1],q[7];\n-rzz(-0.14481579211250253) q[0],q[1];\n-rzz(0.0793368801481436) q[0],q[6];\n-rx(1.5143154359676798) q[0];\n-rx(1.5143154359676798) q[1];\n-rx(1.5143154359676798) q[2];\n-rx(1.5143154359676798) q[3];\n-rx(1.5143154359676798) q[4];\n-rx(1.5143154359676798) q[5];\n-rx(1.5143154359676798) q[6];\n-rx(1.5143154359676798) q[7];\n+ry(1.7) q[7];\n+x q[6];\n+x q[5];\n+x q[2];\n+ry(2.5) q[1];\n+cx q[7],q[6];\n+cx q[6],q[4];\n+cx q[7],q[3];\n+ry(-0.55) q[3];\n+cx q[3],q[2];\n+cx q[7],q[0];\n+ry(0.35) q[2];\n+ry(0.5) q[4];\n+ry(0.6) q[0];\n barrier q[0],q[1],q[2],q[3],q[4],q[5],q[6],q[7];",
+   "spec_diff": "--- spec.before\n+++ spec.after\n@@ -1,16 +1 @@\n-{\n- \"betas\": [\n-  0.7571577179838399\n- ],\n- \"coupling_order\": \"strength\",\n- \"gammas\": [\n-  -0.9491874094633858\n- ],\n- \"max_couplings\": 6,\n- \"optimization_level\": 3,\n- \"prune_threshold\": 0.0,\n- \"reps\": 1,\n- \"seed_transpiler\": 11,\n- \"warm_epsilon\": 0.25,\n- \"warm_start\": null\n-}\n+null"
+  },
+  {
+   "iteration": 4,
+   "seconds": 402.5,
+   "verdict": "improved",
+   "comparison_basis": "model_specified",
+   "new_best": false,
+   "metric_before": 0.08599788545305999,
+   "metric_after": 0.6324640863113198,
+   "best_known_before": 0.08599788545305999,
+   "best_known_after": 0.08599788545305999,
+   "forward_simulations_after": 40,
+   "experiment_best": "10101011",
+   "experiment_best_loss": 0.08599788545305999,
+   "experiment_best_rank": 1,
+   "providers": [
+    "gemini/gemini-4-argon (GEMINI_API_KEY)"
+   ],
+   "model_turns": 8,
+   "observation": "Re-centring trust_region on baseline=10101011 improved QUBO ranking of 10101011 from 246th to 1st and Spearman correlation across the 32 simulated hypotheses from 0.0894 to 0.2654. Executing the 4-CX SWAP-free circuit on aer_noisy (job 2dbb6d540a7d4f6fb96e, 38 physical gates, 4 CZ gates, two-qubit depth 3, tvd_vs_ideal=0.0756, distinct_states_sampled=36) placed 869/1024 shots (84.9%) onto 8 unsimulated neighbours in the tau=30ms basin and identified two sub-1.0 loss hypotheses: 10111111 (loss 0.6325, 117 shots) and 10101111 (loss 0.6935, 107 shots), which are the 2nd and 3rd lowest losses among all 40 simulated hypotheses after 10101011 (loss 0.0860).",
+   "diagnosis": "In reference job f8fdb905db1b4f259c25, the trust_region QUBO was still linearised around the old baseline 01110100 (loss 1.9765), which ranked the newly discovered best hypothesis 10101011 (loss 0.0860) 246th out of 256 (Spearman 0.0894 across the 32 simulated points) and spent 373/1024 shots on high-loss tau=16ms states (01110110, 01100110, 01111010 with losses 10.40\u201312.60). Moreover, 5 states in the tau=30ms basin (10101011, 10111011, 10101010, 10100111, 10101001) were now already simulated, so structured QAOA on baseline=10101011 would spend >52% of ideal probability on already-simulated states (mass_on_unsimulated_among_top16=0.3195, 102 physical gates, 16 CZ gates).",
+   "change": "Re-centred the trust_region baseline from 01110100 to the new best validated hypothesis 10101011 and updated the SWAP-free custom OpenQASM 2.0 circuit to a 4-CX heavy-hex tree (38 physical gates, 4 CZ gates, two-qubit depth 3 on fake_torino) targeting unsimulated neighbours in the tau=30ms (q[7:6]=10) basin while keeping provider=aer_noisy, shots=1024, approximation=trust_region, and trust_weight=0.15 identical.",
+   "rationale": "Re-centring the trust_region expansion on 10101011 reveals strong positive Hessian coupling J[3,5]=+7.8253 between inhibitory gain c2 (q[3:2]) and recurrent excitation c1 (q[5:4]). Using a 4-CX tree (cx q[5],q[4]; cx q[5],q[3]; cx q[4],q[2]; cx q[5],q[0]) embeds into fake_torino with zero SWAPs (4 CZ gates, two-qubit depth 3), analytically zeroes out amplitude on the already-simulated 10101011, 10101010, and 10100111 states, and concentrates 90.56% of ideal probability across the 8 unsimulated single-step and excitation-inhibition compensated neighbours of 10101011 (mass_on_unsimulated_among_top16=0.9470).",
+   "next_step": "Keep baseline=10101011, provider=aer_noisy, shots=1024, and trust_weight=0.15, and update the SWAP-free custom QASM circuit to validate the remaining 4 unsimulated Hamming-1 neighbours of 10101011 (10100011, 10001011, 11101011, 00101011) along with 10110111 and tau=55ms neighbours (11101111, 11111011, 11111111) to complete verification around 10101011.",
+   "custom_qasm": true,
+   "secondary": {
+    "p_consistent_before": 0.341796875,
+    "p_consistent_after": 0.0068359375,
+    "physical_gates_before": 42,
+    "physical_gates_after": 38,
+    "approximation_ratio_before": 0.62665321622358,
+    "approximation_ratio_after": 0.7839080223801705,
+    "provider_before": "aer_noisy",
+    "provider_after": "aer_noisy"
+   },
+   "reference": {
+    "job_id": "f8fdb905db1b4f259c25",
+    "provider": "aer_noisy",
+    "approximation": "trust_region",
+    "baseline": "01110100",
+    "trust_weight": 0.15,
+    "shots": 1024,
+    "spec": null,
+    "qasm_source": "agent_qasm",
+    "created_by": "agent",
+    "best_validated": "10101011",
+    "best_validated_loss": 0.08599788545305999,
+    "new_validations": 8,
+    "approximation_ratio": 0.62665321622358,
+    "p_consistent": 0.341796875,
+    "physical_gates": 42,
+    "two_qubit_gates": 5,
+    "two_qubit_depth": 3,
+    "transpile_target": "fake_torino",
+    "tvd_vs_ideal": 0.11393017396542256,
+    "truth_recovered": true,
+    "error": null
+   },
+   "revised": {
+    "job_id": "2dbb6d540a7d4f6fb96e",
+    "provider": "aer_noisy",
+    "approximation": "trust_region",
+    "baseline": "10101011",
+    "trust_weight": 0.15,
+    "shots": 1024,
+    "spec": null,
+    "qasm_source": "agent_qasm",
+    "created_by": "agent",
+    "best_validated": "10111111",
+    "best_validated_loss": 0.6324640863113198,
+    "new_validations": 8,
+    "approximation_ratio": 0.7839080223801705,
+    "p_consistent": 0.0068359375,
+    "physical_gates": 38,
+    "two_qubit_gates": 4,
+    "two_qubit_depth": 3,
+    "transpile_target": "fake_torino",
+    "tvd_vs_ideal": 0.07564488840390195,
+    "truth_recovered": false,
+    "error": null
+   },
+   "jobs_run": [
+    {
+     "job_id": "2dbb6d540a7d4f6fb96e",
+     "provider": "aer_noisy",
+     "approximation": "trust_region",
+     "baseline": "10101011",
+     "trust_weight": 0.15,
+     "shots": 1024,
+     "spec": null,
+     "qasm_source": "agent_qasm",
+     "created_by": "agent",
+     "best_validated": "10111111",
+     "best_validated_loss": 0.6324640863113198,
+     "new_validations": 8,
+     "approximation_ratio": 0.7839080223801705,
+     "p_consistent": 0.0068359375,
+     "physical_gates": 38,
+     "two_qubit_gates": 4,
+     "two_qubit_depth": 3,
+     "transpile_target": "fake_torino",
+     "tvd_vs_ideal": 0.07564488840390195,
+     "truth_recovered": false,
+     "error": null
+    }
+   ],
+   "tool_trace": [
+    {
+     "tool": "inspect_state",
+     "args": {}
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "trust_weight": 0.15,
+      "approximation": "trust_region",
+      "baseline": "10101011"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "trust_weight": 0.15,
+      "approximation": "trust_region",
+      "baseline": "01110100"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "spec": {
+       "prune_threshold": 0,
+       "warm_epsilon": 0.25,
+       "reps": 1,
+       "optimization_level": 3,
+       "max_couplings": 6,
+       "coupling_order": "strength"
+      },
+      "approximation": "trust_region",
+      "baseline": "10101011",
+      "trust_weight": 0.15
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "approximation": "trust_region",
+      "baseline": "10101011",
+      "trust_weight": 0.15,
+      "qasm": "(custom)"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "trust_weight": 0.15,
+      "baseline": "10101011",
+      "approximation": "trust_region",
+      "qasm": "(custom)"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "baseline": "10101011",
+      "approximation": "trust_region",
+      "trust_weight": 0.15,
+      "qasm": "(custom)"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "trust_weight": 0.15,
+      "approximation": "trust_region",
+      "baseline": "10101011",
+      "qasm": "(custom)"
+     }
+    },
+    {
+     "tool": "run_experiment",
+     "args": {
+      "provider": "aer_noisy",
+      "approximation": "trust_region",
+      "baseline": "10101011",
+      "trust_weight": 0.15,
+      "shots": 1024,
+      "qasm": "(custom)"
+     }
+    },
+    {
+     "tool": "record_revision",
+     "args": {
+      "revised_job_id": "2dbb6d540a7d4f6fb96e",
+      "change": "Re-centred the trust_region baseline from 01110100 to the new best validated hypothesis 10101011 and updated the SWAP-free custom OpenQASM 2.0 circuit to a 4-CX heavy-hex tree (38 physical gates, 4 CZ gates, two-qubit depth 3 on fake_torino) targeting unsimulated neighbours in the tau=30ms (q[7:6]=10) basin while keeping provider=aer_noisy, shots=1024, approximation=trust_region, and trust_weight=0.15 identical.",
+      "observation": "Re-centring trust_region on baseline=10101011 improved QUBO ranking of 10101011 from 246th to 1st and Spearman correlation across the 32 simulated hypotheses from 0.0894 to 0.2654. Executing the 4-CX SWAP-free circuit on aer_noisy (job 2dbb6d540a7d4f6fb96e, 38 physical gates, 4 CZ gates, two-qubit depth 3, tvd_vs_ideal=0.0756, distinct_states_sampled=36) placed 869/1024 shots (84.9%) onto 8 unsimulated neighbours in the tau=30ms basin and identified two sub-1.0 loss hypotheses: 10111111 (loss 0.6325, 117 shots) and 10101111 (loss 0.6935, 107 shots), which are the 2nd and 3rd lowest losses among all 40 simulated hypotheses after 10101011 (loss 0.0860).",
+      "reference_job_id": "f8fdb905db1b4f259c25",
+      "rationale": "Re-centring the trust_region expansion on 10101011 reveals strong positive Hessian coupling J[3,5]=+7.8253 between inhibitory gain c2 (q[3:2]) and recurrent excitation c1 (q[5:4]). Using a 4-CX tree (cx q[5],q[4]; cx q[5],q[3]; cx q[4],q[2]; cx q[5],q[0]) embeds into fake_torino with zero SWAPs (4 CZ gates, two-qubit depth 3), analytically zeroes out amplitude on the already-simulated 10101011, 10101010, and 10100111 states, and concentrates 90.56% of ideal probability across the 8 unsimulated single-step and excitation-inhibition compensated neighbours of 10101011 (mass_on_unsimulated_among_top16=0.9470).",
+      "next_step": "Keep baseline=10101011, provider=aer_noisy, shots=1024, and trust_weight=0.15, and update the SWAP-free custom QASM circuit to validate the remaining 4 unsimulated Hamming-1 neighbours of 10101011 (10100011, 10001011, 11101011, 00101011) along with 10110111 and tau=55ms neighbours (11101111, 11111011, 11111111) to complete verification around 10101011.",
+      "diagnosis": "In reference job f8fdb905db1b4f259c25, the trust_region QUBO was still linearised around the old baseline 01110100 (loss 1.9765), which ranked the newly discovered best hypothesis 10101011 (loss 0.0860) 246th out of 256 (Spearman 0.0894 across the 32 simulated points) and spent 373/1024 shots on high-loss tau=16ms states (01110110, 01100110, 01111010 with losses 10.40\u201312.60). Moreover, 5 states in the tau=30ms basin (10101011, 10111011, 10101010, 10100111, 10101001) were now already simulated, so structured QAOA on baseline=10101011 would spend >52% of ideal probability on already-simulated states (mass_on_unsimulated_among_top16=0.3195, 102 physical gates, 16 CZ gates)."
+     }
+    }
+   ],
+   "qasm_diff": "--- circuit.before.qasm\n+++ circuit.after.qasm\n@@ -4,16 +4,17 @@\n creg meas[8];\n-ry(1.7) q[7];\n-x q[6];\n-x q[5];\n-x q[2];\n-ry(2.5) q[1];\n-cx q[7],q[6];\n-cx q[6],q[4];\n-cx q[7],q[3];\n-ry(-0.55) q[3];\n-cx q[3],q[2];\n-cx q[7],q[0];\n-ry(0.35) q[2];\n-ry(0.5) q[4];\n-ry(0.6) q[0];\n+x q[7];\n+x q[1];\n+ry(1.85) q[5];\n+ry(0.85) q[4];\n+cx q[5],q[4];\n+ry(2.29159265) q[4];\n+ry(0.95) q[3];\n+cx q[5],q[3];\n+ry(0.95) q[3];\n+ry(0.95) q[2];\n+cx q[4],q[2];\n+ry(2.19159265) q[2];\n+ry(0.72) q[0];\n+cx q[5],q[0];\n+ry(2.42159265) q[0];\n barrier q[0],q[1],q[2],q[3],q[4],q[5],q[6],q[7];",
+   "spec_diff": null
+  },
+  {
+   "iteration": 5,
+   "seconds": 384.3,
+   "verdict": "regressed",
+   "comparison_basis": "model_specified",
+   "new_best": false,
+   "metric_before": 0.6324640863113198,
+   "metric_after": 7.605176335791212,
+   "best_known_before": 0.08599788545305999,
+   "best_known_after": 0.08599788545305999,
+   "forward_simulations_after": 48,
+   "experiment_best": "10101011",
+   "experiment_best_loss": 0.08599788545305999,
+   "experiment_best_rank": 1,
+   "providers": [
+    "gemini/gemini-4-argon (GEMINI_API_KEY)"
+   ],
+   "model_turns": 5,
+   "observation": "In reference job 2dbb6d540a7d4f6fb96e (aer_noisy, shots=1024, trust_region, baseline=10101011, trust_weight=0.15, 38 physical gates, 4 CZ gates, two-qubit depth 3, tvd_vs_ideal=0.0756), 8 tau=30ms neighbours were validated (best 10111111, loss 0.6325). In revised job 48cfc8c8513e49bf9649 (aer_noisy, shots=1024, trust_region, baseline=10101011, trust_weight=0.15, 34 physical gates, 4 CZ gates, two-qubit depth 3, tvd_vs_ideal=0.0799), all 8 target states were validated: 10110111 (46 samples, loss 7.6052), 10001011 (57 samples, loss 12.3161), 11101111 (68 samples, loss 13.7645), 11101011 (229 samples, loss 17.4461), 00101011 (49 samples, loss 17.7367), 11111111 (100 samples, loss 18.9165), 11111011 (57 samples, loss 20.3030), and 10100011 (80 samples, loss 40.7425).",
+   "diagnosis": "After reference job 2dbb6d540a7d4f6fb96e validated 8 states in the tau=30ms basin (best 10111111 with loss 0.6325 and 10101111 with loss 0.6935), all 8 top states of that circuit were already simulated (so re-running it would yield 0 new validations), while 4 of the 8 Hamming-1 neighbours of the best validated hypothesis 10101011 (loss 0.0860) \u2014 namely 10100011 (flip q[3]), 10001011 (flip q[5]), 11101011 (flip q[6]), and 00101011 (flip q[7]) \u2014 remained unsimulated. Because all 4 unsimulated Hamming-1 flips on (q[7], q[6], q[5], q[3]) have even parity whereas the already-simulated (1,0,1,1) core has odd parity, coupling q[6] = q[7] XOR q[5] XOR q[3] completely suppresses the already-simulated (10101011, 10101111, 10111011, 10111111) states and concentrates 83.43% of the top-16 ideal probability on unsimulated neighbours.",
+   "change": "Updated the SWAP-free 4-CX custom OpenQASM 2.0 circuit to a parity-coupled heavy-hex star+pair topology (34 physical gates, 4 CZ gates, two-qubit depth 3 on fake_torino) targeting the 4 remaining unsimulated Hamming-1 neighbours of 10101011 (10100011, 10001011, 11101011, 00101011) alongside 10110111 and the tau=55ms neighbours (11101111, 11111011, 11111111), while keeping provider=aer_noisy, shots=1024, approximation=trust_region, baseline=10101011, and trust_weight=0.15 identical.",
+   "rationale": "By setting q[6] = q[7] XOR q[5] XOR q[3] via three CX gates into q[6] and entangling (q[4], q[2]) with one CX gate, the circuit embeds SWAP-free onto fake_torino (4 CZ gates, 34 physical gates, two-qubit depth 3) and places all 8 top ideal probabilities on the exact 8 target unsimulated states (11101011 p=0.2304, 11111111 p=0.1106, 10100011 p=0.0896, 11101111 p=0.0599, 11111011 p=0.0599, 00101011 p=0.0576, 10001011 p=0.0576, 10110111 p=0.0430) while completely avoiding the already-simulated (q[7],q[6],q[5],q[3])=(1,0,1,1) states.",
+   "next_step": "All 8 Hamming-1 neighbours of 10101011 (loss 0.0860) have now been validated with losses ranging from 0.6935 to 40.7425, confirming 10101011 as the strict basin minimum in 48/256 forward simulations; if further runs are conducted, keep baseline=10101011 on aer_noisy (shots=1024, trust_weight=0.15) and validate the remaining unsimulated tau=16ms/30ms Hamming-2 states (01101011, 10110011, 10001111, 10101101).",
+   "custom_qasm": true,
+   "secondary": {
+    "p_consistent_before": 0.0068359375,
+    "p_consistent_after": 0.001953125,
+    "physical_gates_before": 38,
+    "physical_gates_after": 34,
+    "approximation_ratio_before": 0.7839080223801705,
+    "approximation_ratio_after": -0.10292505006266772,
+    "provider_before": "aer_noisy",
+    "provider_after": "aer_noisy"
+   },
+   "reference": {
+    "job_id": "2dbb6d540a7d4f6fb96e",
+    "provider": "aer_noisy",
+    "approximation": "trust_region",
+    "baseline": "10101011",
+    "trust_weight": 0.15,
+    "shots": 1024,
+    "spec": null,
+    "qasm_source": "agent_qasm",
+    "created_by": "agent",
+    "best_validated": "10111111",
+    "best_validated_loss": 0.6324640863113198,
+    "new_validations": 8,
+    "approximation_ratio": 0.7839080223801705,
+    "p_consistent": 0.0068359375,
+    "physical_gates": 38,
+    "two_qubit_gates": 4,
+    "two_qubit_depth": 3,
+    "transpile_target": "fake_torino",
+    "tvd_vs_ideal": 0.07564488840390195,
+    "truth_recovered": false,
+    "error": null
+   },
+   "revised": {
+    "job_id": "48cfc8c8513e49bf9649",
+    "provider": "aer_noisy",
+    "approximation": "trust_region",
+    "baseline": "10101011",
+    "trust_weight": 0.15,
+    "shots": 1024,
+    "spec": null,
+    "qasm_source": "agent_qasm",
+    "created_by": "agent",
+    "best_validated": "10110111",
+    "best_validated_loss": 7.605176335791212,
+    "new_validations": 8,
+    "approximation_ratio": -0.10292505006266772,
+    "p_consistent": 0.001953125,
+    "physical_gates": 34,
+    "two_qubit_gates": 4,
+    "two_qubit_depth": 3,
+    "transpile_target": "fake_torino",
+    "tvd_vs_ideal": 0.07990057469769106,
+    "truth_recovered": false,
+    "error": null
+   },
+   "jobs_run": [
+    {
+     "job_id": "48cfc8c8513e49bf9649",
+     "provider": "aer_noisy",
+     "approximation": "trust_region",
+     "baseline": "10101011",
+     "trust_weight": 0.15,
+     "shots": 1024,
+     "spec": null,
+     "qasm_source": "agent_qasm",
+     "created_by": "agent",
+     "best_validated": "10110111",
+     "best_validated_loss": 7.605176335791212,
+     "new_validations": 8,
+     "approximation_ratio": -0.10292505006266772,
+     "p_consistent": 0.001953125,
+     "physical_gates": 34,
+     "two_qubit_gates": 4,
+     "two_qubit_depth": 3,
+     "transpile_target": "fake_torino",
+     "tvd_vs_ideal": 0.07990057469769106,
+     "truth_recovered": false,
+     "error": null
+    }
+   ],
+   "tool_trace": [
+    {
+     "tool": "inspect_state",
+     "args": {}
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "approximation": "trust_region",
+      "baseline": "10101011",
+      "trust_weight": 0.15
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "trust_weight": 0.15,
+      "approximation": "trust_region",
+      "baseline": "10101011",
+      "qasm": "(custom)"
+     }
+    },
+    {
+     "tool": "run_experiment",
+     "args": {
+      "baseline": "10101011",
+      "shots": 1024,
+      "provider": "aer_noisy",
+      "trust_weight": 0.15,
+      "approximation": "trust_region",
+      "qasm": "(custom)"
+     }
+    },
+    {
+     "tool": "record_revision",
+     "args": {
+      "next_step": "All 8 Hamming-1 neighbours of 10101011 (loss 0.0860) have now been validated with losses ranging from 0.6935 to 40.7425, confirming 10101011 as the strict basin minimum in 48/256 forward simulations; if further runs are conducted, keep baseline=10101011 on aer_noisy (shots=1024, trust_weight=0.15) and validate the remaining unsimulated tau=16ms/30ms Hamming-2 states (01101011, 10110011, 10001111, 10101101).",
+      "rationale": "By setting q[6] = q[7] XOR q[5] XOR q[3] via three CX gates into q[6] and entangling (q[4], q[2]) with one CX gate, the circuit embeds SWAP-free onto fake_torino (4 CZ gates, 34 physical gates, two-qubit depth 3) and places all 8 top ideal probabilities on the exact 8 target unsimulated states (11101011 p=0.2304, 11111111 p=0.1106, 10100011 p=0.0896, 11101111 p=0.0599, 11111011 p=0.0599, 00101011 p=0.0576, 10001011 p=0.0576, 10110111 p=0.0430) while completely avoiding the already-simulated (q[7],q[6],q[5],q[3])=(1,0,1,1) states.",
+      "diagnosis": "After reference job 2dbb6d540a7d4f6fb96e validated 8 states in the tau=30ms basin (best 10111111 with loss 0.6325 and 10101111 with loss 0.6935), all 8 top states of that circuit were already simulated (so re-running it would yield 0 new validations), while 4 of the 8 Hamming-1 neighbours of the best validated hypothesis 10101011 (loss 0.0860) \u2014 namely 10100011 (flip q[3]), 10001011 (flip q[5]), 11101011 (flip q[6]), and 00101011 (flip q[7]) \u2014 remained unsimulated. Because all 4 unsimulated Hamming-1 flips on (q[7], q[6], q[5], q[3]) have even parity whereas the already-simulated (1,0,1,1) core has odd parity, coupling q[6] = q[7] XOR q[5] XOR q[3] completely suppresses the already-simulated (10101011, 10101111, 10111011, 10111111) states and concentrates 83.43% of the top-16 ideal probability on unsimulated neighbours.",
+      "change": "Updated the SWAP-free 4-CX custom OpenQASM 2.0 circuit to a parity-coupled heavy-hex star+pair topology (34 physical gates, 4 CZ gates, two-qubit depth 3 on fake_torino) targeting the 4 remaining unsimulated Hamming-1 neighbours of 10101011 (10100011, 10001011, 11101011, 00101011) alongside 10110111 and the tau=55ms neighbours (11101111, 11111011, 11111111), while keeping provider=aer_noisy, shots=1024, approximation=trust_region, baseline=10101011, and trust_weight=0.15 identical.",
+      "revised_job_id": "48cfc8c8513e49bf9649",
+      "reference_job_id": "2dbb6d540a7d4f6fb96e",
+      "observation": "In reference job 2dbb6d540a7d4f6fb96e (aer_noisy, shots=1024, trust_region, baseline=10101011, trust_weight=0.15, 38 physical gates, 4 CZ gates, two-qubit depth 3, tvd_vs_ideal=0.0756), 8 tau=30ms neighbours were validated (best 10111111, loss 0.6325). In revised job 48cfc8c8513e49bf9649 (aer_noisy, shots=1024, trust_region, baseline=10101011, trust_weight=0.15, 34 physical gates, 4 CZ gates, two-qubit depth 3, tvd_vs_ideal=0.0799), all 8 target states were validated: 10110111 (46 samples, loss 7.6052), 10001011 (57 samples, loss 12.3161), 11101111 (68 samples, loss 13.7645), 11101011 (229 samples, loss 17.4461), 00101011 (49 samples, loss 17.7367), 11111111 (100 samples, loss 18.9165), 11111011 (57 samples, loss 20.3030), and 10100011 (80 samples, loss 40.7425)."
+     }
+    }
+   ],
+   "qasm_diff": "--- circuit.before.qasm\n+++ circuit.after.qasm\n@@ -3,26 +3,22 @@\n qreg q[8];\n-creg meas[8];\n-x q[7];\n+creg c[8];\n+x q[0];\n x q[1];\n-ry(1.85) q[5];\n-ry(0.85) q[4];\n-cx q[5],q[4];\n-ry(2.29159265) q[4];\n-ry(0.95) q[3];\n-cx q[5],q[3];\n-ry(0.95) q[3];\n-ry(0.95) q[2];\n+ry(2.2143) q[7];\n+ry(2.2143) q[5];\n+ry(2.0266) q[3];\n+cx q[7],q[6];\n+cx q[5],q[6];\n+cx q[3],q[6];\n+ry(1.3078) q[4];\n+ry(-0.1629) q[2];\n cx q[4],q[2];\n-ry(2.19159265) q[2];\n-ry(0.72) q[0];\n-cx q[5],q[0];\n-ry(2.42159265) q[0];\n-barrier q[0],q[1],q[2],q[3],q[4],q[5],q[6],q[7];\n-measure q[0] -> meas[0];\n-measure q[1] -> meas[1];\n-measure q[2] -> meas[2];\n-measure q[3] -> meas[3];\n-measure q[4] -> meas[4];\n-measure q[5] -> meas[5];\n-measure q[6] -> meas[6];\n-measure q[7] -> meas[7];\n+ry(1.1061) q[2];\n+measure q[0] -> c[0];\n+measure q[1] -> c[1];\n+measure q[2] -> c[2];\n+measure q[3] -> c[3];\n+measure q[4] -> c[4];\n+measure q[5] -> c[5];\n+measure q[6] -> c[6];\n+measure q[7] -> c[7];",
+   "spec_diff": null
+  }
+ ],
+ "outcome": {
+  "best": "10101011",
+  "best_loss": 0.08599788545305999,
+  "best_parameters": {
+   "excitatory_drive": 3.0,
+   "inhibitory_gain": 16.0,
+   "recurrent_excitation": 16.0,
+   "synaptic_tau_ms": 30.0
+  },
+  "global_min_loss": 0.08599788545305999,
+  "global_argmin": "10101011",
+  "best_rank_of_256": 1,
+  "best_in_consistent_set": true,
+  "consistent_set_size": 1,
+  "hidden_truth": "10101011",
+  "truth_recovered": true,
+  "forward_simulations_used": 48,
+  "exhaustive_cost": 256,
+  "verdicts": {
+   "improved": 3,
+   "unchanged": 1,
+   "regressed": 1
+  },
+  "new_best_iterations": [
+   1,
+   3
+  ],
+  "model_providers_used": {
+   "gemini/gemini-4-argon (GEMINI_API_KEY)": 5
+  }
+ },
+ "elapsed_seconds": 1292.4,
+ "generated_at": "2026-10-25T21:03:52.194294+00:00"
+}

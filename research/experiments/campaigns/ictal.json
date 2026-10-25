@@ -1,0 +1,2383 @@
+{
+ "preset": "ictal",
+ "experiment": {
+  "title": "CHB-MIT chb01_03 T7-P7 ictal",
+  "target": {
+   "source": "recording",
+   "label": "CHB-MIT chb01_03 \u00b7 seizure 2996\u20133036 s \u00b7 T7-P7 \u00b7 ictal",
+   "weights": [
+    1.419197804773964,
+    1.132417310430589,
+    0.9398672434904196,
+    0.8530722739018852,
+    0.9254827139806213,
+    1.1936902540838439,
+    1.6378002867587786,
+    1.2805038418526133,
+    0.8480155334416579,
+    0.7699527372856272,
+    0.0
+   ],
+   "feature_names": [
+    "rel_logpow_1.0-1.5Hz",
+    "rel_logpow_1.5-2.1Hz",
+    "rel_logpow_2.1-3.1Hz",
+    "rel_logpow_3.1-4.6Hz",
+    "rel_logpow_4.6-6.7Hz",
+    "rel_logpow_6.7-9.8Hz",
+    "rel_logpow_9.8-14.4Hz",
+    "rel_logpow_14.4-21.0Hz",
+    "rel_logpow_21.0-30.8Hz",
+    "rel_logpow_30.8-45.0Hz",
+    "log_amplitude"
+   ],
+   "truth_bitstring": null,
+   "truth_params": null,
+   "meta": {
+    "dataset_id": "chbmit-chb01_03",
+    "channel": "T7-P7",
+    "segment": "ictal",
+    "start": 2996,
+    "end": 3036,
+    "label": "annotated seizure",
+    "citation": "Shoeb AH. Application of Machine Learning to Epileptic Seizure Onset Detection and Treatment. PhD Thesis, MIT, 2009; Goldberger AL et al. PhysioBank, PhysioToolkit, and PhysioNet. Circulation 101(23):e215\u2013e220, 2000.",
+    "license": "Open Data Commons Attribution License v1.0"
+   }
+  },
+  "features": [
+   -0.7268790194961107,
+   -0.5607668450522582,
+   -0.7291924631392981,
+   -0.9939917750629227,
+   -0.8921072313124386,
+   -1.0793290692193116,
+   -1.8384404567164148,
+   -2.100226663700518,
+   -2.09573864350215,
+   -2.119215968980544,
+   1.7237599999816706
+  ]
+ },
+ "model_version": {
+  "levels": [
+   [
+    1.5,
+    2.0,
+    2.5,
+    3.0
+   ],
+   [
+    10.0,
+    13.0,
+    16.0,
+    19.0
+   ],
+   [
+    12.0,
+    14.0,
+    16.0,
+    18.0
+   ],
+   [
+    8.0,
+    16.0,
+    30.0,
+    55.0
+   ]
+  ],
+  "sim_seconds": 9.0,
+  "noise_seed": 7,
+  "fs": 2000.0,
+  "features": [
+   "rel_logpow_1.0-1.5Hz",
+   "rel_logpow_1.5-2.1Hz",
+   "rel_logpow_2.1-3.1Hz",
+   "rel_logpow_3.1-4.6Hz",
+   "rel_logpow_4.6-6.7Hz",
+   "rel_logpow_6.7-9.8Hz",
+   "rel_logpow_9.8-14.4Hz",
+   "rel_logpow_14.4-21.0Hz",
+   "rel_logpow_21.0-30.8Hz",
+   "rel_logpow_30.8-45.0Hz",
+   "log_amplitude"
+  ]
+ },
+ "agent_information": "blind",
+ "model_chain": [
+  {
+   "provider": "gemini/gemini-4-argon (GEMINI_API_KEY)",
+   "family": "gemini",
+   "model": "gemini-4-argon",
+   "configured": true,
+   "cooling_down": null
+  },
+  {
+   "provider": "gemini/gemini-4-argon (GEMINI_API_KEY_B)",
+   "family": "gemini",
+   "model": "gemini-4-argon",
+   "configured": true,
+   "cooling_down": null
+  },
+  {
+   "provider": "gemini/gemini-4-argon (GEMINI_API_KEY_C)",
+   "family": "gemini",
+   "model": "gemini-4-argon",
+   "configured": true,
+   "cooling_down": null
+  },
+  {
+   "provider": "gemini/gemini-4-argon (GEMINI_API_KEY_D)",
+   "family": "gemini",
+   "model": "gemini-4-argon",
+   "configured": true,
+   "cooling_down": null
+  },
+  {
+   "provider": "gemini/gemini-4-argon (GEMINI_API_KEY_E)",
+   "family": "gemini",
+   "model": "gemini-4-argon",
+   "configured": true,
+   "cooling_down": null
+  },
+  {
+   "provider": "gemini/gemini-3.8-flash (GEMINI_API_KEY_B)",
+   "family": "gemini",
+   "model": "gemini-3.8-flash",
+   "configured": true,
+   "cooling_down": null
+  },
+  {
+   "provider": "gemini/gemini-3.8-flash (GEMINI_API_KEY_C)",
+   "family": "gemini",
+   "model": "gemini-3.8-flash",
+   "configured": true,
+   "cooling_down": null
+  },
+  {
+   "provider": "openai/gpt-6.1-sol (OPENAI_API_KEY)",
+   "family": "openai",
+   "model": "gpt-6.1-sol",
+   "configured": false,
+   "cooling_down": null
+  }
+ ],
+ "baseline": {
+  "job_id": "14db7cff685c45378160",
+  "provider": "aer_noisy",
+  "approximation": "trust_region",
+  "baseline": "00000000",
+  "trust_weight": 0.15,
+  "shots": 1024,
+  "spec": {
+   "reps": 1,
+   "max_couplings": 6,
+   "optimization_level": 3,
+   "prune_threshold": 0.0,
+   "warm_start": null,
+   "warm_epsilon": 0.25,
+   "coupling_order": "strength",
+   "seed_transpiler": 11
+  },
+  "qasm_source": "spec",
+  "created_by": "user",
+  "best_validated": "10001000",
+  "best_validated_loss": 1.4093331453867637,
+  "new_validations": 8,
+  "approximation_ratio": 0.605720277567737,
+  "p_consistent": 0.06640625,
+  "physical_gates": 98,
+  "two_qubit_gates": 15,
+  "two_qubit_depth": 11,
+  "transpile_target": "fake_torino",
+  "tvd_vs_ideal": 0.16874564136867948,
+  "truth_recovered": null,
+  "error": null
+ },
+ "iterations": [
+  {
+   "iteration": 1,
+   "seconds": 61.1,
+   "verdict": "improved",
+   "comparison_basis": "model_specified",
+   "new_best": true,
+   "metric_before": 1.4093331453867637,
+   "metric_after": 1.1316143645227843,
+   "best_known_before": 1.4093331453867637,
+   "best_known_after": 1.1316143645227843,
+   "forward_simulations_after": 16,
+   "experiment_best": "10001100",
+   "experiment_best_loss": 1.1316143645227843,
+   "experiment_best_rank": 2,
+   "providers": [
+    "gemini/gemini-4-argon (GEMINI_API_KEY)"
+   ],
+   "model_turns": 7,
+   "observation": "Reference job 14db7cff685c45378160 (aer_noisy, 1024 shots, trust_region with baseline=00000000, trust_weight=0.15, reps=1, max_couplings=6) validated 8 states and found best bitstring 10001000 with nonlinear loss 1.4093, while 00000000 had loss 13.0803.",
+   "diagnosis": "The QUBO linearised around 00000000 had poor fidelity over the validated region (Spearman 0.2857 vs simulated losses, ranking 10001000 4th and placing its argmin at 10000000 with loss 3.5466). Re-linearising trust_region around 10001000 increases Spearman correlation to 0.8095 and shifts ideal probability mass onto unsimulated neighbours 11001100 (p=0.1176) and 10001100 (p=0.0887) within a 101-gate physical circuit (16 two-qubit gates, depth 14).",
+   "change": "Updated baseline of trust_region (trust_weight=0.15) from 00000000 to 10001000 while keeping provider=aer_noisy, shots=1024, and spec (reps=1, max_couplings=6, coupling_order=strength, optimization_level=3, warm_epsilon=0.25) unchanged.",
+   "rationale": "Moving the trust-region linearisation point to the best validated hypothesis 10001000 improves local quadratic accuracy while testing a single controlled change on the same backend and shot budget.",
+   "next_step": "Re-centre the approximation at the new best validated bitstring 10001100 (loss 1.1316) and evaluate whether adjusting coupling selection, warm-start biasing, or trust_weight around 10001100 exposes lower-loss unsimulated states on qubits 2, 3, and 6 (which had zero two-qubit couplings in max_couplings=6).",
+   "custom_qasm": false,
+   "secondary": {
+    "p_consistent_before": 0.06640625,
+    "p_consistent_after": 0.1865234375,
+    "physical_gates_before": 98,
+    "physical_gates_after": 101,
+    "approximation_ratio_before": 0.605720277567737,
+    "approximation_ratio_after": 0.7386853175986984,
+    "provider_before": "aer_noisy",
+    "provider_after": "aer_noisy"
+   },
+   "reference": {
+    "job_id": "14db7cff685c45378160",
+    "provider": "aer_noisy",
+    "approximation": "trust_region",
+    "baseline": "00000000",
+    "trust_weight": 0.15,
+    "shots": 1024,
+    "spec": {
+     "reps": 1,
+     "max_couplings": 6,
+     "optimization_level": 3,
+     "prune_threshold": 0.0,
+     "warm_start": null,
+     "warm_epsilon": 0.25,
+     "coupling_order": "strength",
+     "seed_transpiler": 11
+    },
+    "qasm_source": "spec",
+    "created_by": "user",
+    "best_validated": "10001000",
+    "best_validated_loss": 1.4093331453867637,
+    "new_validations": 8,
+    "approximation_ratio": 0.605720277567737,
+    "p_consistent": 0.06640625,
+    "physical_gates": 98,
+    "two_qubit_gates": 15,
+    "two_qubit_depth": 11,
+    "transpile_target": "fake_torino",
+    "tvd_vs_ideal": 0.16874564136867948,
+    "truth_recovered": null,
+    "error": null
+   },
+   "revised": {
+    "job_id": "56f402e27c3a451eaa62",
+    "provider": "aer_noisy",
+    "approximation": "trust_region",
+    "baseline": "10001000",
+    "trust_weight": 0.15,
+    "shots": 1024,
+    "spec": {
+     "warm_epsilon": 0.25,
+     "reps": 1,
+     "optimization_level": 3,
+     "max_couplings": 6,
+     "coupling_order": "strength",
+     "prune_threshold": 0.0,
+     "warm_start": null,
+     "seed_transpiler": 11
+    },
+    "qasm_source": "spec",
+    "created_by": "agent",
+    "best_validated": "10001100",
+    "best_validated_loss": 1.1316143645227843,
+    "new_validations": 8,
+    "approximation_ratio": 0.7386853175986984,
+    "p_consistent": 0.1865234375,
+    "physical_gates": 101,
+    "two_qubit_gates": 16,
+    "two_qubit_depth": 14,
+    "transpile_target": "fake_torino",
+    "tvd_vs_ideal": 0.13778068156677617,
+    "truth_recovered": null,
+    "error": null
+   },
+   "jobs_run": [
+    {
+     "job_id": "56f402e27c3a451eaa62",
+     "provider": "aer_noisy",
+     "approximation": "trust_region",
+     "baseline": "10001000",
+     "trust_weight": 0.15,
+     "shots": 1024,
+     "spec": {
+      "warm_epsilon": 0.25,
+      "reps": 1,
+      "optimization_level": 3,
+      "max_couplings": 6,
+      "coupling_order": "strength",
+      "prune_threshold": 0.0,
+      "warm_start": null,
+      "seed_transpiler": 11
+     },
+     "qasm_source": "spec",
+     "created_by": "agent",
+     "best_validated": "10001100",
+     "best_validated_loss": 1.1316143645227843,
+     "new_validations": 8,
+     "approximation_ratio": 0.7386853175986984,
+     "p_consistent": 0.1865234375,
+     "physical_gates": 101,
+     "two_qubit_gates": 16,
+     "two_qubit_depth": 14,
+     "transpile_target": "fake_torino",
+     "tvd_vs_ideal": 0.13778068156677617,
+     "truth_recovered": null,
+     "error": null
+    }
+   ],
+   "tool_trace": [
+    {
+     "tool": "inspect_state",
+     "args": {}
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "approximation": "trust_region",
+      "baseline": "10001000",
+      "trust_weight": 0.15
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "baseline": "00000000",
+      "trust_weight": 0.15,
+      "approximation": "trust_region"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "baseline": "10001000",
+      "trust_weight": 0,
+      "approximation": "trust_region"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "trust_weight": 0.05,
+      "approximation": "trust_region",
+      "baseline": "10001000"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "baseline": "10001000",
+      "approximation": "jacobian"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "approximation": "secant",
+      "baseline": "10001000"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "approximation": "trust_region",
+      "spec": {
+       "prune_threshold": 0,
+       "optimization_level": 3,
+       "warm_epsilon": 0.25,
+       "reps": 1,
+       "max_couplings": 6,
+       "coupling_order": "strength"
+      },
+      "baseline": "10001000",
+      "trust_weight": 0.15
+     }
+    },
+    {
+     "tool": "run_experiment",
+     "args": {
+      "approximation": "trust_region",
+      "trust_weight": 0.15,
+      "shots": 1024,
+      "baseline": "10001000",
+      "spec": {
+       "warm_epsilon": 0.25,
+       "reps": 1,
+       "optimization_level": 3,
+       "max_couplings": 6,
+       "coupling_order": "strength",
+       "prune_threshold": 0
+      },
+      "provider": "aer_noisy"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "trust_weight": 0.15,
+      "baseline": "10001100",
+      "approximation": "trust_region"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "approximation": "trust_region",
+      "baseline": "10001100",
+      "trust_weight": 0.05
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "approximation": "secant",
+      "baseline": "10001100"
+     }
+    },
+    {
+     "tool": "record_revision",
+     "args": {
+      "reference_job_id": "14db7cff685c45378160",
+      "next_step": "Re-centre the approximation at the new best validated bitstring 10001100 (loss 1.1316) and evaluate whether adjusting coupling selection, warm-start biasing, or trust_weight around 10001100 exposes lower-loss unsimulated states on qubits 2, 3, and 6 (which had zero two-qubit couplings in max_couplings=6).",
+      "revised_job_id": "56f402e27c3a451eaa62",
+      "change": "Updated baseline of trust_region (trust_weight=0.15) from 00000000 to 10001000 while keeping provider=aer_noisy, shots=1024, and spec (reps=1, max_couplings=6, coupling_order=strength, optimization_level=3, warm_epsilon=0.25) unchanged.",
+      "rationale": "Moving the trust-region linearisation point to the best validated hypothesis 10001000 improves local quadratic accuracy while testing a single controlled change on the same backend and shot budget.",
+      "diagnosis": "The QUBO linearised around 00000000 had poor fidelity over the validated region (Spearman 0.2857 vs simulated losses, ranking 10001000 4th and placing its argmin at 10000000 with loss 3.5466). Re-linearising trust_region around 10001000 increases Spearman correlation to 0.8095 and shifts ideal probability mass onto unsimulated neighbours 11001100 (p=0.1176) and 10001100 (p=0.0887) within a 101-gate physical circuit (16 two-qubit gates, depth 14).",
+      "observation": "Reference job 14db7cff685c45378160 (aer_noisy, 1024 shots, trust_region with baseline=00000000, trust_weight=0.15, reps=1, max_couplings=6) validated 8 states and found best bitstring 10001000 with nonlinear loss 1.4093, while 00000000 had loss 13.0803."
+     }
+    }
+   ],
+   "qasm_diff": "--- circuit.before.qasm\n+++ circuit.after.qasm\n@@ -12,24 +12,24 @@\n h q[7];\n-rz(0.7881117528014757) q[0];\n-rz(1.1926396419320184) q[1];\n-rz(0.17727026466039747) q[2];\n-rz(0.20918701006316423) q[3];\n-rz(1.1747803417917866) q[4];\n-rz(1.7107713759751149) q[5];\n-rz(-0.08162359630885768) q[6];\n-rz(-0.14927197916303156) q[7];\n-rzz(-0.3411321417224602) q[4],q[5];\n-rzz(-0.2582043605248299) q[0],q[1];\n-rzz(-0.24232303917215822) q[1],q[5];\n-rzz(0.19866000490167796) q[5],q[7];\n-rzz(-0.19629764908599315) q[6],q[7];\n-rzz(-0.18131161674149474) q[1],q[4];\n-rx(1.463742101605576) q[0];\n-rx(1.463742101605576) q[1];\n-rx(1.463742101605576) q[2];\n-rx(1.463742101605576) q[3];\n-rx(1.463742101605576) q[4];\n-rx(1.463742101605576) q[5];\n-rx(1.463742101605576) q[6];\n-rx(1.463742101605576) q[7];\n+rz(-1.1028871149949384) q[0];\n+rz(-1.8210330290246015) q[1];\n+rz(-0.09275916594424956) q[2];\n+rz(0.27240042137853765) q[3];\n+rz(-1.026235962935115) q[4];\n+rz(-1.2403705864027759) q[5];\n+rz(0.1406511231089801) q[6];\n+rz(1.1449580676756366) q[7];\n+rzz(-0.3639149886608039) q[1],q[7];\n+rzz(0.331849227797509) q[0],q[1];\n+rzz(0.2420824469384956) q[1],q[5];\n+rzz(0.22922714243513523) q[4],q[5];\n+rzz(0.20040799603889853) q[1],q[4];\n+rzz(-0.19743098073625898) q[0],q[7];\n+rx(4.772935647677056) q[0];\n+rx(4.772935647677056) q[1];\n+rx(4.772935647677056) q[2];\n+rx(4.772935647677056) q[3];\n+rx(4.772935647677056) q[4];\n+rx(4.772935647677056) q[5];\n+rx(4.772935647677056) q[6];\n+rx(4.772935647677056) q[7];\n barrier q[0],q[1],q[2],q[3],q[4],q[5],q[6],q[7];",
+   "spec_diff": "--- spec.before\n+++ spec.after\n@@ -2,3 +2,3 @@\n  \"betas\": [\n-  0.731871050802788\n+  2.386467823838528\n  ],\n@@ -6,3 +6,3 @@\n  \"gammas\": [\n-  -0.8553856879875574\n+  0.9105165145123008\n  ],"
+  },
+  {
+   "iteration": 2,
+   "seconds": 448.2,
+   "verdict": "regressed",
+   "comparison_basis": "model_specified",
+   "new_best": false,
+   "metric_before": 1.1316143645227843,
+   "metric_after": 5.884145748066851,
+   "best_known_before": 1.1316143645227843,
+   "best_known_after": 1.1316143645227843,
+   "forward_simulations_after": 24,
+   "experiment_best": "10001100",
+   "experiment_best_loss": 1.1316143645227843,
+   "experiment_best_rank": 2,
+   "providers": [
+    "gemini/gemini-4-argon (GEMINI_API_KEY)"
+   ],
+   "model_turns": 15,
+   "observation": "In reference job 56f402e27c3a451eaa62 (aer_noisy, shots=1024, trust_region at baseline 10001000), the circuit found 10001100 (loss 1.1316) and completed validation of all 8 states in the 1x00xx00 subspace. Re-compiling the same spec at baseline 10001100 left all 8 top ideal states already simulated and mass_on_unsimulated_among_top16 = 0.0472. Our revised heavy-hex-native circuit (job 0a00b47c07ed4a74875a) reduced physical gates from 101 to 81 (CZ gates from 16 to 10, 2Q depth from 14 to 8, TVD vs ideal from 0.1378 to 0.1084), increased mass_on_unsimulated_among_top16 to 0.4277, ranked 10001100 #1 in noisy sampling (~30% of shots), and validated 8 new states around 10001100 led by 01001100 (loss 5.8841, 79 samples) and 10011100 (loss 9.0441, 75 samples).",
+   "diagnosis": "Compiling the standard max_couplings=6 spec at baseline 10001100 showed two critical failures: (1) all 8 top ideal states (total probability 0.7149) were the already-simulated 1x00xx00 subspace, leaving mass_on_unsimulated_among_top16 at only 0.0472; (2) pruning J[5,6]=-1.8259 and J[6,7]=+1.1579 without mean-field compensation inverted the effective local field on q6 from -0.5316 (favouring q6=0, 10001100) to +2.4522 (favouring q6=1, 11001100), while uncompensated bare fields on q0,q1,q4,q5,q7 dwarfed h[2]=2.8123 and h[3]=5.3049, and the two coupling triangles [0,1,7] and [1,4,5] required SWAP routing (16 CZ gates, 99\u2013101 physical gates).",
+   "change": "Re-centred trust_region (trust_weight=0.15) at 10001100 and replaced the swap-inducing 6-coupling QAOA spec with a heavy-hex-native 5-RZZ tree QASM circuit (couplings [1,7], [0,1], [1,5], [4,5], [6,7] with mean-field-compensated RZ angles at 10001100) on aer_noisy (shots=1024).",
+   "rationale": "Replacing the cyclic 6-coupling subgraph with the 5-edge heavy-hex-native tree ([1,7], [0,1], [1,5], [4,5], [6,7]) eliminates SWAP gates (10 CZ gates total) and couples q6 to q7 so tau=16 ms (01001100) is sampled alongside tau=30 ms (10001100), while mean-field-compensated RZ angles restore the correct local field sign on q6 and balance q2,q3 against q0,q1,q4,q5,q7 so probability concentrates on unsimulated neighbours of 10001100.",
+   "next_step": "With all 8 Hamming-1 neighbours of 10001100 now validated and confirming 10001100 (loss 1.1316) is a strict local minimum along every single-bit and single-parameter axis, use the 24-point surrogate (Spearman 0.9704) or trust_region at 10001100 to target unsimulated diagonal parameter trade-offs (such as 01001000, 01000100, 10011000, and 10010100 where inhibitory_gain c2 co-varies with synaptic_tau_ms or recurrent_excitation c1).",
+   "custom_qasm": true,
+   "secondary": {
+    "p_consistent_before": 0.1865234375,
+    "p_consistent_after": 0.310546875,
+    "physical_gates_before": 101,
+    "physical_gates_after": 81,
+    "approximation_ratio_before": 0.7386853175986984,
+    "approximation_ratio_after": 0.6057674133501227,
+    "provider_before": "aer_noisy",
+    "provider_after": "aer_noisy"
+   },
+   "reference": {
+    "job_id": "56f402e27c3a451eaa62",
+    "provider": "aer_noisy",
+    "approximation": "trust_region",
+    "baseline": "10001000",
+    "trust_weight": 0.15,
+    "shots": 1024,
+    "spec": {
+     "warm_epsilon": 0.25,
+     "reps": 1,
+     "optimization_level": 3,
+     "max_couplings": 6,
+     "coupling_order": "strength",
+     "prune_threshold": 0.0,
+     "warm_start": null,
+     "seed_transpiler": 11
+    },
+    "qasm_source": "spec",
+    "created_by": "agent",
+    "best_validated": "10001100",
+    "best_validated_loss": 1.1316143645227843,
+    "new_validations": 8,
+    "approximation_ratio": 0.7386853175986984,
+    "p_consistent": 0.1865234375,
+    "physical_gates": 101,
+    "two_qubit_gates": 16,
+    "two_qubit_depth": 14,
+    "transpile_target": "fake_torino",
+    "tvd_vs_ideal": 0.13778068156677617,
+    "truth_recovered": null,
+    "error": null
+   },
+   "revised": {
+    "job_id": "0a00b47c07ed4a74875a",
+    "provider": "aer_noisy",
+    "approximation": "trust_region",
+    "baseline": "10001100",
+    "trust_weight": 0.15,
+    "shots": 1024,
+    "spec": null,
+    "qasm_source": "agent_qasm",
+    "created_by": "agent",
+    "best_validated": "01001100",
+    "best_validated_loss": 5.884145748066851,
+    "new_validations": 8,
+    "approximation_ratio": 0.6057674133501227,
+    "p_consistent": 0.310546875,
+    "physical_gates": 81,
+    "two_qubit_gates": 10,
+    "two_qubit_depth": 8,
+    "transpile_target": "fake_torino",
+    "tvd_vs_ideal": 0.1083859686710876,
+    "truth_recovered": null,
+    "error": null
+   },
+   "jobs_run": [
+    {
+     "job_id": "0a00b47c07ed4a74875a",
+     "provider": "aer_noisy",
+     "approximation": "trust_region",
+     "baseline": "10001100",
+     "trust_weight": 0.15,
+     "shots": 1024,
+     "spec": null,
+     "qasm_source": "agent_qasm",
+     "created_by": "agent",
+     "best_validated": "01001100",
+     "best_validated_loss": 5.884145748066851,
+     "new_validations": 8,
+     "approximation_ratio": 0.6057674133501227,
+     "p_consistent": 0.310546875,
+     "physical_gates": 81,
+     "two_qubit_gates": 10,
+     "two_qubit_depth": 8,
+     "transpile_target": "fake_torino",
+     "tvd_vs_ideal": 0.1083859686710876,
+     "truth_recovered": null,
+     "error": null
+    }
+   ],
+   "tool_trace": [
+    {
+     "tool": "inspect_state",
+     "args": {}
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "approximation": "trust_region",
+      "baseline": "10001100",
+      "trust_weight": 0.15
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "trust_weight": 0.15,
+      "baseline": "10001000",
+      "approximation": "trust_region"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "approximation": "secant",
+      "baseline": "10001100"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "approximation": "jacobian",
+      "baseline": "10001100"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "spec": {
+       "optimization_level": 3,
+       "prune_threshold": 0,
+       "coupling_order": "strength",
+       "warm_epsilon": 0.25,
+       "max_couplings": 6,
+       "reps": 1
+      },
+      "approximation": "trust_region",
+      "trust_weight": 0.15,
+      "baseline": "10001000"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "spec": {
+       "optimization_level": 3,
+       "reps": 1,
+       "max_couplings": 6,
+       "coupling_order": "strength",
+       "prune_threshold": 0,
+       "warm_epsilon": 0.25
+      },
+      "approximation": "trust_region",
+      "trust_weight": 0.15,
+      "baseline": "10001100"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "approximation": "secant",
+      "spec": {
+       "optimization_level": 3,
+       "warm_epsilon": 0.25,
+       "reps": 1,
+       "prune_threshold": 0,
+       "max_couplings": 6,
+       "coupling_order": "strength"
+      },
+      "baseline": "10001100"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "approximation": "surrogate"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "approximation": "regression"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "approximation": "feature_regression"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "baseline": "10001100",
+      "approximation": "trust_region",
+      "trust_weight": 0.05
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "trust_weight": 0.5,
+      "baseline": "10001100",
+      "approximation": "trust_region"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "approximation": "trust_region",
+      "spec": {
+       "optimization_level": 3,
+       "warm_start": "10001100",
+       "prune_threshold": 0,
+       "coupling_order": "strength",
+       "max_couplings": 6,
+       "warm_epsilon": 0.25,
+       "reps": 1
+      },
+      "trust_weight": 0.15,
+      "baseline": "10001100"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "approximation": "trust_region",
+      "trust_weight": 0.15,
+      "baseline": "10001100",
+      "spec": {
+       "optimization_level": 3,
+       "reps": 1,
+       "prune_threshold": 0,
+       "coupling_order": "strength",
+       "warm_epsilon": 0.25,
+       "max_couplings": 8
+      }
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "baseline": "10001100",
+      "trust_weight": 0.15,
+      "spec": {
+       "prune_threshold": 0,
+       "max_couplings": 10,
+       "warm_epsilon": 0.25,
+       "coupling_order": "strength",
+       "reps": 1,
+       "optimization_level": 3
+      },
+      "approximation": "trust_region"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "trust_weight": 0.15,
+      "spec": {
+       "prune_threshold": 0,
+       "optimization_level": 3,
+       "coupling_order": "strength",
+       "reps": 2,
+       "max_couplings": 6,
+       "warm_epsilon": 0.25
+      },
+      "approximation": "trust_region",
+      "baseline": "10001100"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "baseline": "10001100",
+      "spec": {
+       "warm_start": "10001100",
+       "max_couplings": 6,
+       "optimization_level": 3,
+       "coupling_order": "strength",
+       "warm_epsilon": 0.15,
+       "reps": 1,
+       "prune_threshold": 0
+      },
+      "approximation": "trust_region",
+      "trust_weight": 0.15
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "spec": {
+       "warm_epsilon": 0.35,
+       "optimization_level": 3,
+       "warm_start": "10001100",
+       "reps": 1,
+       "prune_threshold": 0,
+       "coupling_order": "strength",
+       "max_couplings": 6
+      },
+      "approximation": "trust_region",
+      "baseline": "10001100",
+      "trust_weight": 0.15
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "approximation": "trust_region",
+      "spec": {
+       "reps": 1,
+       "optimization_level": 3,
+       "max_couplings": 6,
+       "betas": [
+        0.35
+       ],
+       "gammas": [
+        -0.5
+       ],
+       "prune_threshold": 0,
+       "coupling_order": "strength",
+       "warm_start": "10001100",
+       "warm_epsilon": 0.25
+      },
+      "baseline": "10001100",
+      "trust_weight": 0.15
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "baseline": "10001100",
+      "spec": {
+       "prune_threshold": 0,
+       "coupling_order": "strength",
+       "optimization_level": 3,
+       "warm_epsilon": 0.25,
+       "max_couplings": 6,
+       "reps": 1
+      },
+      "approximation": "surrogate"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "approximation": "trust_region",
+      "trust_weight": 0.15,
+      "spec": {
+       "max_couplings": 6,
+       "gammas": [
+        -0.6
+       ],
+       "reps": 1,
+       "prune_threshold": 0,
+       "optimization_level": 3,
+       "betas": [
+        0.45
+       ],
+       "coupling_order": "strength",
+       "warm_epsilon": 0.25,
+       "warm_start": "10001100"
+      },
+      "baseline": "10001100"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "spec": {
+       "max_couplings": 6,
+       "reps": 1,
+       "warm_epsilon": 0.25,
+       "gammas": [
+        -0.6
+       ],
+       "prune_threshold": 0,
+       "warm_start": "10001100",
+       "betas": [
+        0.25
+       ],
+       "coupling_order": "strength",
+       "optimization_level": 3
+      },
+      "approximation": "trust_region",
+      "baseline": "10001100",
+      "trust_weight": 0.15
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "spec": {
+       "coupling_order": "strength",
+       "warm_start": "10001100",
+       "gammas": [
+        0.6
+       ],
+       "max_couplings": 6,
+       "warm_epsilon": 0.25,
+       "optimization_level": 3,
+       "prune_threshold": 0,
+       "betas": [
+        -0.35
+       ],
+       "reps": 1
+      },
+      "trust_weight": 0.15,
+      "approximation": "trust_region",
+      "baseline": "10001100"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "approximation": "trust_region",
+      "trust_weight": 0.15,
+      "baseline": "10001100",
+      "spec": {
+       "coupling_order": "strength",
+       "gammas": [
+        0.7
+       ],
+       "warm_epsilon": 0.25,
+       "reps": 1,
+       "prune_threshold": 0,
+       "warm_start": "10001100",
+       "optimization_level": 3,
+       "betas": [
+        -0.45
+       ],
+       "max_couplings": 6
+      }
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "approximation": "trust_region",
+      "baseline": "10001100",
+      "trust_weight": 0.15,
+      "qasm": "(custom)"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "trust_weight": 0.15,
+      "approximation": "trust_region",
+      "baseline": "10001100",
+      "qasm": "(custom)"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "approximation": "trust_region",
+      "baseline": "10001100",
+      "trust_weight": 0.15,
+      "qasm": "(custom)"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "baseline": "10001100",
+      "trust_weight": 0.15,
+      "approximation": "trust_region",
+      "qasm": "(custom)"
+     }
+    },
+    {
+     "tool": "run_experiment",
+     "args": {
+      "approximation": "trust_region",
+      "shots": 1024,
+      "trust_weight": 0.15,
+      "baseline": "10001100",
+      "provider": "aer_noisy",
+      "qasm": "(custom)"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "approximation": "surrogate"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "baseline": "10001100",
+      "approximation": "trust_region",
+      "trust_weight": 0.15
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "baseline": "10001100",
+      "spec": {
+       "prune_threshold": 0,
+       "warm_epsilon": 0.25,
+       "optimization_level": 3,
+       "reps": 1,
+       "max_couplings": 6,
+       "coupling_order": "strength"
+      },
+      "approximation": "surrogate"
+     }
+    },
+    {
+     "tool": "record_revision",
+     "args": {
+      "change": "Re-centred trust_region (trust_weight=0.15) at 10001100 and replaced the swap-inducing 6-coupling QAOA spec with a heavy-hex-native 5-RZZ tree QASM circuit (couplings [1,7], [0,1], [1,5], [4,5], [6,7] with mean-field-compensated RZ angles at 10001100) on aer_noisy (shots=1024).",
+      "rationale": "Replacing the cyclic 6-coupling subgraph with the 5-edge heavy-hex-native tree ([1,7], [0,1], [1,5], [4,5], [6,7]) eliminates SWAP gates (10 CZ gates total) and couples q6 to q7 so tau=16 ms (01001100) is sampled alongside tau=30 ms (10001100), while mean-field-compensated RZ angles restore the correct local field sign on q6 and balance q2,q3 against q0,q1,q4,q5,q7 so probability concentrates on unsimulated neighbours of 10001100.",
+      "next_step": "With all 8 Hamming-1 neighbours of 10001100 now validated and confirming 10001100 (loss 1.1316) is a strict local minimum along every single-bit and single-parameter axis, use the 24-point surrogate (Spearman 0.9704) or trust_region at 10001100 to target unsimulated diagonal parameter trade-offs (such as 01001000, 01000100, 10011000, and 10010100 where inhibitory_gain c2 co-varies with synaptic_tau_ms or recurrent_excitation c1).",
+      "reference_job_id": "56f402e27c3a451eaa62",
+      "diagnosis": "Compiling the standard max_couplings=6 spec at baseline 10001100 showed two critical failures: (1) all 8 top ideal states (total probability 0.7149) were the already-simulated 1x00xx00 subspace, leaving mass_on_unsimulated_among_top16 at only 0.0472; (2) pruning J[5,6]=-1.8259 and J[6,7]=+1.1579 without mean-field compensation inverted the effective local field on q6 from -0.5316 (favouring q6=0, 10001100) to +2.4522 (favouring q6=1, 11001100), while uncompensated bare fields on q0,q1,q4,q5,q7 dwarfed h[2]=2.8123 and h[3]=5.3049, and the two coupling triangles [0,1,7] and [1,4,5] required SWAP routing (16 CZ gates, 99\u2013101 physical gates).",
+      "revised_job_id": "0a00b47c07ed4a74875a",
+      "observation": "In reference job 56f402e27c3a451eaa62 (aer_noisy, shots=1024, trust_region at baseline 10001000), the circuit found 10001100 (loss 1.1316) and completed validation of all 8 states in the 1x00xx00 subspace. Re-compiling the same spec at baseline 10001100 left all 8 top ideal states already simulated and mass_on_unsimulated_among_top16 = 0.0472. Our revised heavy-hex-native circuit (job 0a00b47c07ed4a74875a) reduced physical gates from 101 to 81 (CZ gates from 16 to 10, 2Q depth from 14 to 8, TVD vs ideal from 0.1378 to 0.1084), increased mass_on_unsimulated_among_top16 to 0.4277, ranked 10001100 #1 in noisy sampling (~30% of shots), and validated 8 new states around 10001100 led by 01001100 (loss 5.8841, 79 samples) and 10011100 (loss 9.0441, 75 samples)."
+     }
+    }
+   ],
+   "qasm_diff": "--- circuit.before.qasm\n+++ circuit.after.qasm\n@@ -12,24 +12,23 @@\n h q[7];\n-rz(-1.1028871149949384) q[0];\n-rz(-1.8210330290246015) q[1];\n-rz(-0.09275916594424956) q[2];\n-rz(0.27240042137853765) q[3];\n-rz(-1.026235962935115) q[4];\n-rz(-1.2403705864027759) q[5];\n-rz(0.1406511231089801) q[6];\n-rz(1.1449580676756366) q[7];\n-rzz(-0.3639149886608039) q[1],q[7];\n-rzz(0.331849227797509) q[0],q[1];\n-rzz(0.2420824469384956) q[1],q[5];\n-rzz(0.22922714243513523) q[4],q[5];\n-rzz(0.20040799603889853) q[1],q[4];\n-rzz(-0.19743098073625898) q[0],q[7];\n-rx(4.772935647677056) q[0];\n-rx(4.772935647677056) q[1];\n-rx(4.772935647677056) q[2];\n-rx(4.772935647677056) q[3];\n-rx(4.772935647677056) q[4];\n-rx(4.772935647677056) q[5];\n-rx(4.772935647677056) q[6];\n-rx(4.772935647677056) q[7];\n+rz(0.95) q[0];\n+rz(1.15) q[1];\n+rz(-1.05) q[2];\n+rz(-1.4) q[3];\n+rz(0.8) q[4];\n+rz(1.05) q[5];\n+rz(0.75) q[6];\n+rz(-0.45) q[7];\n+rzz(0.36) q[1],q[7];\n+rzz(-0.34) q[0],q[1];\n+rzz(-0.26) q[1],q[5];\n+rzz(-0.22) q[4],q[5];\n+rzz(-0.65) q[6],q[7];\n+rx(1.48) q[0];\n+rx(1.48) q[1];\n+rx(1.48) q[2];\n+rx(1.48) q[3];\n+rx(1.48) q[4];\n+rx(1.48) q[5];\n+rx(1.48) q[6];\n+rx(1.48) q[7];\n barrier q[0],q[1],q[2],q[3],q[4],q[5],q[6],q[7];",
+   "spec_diff": "--- spec.before\n+++ spec.after\n@@ -1,16 +1 @@\n-{\n- \"betas\": [\n-  2.386467823838528\n- ],\n- \"coupling_order\": \"strength\",\n- \"gammas\": [\n-  0.9105165145123008\n- ],\n- \"max_couplings\": 6,\n- \"optimization_level\": 3,\n- \"prune_threshold\": 0.0,\n- \"reps\": 1,\n- \"seed_transpiler\": 11,\n- \"warm_epsilon\": 0.25,\n- \"warm_start\": null\n-}\n+null"
+  },
+  {
+   "iteration": 3,
+   "seconds": 645.2,
+   "verdict": "untested",
+   "comparison_basis": "experiment_best",
+   "new_best": false,
+   "metric_before": 1.1316143645227843,
+   "metric_after": null,
+   "best_known_before": 1.1316143645227843,
+   "best_known_after": 1.1316143645227843,
+   "forward_simulations_after": 24,
+   "experiment_best": "10001100",
+   "experiment_best_loss": 1.1316143645227843,
+   "experiment_best_rank": 2,
+   "providers": [
+    "gemini/gemini-4-argon (GEMINI_API_KEY)"
+   ],
+   "model_turns": 19,
+   "observation": "(model ended without recording a revision)",
+   "diagnosis": "",
+   "change": "",
+   "rationale": "",
+   "next_step": "",
+   "custom_qasm": false,
+   "secondary": {
+    "p_consistent_before": 0.1865234375,
+    "p_consistent_after": null,
+    "physical_gates_before": 101,
+    "physical_gates_after": null,
+    "approximation_ratio_before": 0.7386853175986984,
+    "approximation_ratio_after": null,
+    "provider_before": "aer_noisy",
+    "provider_after": null
+   },
+   "reference": {
+    "job_id": "56f402e27c3a451eaa62",
+    "provider": "aer_noisy",
+    "approximation": "trust_region",
+    "baseline": "10001000",
+    "trust_weight": 0.15,
+    "shots": 1024,
+    "spec": {
+     "warm_epsilon": 0.25,
+     "reps": 1,
+     "optimization_level": 3,
+     "max_couplings": 6,
+     "coupling_order": "strength",
+     "prune_threshold": 0.0,
+     "warm_start": null,
+     "seed_transpiler": 11
+    },
+    "qasm_source": "spec",
+    "created_by": "agent",
+    "best_validated": "10001100",
+    "best_validated_loss": 1.1316143645227843,
+    "new_validations": 8,
+    "approximation_ratio": 0.7386853175986984,
+    "p_consistent": 0.1865234375,
+    "physical_gates": 101,
+    "two_qubit_gates": 16,
+    "two_qubit_depth": 14,
+    "transpile_target": "fake_torino",
+    "tvd_vs_ideal": 0.13778068156677617,
+    "truth_recovered": null,
+    "error": null
+   },
+   "revised": null,
+   "jobs_run": [],
+   "tool_trace": [
+    {
+     "tool": "inspect_state",
+     "args": {}
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "approximation": "surrogate"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "trust_weight": 0.15,
+      "approximation": "trust_region",
+      "baseline": "10001100"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "baseline": "10001100",
+      "approximation": "feature_regression"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "approximation": "regression",
+      "baseline": "10001100"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "baseline": "10001100",
+      "approximation": "secant"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "baseline": "10001100",
+      "approximation": "jacobian"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "baseline": "10001100",
+      "trust_weight": 0,
+      "approximation": "trust_region"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "spec": {
+       "coupling_order": "strength",
+       "optimization_level": 3,
+       "reps": 1,
+       "max_couplings": 6
+      },
+      "approximation": "surrogate"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "spec": {
+       "max_couplings": 6,
+       "reps": 1,
+       "coupling_order": "strength",
+       "optimization_level": 3
+      },
+      "baseline": "10001100",
+      "approximation": "secant"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "trust_weight": 0.15,
+      "spec": {
+       "reps": 1,
+       "max_couplings": 6,
+       "optimization_level": 3,
+       "coupling_order": "strength"
+      },
+      "baseline": "10001100",
+      "approximation": "trust_region"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "spec": {
+       "coupling_order": "strength",
+       "max_couplings": 6,
+       "optimization_level": 3,
+       "reps": 1
+      },
+      "baseline": "10001100",
+      "approximation": "regression"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "spec": {
+       "reps": 1,
+       "max_couplings": 28,
+       "coupling_order": "strength",
+       "optimization_level": 1
+      },
+      "approximation": "trust_region",
+      "trust_weight": 0,
+      "baseline": "10001100"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "spec": {
+       "coupling_order": "strength",
+       "reps": 1,
+       "max_couplings": 28,
+       "optimization_level": 1
+      },
+      "approximation": "surrogate"
+     }
+    },
+    {
+     "tool": "inspect_state",
+     "args": {}
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "approximation": "secant",
+      "baseline": "01001100"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "approximation": "secant",
+      "baseline": "10000100"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "baseline": "10011100",
+      "approximation": "secant"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "baseline": "10001001",
+      "approximation": "secant"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "baseline": "10001000",
+      "approximation": "secant"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "approximation": "secant",
+      "baseline": "11001100"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "approximation": "secant",
+      "baseline": "10101100"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "approximation": "secant",
+      "baseline": "10001110"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "approximation": "secant",
+      "baseline": "01011100"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "baseline": "11010100",
+      "approximation": "secant"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "spec": {
+       "reps": 1,
+       "max_couplings": 28,
+       "coupling_order": "strength",
+       "optimization_level": 1
+      },
+      "approximation": "secant",
+      "baseline": "01001100"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "baseline": "10001000",
+      "spec": {
+       "reps": 1,
+       "max_couplings": 28,
+       "optimization_level": 1,
+       "coupling_order": "strength"
+      },
+      "approximation": "secant"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "baseline": "10000000",
+      "approximation": "secant"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "baseline": "01000000",
+      "approximation": "secant"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "approximation": "secant",
+      "baseline": "11001001"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "baseline": "11011000",
+      "approximation": "secant"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "spec": {
+       "coupling_order": "strength",
+       "optimization_level": 1,
+       "max_couplings": 28,
+       "reps": 1
+      },
+      "baseline": "01000000",
+      "approximation": "secant"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "baseline": "10001101",
+      "approximation": "secant"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "approximation": "secant",
+      "baseline": "00001100"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "spec": {
+       "max_couplings": 28,
+       "coupling_order": "strength",
+       "reps": 1,
+       "optimization_level": 1
+      },
+      "baseline": "10001001",
+      "approximation": "secant"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "baseline": "11001001",
+      "spec": {
+       "reps": 1,
+       "max_couplings": 28,
+       "coupling_order": "strength",
+       "optimization_level": 1
+      },
+      "approximation": "secant"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "approximation": "secant",
+      "spec": {
+       "optimization_level": 1,
+       "max_couplings": 28,
+       "coupling_order": "strength",
+       "reps": 1
+      },
+      "baseline": "10011100"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "baseline": "11010100",
+      "approximation": "secant",
+      "spec": {
+       "optimization_level": 1,
+       "max_couplings": 28,
+       "reps": 1,
+       "coupling_order": "strength"
+      }
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "approximation": "secant",
+      "baseline": "11001000"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "approximation": "secant",
+      "baseline": "11000100"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "approximation": "secant",
+      "baseline": "11000000"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "baseline": "11001101",
+      "approximation": "secant"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "spec": {
+       "max_couplings": 28,
+       "reps": 1,
+       "coupling_order": "strength",
+       "optimization_level": 1
+      },
+      "approximation": "secant",
+      "baseline": "11001101"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "spec": {
+       "max_couplings": 28,
+       "optimization_level": 1,
+       "reps": 1,
+       "coupling_order": "strength"
+      },
+      "approximation": "secant",
+      "baseline": "11000100"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "approximation": "secant",
+      "spec": {
+       "coupling_order": "strength",
+       "reps": 1,
+       "optimization_level": 1,
+       "max_couplings": 28
+      },
+      "baseline": "10001101"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "approximation": "secant",
+      "baseline": "10000100",
+      "spec": {
+       "reps": 1,
+       "max_couplings": 28,
+       "coupling_order": "strength",
+       "optimization_level": 1
+      }
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "baseline": "11011100",
+      "approximation": "secant"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "baseline": "00000000",
+      "approximation": "secant"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "baseline": "00011100",
+      "approximation": "secant"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "approximation": "secant",
+      "baseline": "11001100",
+      "spec": {
+       "reps": 1,
+       "optimization_level": 1,
+       "coupling_order": "strength",
+       "max_couplings": 28
+      }
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "approximation": "secant",
+      "spec": {
+       "reps": 1,
+       "optimization_level": 1,
+       "coupling_order": "strength",
+       "max_couplings": 28
+      },
+      "baseline": "11001000"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "baseline": "11000011",
+      "approximation": "secant"
+     }
+    },
+    {
+     "tool": "inspect_state",
+     "args": {}
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "approximation": "secant",
+      "baseline": "11000010"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "approximation": "secant",
+      "baseline": "11100010"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "spec": {
+       "max_couplings": 28,
+       "optimization_level": 1,
+       "reps": 1,
+       "coupling_order": "strength"
+      },
+      "baseline": "11000000",
+      "approximation": "secant"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "baseline": "11000010",
+      "spec": {
+       "coupling_order": "strength",
+       "max_couplings": 28,
+       "reps": 1,
+       "optimization_level": 1
+      },
+      "approximation": "secant"
+     }
+    }
+   ],
+   "qasm_diff": null,
+   "spec_diff": null
+  },
+  {
+   "iteration": 4,
+   "seconds": 754.7,
+   "verdict": "regressed",
+   "comparison_basis": "model_specified",
+   "new_best": false,
+   "metric_before": 5.884145748066851,
+   "metric_after": 6.503021831897615,
+   "best_known_before": 1.1316143645227843,
+   "best_known_after": 1.1316143645227843,
+   "forward_simulations_after": 32,
+   "experiment_best": "10001100",
+   "experiment_best_loss": 1.1316143645227843,
+   "experiment_best_rank": 2,
+   "providers": [
+    "gemini/gemini-4-argon (GEMINI_API_KEY)"
+   ],
+   "model_turns": 15,
+   "observation": "At baseline 10001100 (loss 1.1316, 24/256 forward simulations used), standard QAOA on trust_region (trust_weight=0.15, max_couplings=6) puts 100% of its top-8 ideal probability on the already-simulated 1x00xx00 subspace (mass_on_unsimulated_among_top16 = 0.0325), while prior job 0a00b47c07ed4a74875a (81 physical gates, 10 CZ, depth 8) sampled only q3q2=11 states (best newly validated 01001100, loss 5.8841). Compiling our 5-RZZ tree on [6,7], [4,7], [2,7], [2,3], [0,3] reduced the physical circuit on fake_torino to 60 gates (9 CZ gates, two-qubit depth 9) and increased mass_on_unsimulated_among_top16 to 0.9490 (87.04% ideal mass in the top 8 unsimulated states). Executing on aer_noisy (job adb38b08d74441c287fc, shots=1024, TVD vs ideal 0.1132) validated 8 new states led by 01001000 (151 samples, loss 6.5030) and 01000100 (90 samples, loss 7.2403).",
+   "diagnosis": "In job 0a00b47c07ed4a74875a, qubits q2 and q3 (inhibitory_gain c2) had zero two-qubit couplings and were locked to q3q2=11 (c2=3), so all 8 validated states stayed on the c2=3 slice (best newly validated loss 5.8841 at 01001100) while leaving the diagonal trade-off states on (tau, c2) and (c1, c2) unsimulated. Meanwhile, the unpruned and max_couplings=6 specs at baseline 10001100 place all 8 top ideal states inside the already-simulated 1x00xx00 subspace (mass_on_unsimulated_among_top16 = 0.0325\u20130.0366).",
+   "change": "Replaced the q2,q3-uncoupled 5-RZZ tree circuit ([1,7], [0,1], [1,5], [4,5], [6,7]) of job 0a00b47c07ed4a74875a with a zero-SWAP 5-RZZ tree QASM circuit on couplings [6,7], [4,7], [2,7], [2,3], [0,3] under trust_region (baseline=10001100, trust_weight=0.15) on aer_noisy (shots=1024).",
+   "rationale": "Coupling q2 and q3 via [2,3] and [2,7] along with [6,7], [4,7], and [0,3] embeds without SWAPs on fake_torino (degree <= 3 tree, 9 CZ gates vs 10 CZ and 60 vs 81 total physical gates) while suppressing the already-simulated q3q2=11 and 1x00xx00 subspaces, directly testing the unsimulated intermediate-inhibition hypotheses 01001000, 01000100, 10011000, 10010100, and 10010000.",
+   "next_step": "With all 12 states of the (tau in {1,2,3}, c1=0, c2 in {0,1,2,3}, P=0) grid and all 4 states of (tau=2, c1=1, c2 in {0,1,2,3}, P=0) now validated\u2014confirming 10001100 (loss 1.1316) is the strict minimum across both subspaces\u2014use the 32-point surrogate (Spearman 0.9703) or secant at 10001101/11001001 to test the remaining low-loss unsimulated states in the P=1 and tau=3 subspaces (10000101, 10000001, 11000101, 11000001, 11010000, and 00000100).",
+   "custom_qasm": true,
+   "secondary": {
+    "p_consistent_before": 0.310546875,
+    "p_consistent_after": 0.0078125,
+    "physical_gates_before": 81,
+    "physical_gates_after": 60,
+    "approximation_ratio_before": 0.6057674133501227,
+    "approximation_ratio_after": 0.5724463045728406,
+    "provider_before": "aer_noisy",
+    "provider_after": "aer_noisy"
+   },
+   "reference": {
+    "job_id": "0a00b47c07ed4a74875a",
+    "provider": "aer_noisy",
+    "approximation": "trust_region",
+    "baseline": "10001100",
+    "trust_weight": 0.15,
+    "shots": 1024,
+    "spec": null,
+    "qasm_source": "agent_qasm",
+    "created_by": "agent",
+    "best_validated": "01001100",
+    "best_validated_loss": 5.884145748066851,
+    "new_validations": 8,
+    "approximation_ratio": 0.6057674133501227,
+    "p_consistent": 0.310546875,
+    "physical_gates": 81,
+    "two_qubit_gates": 10,
+    "two_qubit_depth": 8,
+    "transpile_target": "fake_torino",
+    "tvd_vs_ideal": 0.1083859686710876,
+    "truth_recovered": null,
+    "error": null
+   },
+   "revised": {
+    "job_id": "adb38b08d74441c287fc",
+    "provider": "aer_noisy",
+    "approximation": "trust_region",
+    "baseline": "10001100",
+    "trust_weight": 0.15,
+    "shots": 1024,
+    "spec": null,
+    "qasm_source": "agent_qasm",
+    "created_by": "agent",
+    "best_validated": "01001000",
+    "best_validated_loss": 6.503021831897615,
+    "new_validations": 8,
+    "approximation_ratio": 0.5724463045728406,
+    "p_consistent": 0.0078125,
+    "physical_gates": 60,
+    "two_qubit_gates": 9,
+    "two_qubit_depth": 9,
+    "transpile_target": "fake_torino",
+    "tvd_vs_ideal": 0.11323571329191617,
+    "truth_recovered": null,
+    "error": null
+   },
+   "jobs_run": [
+    {
+     "job_id": "adb38b08d74441c287fc",
+     "provider": "aer_noisy",
+     "approximation": "trust_region",
+     "baseline": "10001100",
+     "trust_weight": 0.15,
+     "shots": 1024,
+     "spec": null,
+     "qasm_source": "agent_qasm",
+     "created_by": "agent",
+     "best_validated": "01001000",
+     "best_validated_loss": 6.503021831897615,
+     "new_validations": 8,
+     "approximation_ratio": 0.5724463045728406,
+     "p_consistent": 0.0078125,
+     "physical_gates": 60,
+     "two_qubit_gates": 9,
+     "two_qubit_depth": 9,
+     "transpile_target": "fake_torino",
+     "tvd_vs_ideal": 0.11323571329191617,
+     "truth_recovered": null,
+     "error": null
+    }
+   ],
+   "tool_trace": [
+    {
+     "tool": "inspect_state",
+     "args": {}
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "approximation": "surrogate"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "trust_weight": 0,
+      "approximation": "trust_region",
+      "baseline": "10001100"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "approximation": "feature_regression",
+      "baseline": "10001100"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "baseline": "10001100",
+      "approximation": "secant"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "spec": {
+       "optimization_level": 3,
+       "reps": 1,
+       "max_couplings": 6
+      },
+      "approximation": "surrogate"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "spec": {
+       "reps": 1,
+       "max_couplings": 6,
+       "optimization_level": 3
+      },
+      "baseline": "10001100",
+      "trust_weight": 0.15,
+      "approximation": "trust_region"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "approximation": "jacobian",
+      "baseline": "10001100"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "approximation": "regression",
+      "baseline": "10001100"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "approximation": "surrogate",
+      "spec": {
+       "optimization_level": 3,
+       "reps": 1,
+       "max_couplings": 28
+      }
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "approximation": "surrogate",
+      "spec": {
+       "reps": 2,
+       "max_couplings": 28,
+       "optimization_level": 3
+      }
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "trust_weight": 0,
+      "spec": {
+       "optimization_level": 3,
+       "reps": 1,
+       "max_couplings": 28
+      },
+      "baseline": "10001100",
+      "approximation": "trust_region"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "spec": {
+       "reps": 1,
+       "optimization_level": 3,
+       "max_couplings": 28
+      },
+      "baseline": "10001100",
+      "approximation": "regression"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "baseline": "10001100",
+      "trust_weight": 0.15,
+      "approximation": "trust_region",
+      "qasm": "(custom)"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "baseline": "10001100",
+      "approximation": "trust_region",
+      "trust_weight": 0.15,
+      "qasm": "(custom)"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "trust_weight": 0.15,
+      "baseline": "10001100",
+      "approximation": "trust_region",
+      "qasm": "(custom)"
+     }
+    },
+    {
+     "tool": "run_experiment",
+     "args": {
+      "provider": "aer_noisy",
+      "approximation": "trust_region",
+      "baseline": "10001100",
+      "trust_weight": 0.15,
+      "shots": 1024,
+      "qasm": "(custom)"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "approximation": "surrogate"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "baseline": "11001100",
+      "approximation": "secant"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "approximation": "secant",
+      "baseline": "01001100"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "baseline": "10001000",
+      "approximation": "secant"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "baseline": "10011100",
+      "approximation": "secant"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "approximation": "secant",
+      "baseline": "10001101"
+     }
+    },
+    {
+     "tool": "inspect_state",
+     "args": {}
+    },
+    {
+     "tool": "record_revision",
+     "args": {
+      "change": "Replaced the q2,q3-uncoupled 5-RZZ tree circuit ([1,7], [0,1], [1,5], [4,5], [6,7]) of job 0a00b47c07ed4a74875a with a zero-SWAP 5-RZZ tree QASM circuit on couplings [6,7], [4,7], [2,7], [2,3], [0,3] under trust_region (baseline=10001100, trust_weight=0.15) on aer_noisy (shots=1024).",
+      "reference_job_id": "0a00b47c07ed4a74875a",
+      "revised_job_id": "adb38b08d74441c287fc",
+      "rationale": "Coupling q2 and q3 via [2,3] and [2,7] along with [6,7], [4,7], and [0,3] embeds without SWAPs on fake_torino (degree <= 3 tree, 9 CZ gates vs 10 CZ and 60 vs 81 total physical gates) while suppressing the already-simulated q3q2=11 and 1x00xx00 subspaces, directly testing the unsimulated intermediate-inhibition hypotheses 01001000, 01000100, 10011000, 10010100, and 10010000.",
+      "observation": "At baseline 10001100 (loss 1.1316, 24/256 forward simulations used), standard QAOA on trust_region (trust_weight=0.15, max_couplings=6) puts 100% of its top-8 ideal probability on the already-simulated 1x00xx00 subspace (mass_on_unsimulated_among_top16 = 0.0325), while prior job 0a00b47c07ed4a74875a (81 physical gates, 10 CZ, depth 8) sampled only q3q2=11 states (best newly validated 01001100, loss 5.8841). Compiling our 5-RZZ tree on [6,7], [4,7], [2,7], [2,3], [0,3] reduced the physical circuit on fake_torino to 60 gates (9 CZ gates, two-qubit depth 9) and increased mass_on_unsimulated_among_top16 to 0.9490 (87.04% ideal mass in the top 8 unsimulated states). Executing on aer_noisy (job adb38b08d74441c287fc, shots=1024, TVD vs ideal 0.1132) validated 8 new states led by 01001000 (151 samples, loss 6.5030) and 01000100 (90 samples, loss 7.2403).",
+      "next_step": "With all 12 states of the (tau in {1,2,3}, c1=0, c2 in {0,1,2,3}, P=0) grid and all 4 states of (tau=2, c1=1, c2 in {0,1,2,3}, P=0) now validated\u2014confirming 10001100 (loss 1.1316) is the strict minimum across both subspaces\u2014use the 32-point surrogate (Spearman 0.9703) or secant at 10001101/11001001 to test the remaining low-loss unsimulated states in the P=1 and tau=3 subspaces (10000101, 10000001, 11000101, 11000001, 11010000, and 00000100).",
+      "diagnosis": "In job 0a00b47c07ed4a74875a, qubits q2 and q3 (inhibitory_gain c2) had zero two-qubit couplings and were locked to q3q2=11 (c2=3), so all 8 validated states stayed on the c2=3 slice (best newly validated loss 5.8841 at 01001100) while leaving the diagonal trade-off states on (tau, c2) and (c1, c2) unsimulated. Meanwhile, the unpruned and max_couplings=6 specs at baseline 10001100 place all 8 top ideal states inside the already-simulated 1x00xx00 subspace (mass_on_unsimulated_among_top16 = 0.0325\u20130.0366)."
+     }
+    }
+   ],
+   "qasm_diff": "--- circuit.before.qasm\n+++ circuit.after.qasm\n@@ -5,3 +5,2 @@\n h q[0];\n-h q[1];\n h q[2];\n@@ -9,26 +8,20 @@\n h q[4];\n-h q[5];\n h q[6];\n h q[7];\n-rz(0.95) q[0];\n-rz(1.15) q[1];\n-rz(-1.05) q[2];\n-rz(-1.4) q[3];\n-rz(0.8) q[4];\n-rz(1.05) q[5];\n-rz(0.75) q[6];\n-rz(-0.45) q[7];\n-rzz(0.36) q[1],q[7];\n-rzz(-0.34) q[0],q[1];\n-rzz(-0.26) q[1],q[5];\n-rzz(-0.22) q[4],q[5];\n-rzz(-0.65) q[6],q[7];\n-rx(1.48) q[0];\n-rx(1.48) q[1];\n-rx(1.48) q[2];\n-rx(1.48) q[3];\n-rx(1.48) q[4];\n-rx(1.48) q[5];\n-rx(1.48) q[6];\n-rx(1.48) q[7];\n+rz(-0.02) q[7];\n+rx(pi/2) q[7];\n+rz(-0.12) q[3];\n+rx(pi/2) q[3];\n+rzz(-1.0) q[6],q[7];\n+rzz(pi/2) q[4],q[7];\n+rzz(-0.58) q[2],q[7];\n+rzz(-1.12) q[2],q[3];\n+rzz(-0.55) q[0],q[3];\n+rz(0.57) q[6];\n+rx(pi/2) q[6];\n+rx(pi/2) q[4];\n+rz(0.24) q[2];\n+rx(pi/2) q[2];\n+rz(1.02) q[0];\n+rx(pi/2) q[0];\n barrier q[0],q[1],q[2],q[3],q[4],q[5],q[6],q[7];",
+   "spec_diff": null
+  },
+  {
+   "iteration": 5,
+   "seconds": 218.4,
+   "verdict": "unchanged",
+   "comparison_basis": "same_provider",
+   "new_best": false,
+   "metric_before": 6.503021831897615,
+   "metric_after": 8.602879505383864,
+   "best_known_before": 1.1316143645227843,
+   "best_known_after": 1.1316143645227843,
+   "forward_simulations_after": 40,
+   "experiment_best": "10001100",
+   "experiment_best_loss": 1.1316143645227843,
+   "experiment_best_rank": 2,
+   "providers": [
+    "gemini/gemini-4-argon (GEMINI_API_KEY)"
+   ],
+   "model_turns": 19,
+   "observation": "(model ended without recording a revision)",
+   "diagnosis": "",
+   "change": "",
+   "rationale": "",
+   "next_step": "",
+   "custom_qasm": true,
+   "secondary": {
+    "p_consistent_before": 0.0078125,
+    "p_consistent_after": 0.033203125,
+    "physical_gates_before": 60,
+    "physical_gates_after": 78,
+    "approximation_ratio_before": 0.5724463045728406,
+    "approximation_ratio_after": 0.5616031510718501,
+    "provider_before": "aer_noisy",
+    "provider_after": "aer_noisy"
+   },
+   "reference": {
+    "job_id": "adb38b08d74441c287fc",
+    "provider": "aer_noisy",
+    "approximation": "trust_region",
+    "baseline": "10001100",
+    "trust_weight": 0.15,
+    "shots": 1024,
+    "spec": null,
+    "qasm_source": "agent_qasm",
+    "created_by": "agent",
+    "best_validated": "01001000",
+    "best_validated_loss": 6.503021831897615,
+    "new_validations": 8,
+    "approximation_ratio": 0.5724463045728406,
+    "p_consistent": 0.0078125,
+    "physical_gates": 60,
+    "two_qubit_gates": 9,
+    "two_qubit_depth": 9,
+    "transpile_target": "fake_torino",
+    "tvd_vs_ideal": 0.11323571329191617,
+    "truth_recovered": null,
+    "error": null
+   },
+   "revised": {
+    "job_id": "598a2be1951749cfa039",
+    "provider": "aer_noisy",
+    "approximation": "surrogate",
+    "baseline": "10001100",
+    "trust_weight": 0.15,
+    "shots": 1024,
+    "spec": null,
+    "qasm_source": "agent_qasm",
+    "created_by": "agent",
+    "best_validated": "11000101",
+    "best_validated_loss": 8.602879505383864,
+    "new_validations": 8,
+    "approximation_ratio": 0.5616031510718501,
+    "p_consistent": 0.033203125,
+    "physical_gates": 78,
+    "two_qubit_gates": 10,
+    "two_qubit_depth": 8,
+    "transpile_target": "fake_torino",
+    "tvd_vs_ideal": 0.10203441358143579,
+    "truth_recovered": null,
+    "error": null
+   },
+   "jobs_run": [
+    {
+     "job_id": "598a2be1951749cfa039",
+     "provider": "aer_noisy",
+     "approximation": "surrogate",
+     "baseline": "10001100",
+     "trust_weight": 0.15,
+     "shots": 1024,
+     "spec": null,
+     "qasm_source": "agent_qasm",
+     "created_by": "agent",
+     "best_validated": "11000101",
+     "best_validated_loss": 8.602879505383864,
+     "new_validations": 8,
+     "approximation_ratio": 0.5616031510718501,
+     "p_consistent": 0.033203125,
+     "physical_gates": 78,
+     "two_qubit_gates": 10,
+     "two_qubit_depth": 8,
+     "transpile_target": "fake_torino",
+     "tvd_vs_ideal": 0.10203441358143579,
+     "truth_recovered": null,
+     "error": null
+    }
+   ],
+   "tool_trace": [
+    {
+     "tool": "inspect_state",
+     "args": {}
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "approximation": "surrogate"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "approximation": "feature_regression"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "baseline": "10001100",
+      "approximation": "secant"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "approximation": "regression",
+      "baseline": "10001100"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "baseline": "11001001",
+      "approximation": "secant"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "baseline": "10001101",
+      "approximation": "secant"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "approximation": "secant",
+      "baseline": "10011100"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "baseline": "11011000",
+      "approximation": "secant"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "approximation": "surrogate",
+      "spec": {
+       "optimization_level": 3,
+       "reps": 1,
+       "max_couplings": 6
+      }
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "spec": {
+       "optimization_level": 3,
+       "warm_epsilon": 0.25,
+       "max_couplings": 6,
+       "reps": 1
+      },
+      "approximation": "surrogate"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "approximation": "secant",
+      "spec": {
+       "optimization_level": 3,
+       "max_couplings": 6,
+       "reps": 1
+      },
+      "baseline": "11001001"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "spec": {
+       "optimization_level": 3,
+       "reps": 1,
+       "max_couplings": 6
+      },
+      "approximation": "secant",
+      "baseline": "11011000"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "baseline": "10001100",
+      "approximation": "jacobian"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "spec": {
+       "reps": 1,
+       "optimization_level": 3,
+       "max_couplings": 8
+      },
+      "approximation": "surrogate"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "spec": {
+       "optimization_level": 3,
+       "max_couplings": 10,
+       "reps": 1
+      },
+      "approximation": "surrogate"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "spec": {
+       "max_couplings": 5,
+       "reps": 1,
+       "optimization_level": 3,
+       "warm_epsilon": 0.25,
+       "warm_start": "10000101"
+      },
+      "approximation": "surrogate"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "approximation": "surrogate",
+      "qasm": "(custom)"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "approximation": "surrogate",
+      "qasm": "(custom)"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "approximation": "surrogate",
+      "qasm": "(custom)"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "approximation": "surrogate",
+      "qasm": "(custom)"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "approximation": "surrogate",
+      "qasm": "(custom)"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "approximation": "surrogate",
+      "qasm": "(custom)"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "approximation": "surrogate",
+      "qasm": "(custom)"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "approximation": "surrogate",
+      "qasm": "(custom)"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "approximation": "surrogate",
+      "qasm": "(custom)"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "approximation": "surrogate",
+      "qasm": "(custom)"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "approximation": "surrogate",
+      "qasm": "(custom)"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "approximation": "surrogate",
+      "qasm": "(custom)"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "approximation": "surrogate",
+      "qasm": "(custom)"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "approximation": "surrogate",
+      "qasm": "(custom)"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "approximation": "surrogate",
+      "qasm": "(custom)"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "approximation": "surrogate",
+      "qasm": "(custom)"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "approximation": "surrogate",
+      "qasm": "(custom)"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "approximation": "surrogate",
+      "qasm": "(custom)"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "approximation": "surrogate",
+      "qasm": "(custom)"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "approximation": "surrogate",
+      "qasm": "(custom)"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "approximation": "surrogate",
+      "qasm": "(custom)"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "approximation": "surrogate",
+      "qasm": "(custom)"
+     }
+    },
+    {
+     "tool": "compile_circuit",
+     "args": {
+      "approximation": "surrogate",
+      "qasm": "(custom)"
+     }
+    },
+    {
+     "tool": "run_experiment",
+     "args": {
+      "shots": 1024,
+      "approximation": "surrogate",
+      "provider": "aer_noisy",
+      "qasm": "(custom)"
+     }
+    },
+    {
+     "tool": "build_problem",
+     "args": {
+      "approximation": "surrogate"
+     }
+    }
+   ],
+   "qasm_diff": "--- circuit.before.qasm\n+++ circuit.after.qasm\n@@ -5,2 +5,3 @@\n h q[0];\n+h q[1];\n h q[2];\n@@ -8,20 +9,26 @@\n h q[4];\n+h q[5];\n h q[6];\n h q[7];\n-rz(-0.02) q[7];\n+rz(-0.02) q[0];\n+rz(1.5) q[1];\n+rz(-0.08) q[2];\n+rz(0.75) q[3];\n+rz(0.32) q[4];\n+rz(1.45) q[5];\n+rz(0.08) q[6];\n+rz(-0.85) q[7];\n+rzz(-0.39) q[6],q[7];\n+rzz(0.38) q[3],q[7];\n+rzz(-0.39) q[4],q[7];\n+rzz(-0.24) q[0],q[3];\n+rzz(-0.18) q[0],q[2];\n+rx(pi/2) q[0];\n+rx(pi/2) q[1];\n+rx(pi/2) q[2];\n+rx(pi/2) q[3];\n+rx(pi/2) q[4];\n+rx(pi/2) q[5];\n+rx(pi/2) q[6];\n rx(pi/2) q[7];\n-rz(-0.12) q[3];\n-rx(pi/2) q[3];\n-rzz(-1.0) q[6],q[7];\n-rzz(pi/2) q[4],q[7];\n-rzz(-0.58) q[2],q[7];\n-rzz(-1.12) q[2],q[3];\n-rzz(-0.55) q[0],q[3];\n-rz(0.57) q[6];\n-rx(pi/2) q[6];\n-rx(pi/2) q[4];\n-rz(0.24) q[2];\n-rx(pi/2) q[2];\n-rz(1.02) q[0];\n-rx(pi/2) q[0];\n barrier q[0],q[1],q[2],q[3],q[4],q[5],q[6],q[7];",
+   "spec_diff": null
+  }
+ ],
+ "outcome": {
+  "best": "10001100",
+  "best_loss": 1.1316143645227843,
+  "best_parameters": {
+   "excitatory_drive": 1.5,
+   "inhibitory_gain": 19.0,
+   "recurrent_excitation": 12.0,
+   "synaptic_tau_ms": 30.0
+  },
+  "global_min_loss": 0.8800873611038071,
+  "global_argmin": "11100011",
+  "best_rank_of_256": 2,
+  "best_in_consistent_set": true,
+  "consistent_set_size": 3,
+  "hidden_truth": null,
+  "truth_recovered": false,
+  "forward_simulations_used": 40,
+  "exhaustive_cost": 256,
+  "verdicts": {
+   "improved": 1,
+   "regressed": 2,
+   "untested": 1,
+   "unchanged": 1
+  },
+  "new_best_iterations": [
+   1
+  ],
+  "model_providers_used": {
+   "gemini/gemini-4-argon (GEMINI_API_KEY)": 5
+  }
+ },
+ "elapsed_seconds": 2137.6,
+ "generated_at": "2026-10-25T21:18:05.342675+00:00"
+}
