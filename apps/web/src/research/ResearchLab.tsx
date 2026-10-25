@@ -1,273 +1,1048 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { BrainScene } from '@little-brain/brain';
-import { Activity, Brain, ChevronRight, CircleHelp, Cpu, FlaskConical, LogIn, LogOut, Play, Plus, Radio, RefreshCw, Send, SlidersHorizontal, Sparkles, X } from 'lucide-react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type FormEvent,
+} from 'react';
+import { BrainScene, type ResearchMood } from '@little-brain/brain';
+import {
+  ArrowUp,
+  Atom,
+  Brain,
+  FlaskConical,
+  Layers,
+  LogOut,
+  MessageCircle,
+  PanelLeft,
+  Plus,
+  Sparkles,
+  Waves,
+} from 'lucide-react';
+import { IconButton } from '../components';
+import { WorkspacePane } from '../WorkspacePane';
+import {
+  ApiError,
+  isActive,
+  type Dataset,
+  type Experiment,
+  type ExperimentDetail,
+  type FeedItem,
+  type Job,
+  type JobRequest,
+  type NewExperiment,
+  type Recording,
+  type Session,
+  type SyntheticPreset,
+} from './api';
+import {
+  DEFAULT_RUN,
+  ExperimentTab,
+  FeedTab,
+  JobTab,
+  toJobRequest,
+  type RunSettings,
+} from './Analysis';
+import { AgentTimeline } from './AgentTimeline';
+import { EEGPanel, TraceStrip } from './EEGPanel';
+import { useAuth, useBridge, useCompact, usePoll } from './hooks';
+import { JobsPanel } from './JobsPanel';
+import { QuantumViz } from './QuantumViz';
+import { anchorsFromEEG, idleAnchors, rms } from './signal';
+import './lab.css';
 
-type Provider = 'classical' | 'ibm_simulator' | 'ibm_quantum' | 'extropic_simulator';
-type CircuitData = { qubits: number; logical_gates: number; depth: number; operations: Array<{ gate: string; qubits: number[] }>; truncated?: boolean };
-type Job = {
-  id: string; provider: Provider; status: string; title: string;
-  created_at?: string; provider_job_id?: string; objective?: number;
-  result?: Record<string, unknown>; error?: string; circuit?: CircuitData;
-};
-type Signal = { channel: string; alpha: number; beta: number; theta: number; delta: number; quality: string; samples?: number[] };
-type AuthUser = { email?: string; name?: string; picture?: string };
-type Analysis = { id: string; kind: string; text: string; time: string };
-const API = (import.meta.env.VITE_CORTEX_API || '').replace(/\/$/, '');
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
-const sources = [
-  { name: 'frontal left', x: 27, y: 34 }, { name: 'frontal right', x: 72, y: 34 },
-  { name: 'temporal left', x: 17, y: 53 }, { name: 'temporal right', x: 83, y: 53 },
-  { name: 'parietal left', x: 34, y: 64 }, { name: 'parietal right', x: 66, y: 64 },
-  { name: 'occipital left', x: 40, y: 79 }, { name: 'occipital right', x: 60, y: 79 },
-];
-function sampleWave(now: number, channel: number): number[] {
-  return Array.from({ length: 130 }, (_, i) => {
-    const t = (i + now * 1.4) / 13;
-    return Math.sin(t * (7 + channel * .35)) * .5 +
-      Math.sin(t * 16 + channel * 1.2) * .18 +
-      Math.sin(t * 2.4 + channel) * .22;
-  });
+type Tab = 'experiment' | 'job' | 'agent' | 'feed';
+
+function LabComposer({
+  onSend,
+  disabled,
+  placeholder,
+  compact,
+}: {
+  onSend: (text: string) => Promise<boolean>;
+  disabled: boolean;
+  placeholder: string;
+  compact?: boolean;
+}) {
+  const [draft, setDraft] = useState('');
+  const [sending, setSending] = useState(false);
+  const submit = async (e?: FormEvent) => {
+    e?.preventDefault();
+    if (!draft.trim() || disabled || sending) return;
+    const text = draft;
+    setDraft('');
+    setSending(true);
+    const ok = await onSend(text);
+    setSending(false);
+    if (!ok) setDraft(text);
+  };
+  return (
+    <form className={`composer ${compact ? 'compact' : ''}`} onSubmit={submit}>
+      {!compact && (
+        <div className="composer-spark">
+          <Sparkles size={19} />
+        </div>
+      )}
+      <textarea
+        aria-label="Message the research agent"
+        placeholder={placeholder}
+        value={draft}
+        maxLength={4000}
+        rows={1}
+        disabled={disabled}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+            e.preventDefault();
+            void submit();
+          }
+        }}
+      />
+      <div className="composer-actions">
+        <button
+          className="send-button"
+          type="submit"
+          aria-label="Send to agent"
+          disabled={!draft.trim() || disabled || sending}
+        >
+          <ArrowUp size={19} />
+        </button>
+      </div>
+    </form>
+  );
 }
-function Trace({ values, tint = '#8a8cc5' }: { values: number[]; tint?: string }) {
-  const maxAmplitude = Math.max(1e-6, ...values.map(v => Math.abs(v)));
-  const d = values.map((v, i) => `${i ? 'L' : 'M'}${(i / Math.max(1,values.length - 1) * 260).toFixed(1)},${(21 - (v / maxAmplitude) * 16).toFixed(1)}`).join(' ');
-  return <svg className="cx-trace" viewBox="0 0 260 42" preserveAspectRatio="none" aria-label="EEG waveform">
-    <path d="M0 21H260" stroke="#a8adab" strokeOpacity=".25" strokeDasharray="3 4"/>
-    <path d={d} stroke={tint} strokeWidth="1.6" fill="none" vectorEffect="non-scaling-stroke"/>
-  </svg>;
+
+function NewExperimentForm({
+  presets,
+  datasets,
+  recordings,
+  onCreate,
+  busy,
+}: {
+  presets: SyntheticPreset[];
+  datasets: Dataset[];
+  recordings: Recording[];
+  onCreate: (body: NewExperiment) => void;
+  busy: boolean;
+}) {
+  const [kind, setKind] = useState<'synthetic' | 'recording' | 'openbci'>('synthetic');
+  const [preset, setPreset] = useState('');
+  const [dataset, setDataset] = useState('');
+  const [channel, setChannel] = useState('');
+  const [segment, setSegment] = useState('ictal');
+  const [recording, setRecording] = useState('');
+  const ds = datasets.find((d) => d.id === dataset) ?? datasets[0];
+  useEffect(() => {
+    if (ds && !ds.channels.includes(channel)) setChannel(ds.channels[0] ?? '');
+    if (ds && !ds.segments.includes(segment)) setSegment(ds.segments[0] ?? '');
+  }, [ds, channel, segment]);
+  return (
+    <div className="cx-new">
+      <div className="cx-segmented" role="tablist" aria-label="Experiment source">
+        {(['synthetic', 'recording', 'openbci'] as const).map((k) => (
+          <button
+            key={k}
+            role="tab"
+            aria-selected={kind === k}
+            className={kind === k ? 'selected' : ''}
+            onClick={() => setKind(k)}
+          >
+            {k === 'synthetic' ? 'Synthetic' : k === 'recording' ? 'Seizure EEG' : 'OpenBCI'}
+          </button>
+        ))}
+      </div>
+      {kind === 'synthetic' && (
+        <>
+          <select
+            aria-label="Hidden configuration"
+            value={preset}
+            onChange={(e) => setPreset(e.target.value)}
+          >
+            <option value="">random hidden configuration</option>
+            {presets.map((p) => (
+              <option key={p.bitstring} value={p.bitstring}>
+                {p.label} ({p.bitstring})
+              </option>
+            ))}
+          </select>
+          <small>Known ground truth → measures whether the search recovers it.</small>
+          <button
+            className="primary-button cx-primary"
+            disabled={busy}
+            onClick={() =>
+              onCreate(
+                preset
+                  ? { source: 'synthetic', truth_bitstring: preset }
+                  : { source: 'synthetic', random_seed: Math.floor(Math.random() * 1e6) },
+              )
+            }
+          >
+            <Plus size={14} /> New synthetic brain
+          </button>
+        </>
+      )}
+      {kind === 'recording' &&
+        (datasets.length ? (
+          <>
+            <select
+              aria-label="Dataset"
+              value={ds?.id ?? ''}
+              onChange={(e) => setDataset(e.target.value)}
+            >
+              {datasets.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.label}
+                </option>
+              ))}
+            </select>
+            <div className="cx-row">
+              <select
+                aria-label="Channel"
+                value={channel}
+                onChange={(e) => setChannel(e.target.value)}
+              >
+                {ds?.channels.map((c) => (
+                  <option key={c}>{c}</option>
+                ))}
+              </select>
+              <select
+                aria-label="Segment"
+                value={segment}
+                onChange={(e) => setSegment(e.target.value)}
+              >
+                {ds?.segments.map((s) => (
+                  <option key={s}>{s}</option>
+                ))}
+              </select>
+            </div>
+            <small>Real data → consistent model configurations, not validated causes.</small>
+            <button
+              className="primary-button cx-primary"
+              disabled={busy || !ds}
+              onClick={() =>
+                ds && onCreate({ source: 'recording', dataset_id: ds.id, channel, segment })
+              }
+            >
+              <Plus size={14} /> Investigate excerpt
+            </button>
+          </>
+        ) : (
+          <small>No recorded datasets on the server.</small>
+        ))}
+      {kind === 'openbci' &&
+        (recordings.length ? (
+          <>
+            <select
+              aria-label="Recording"
+              value={recording}
+              onChange={(e) => setRecording(e.target.value)}
+            >
+              <option value="">choose a recording</option>
+              {recordings.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.label} · {r.seconds.toFixed(0)}s ·{' '}
+                  {new Date(r.created_at).toLocaleTimeString()}
+                </option>
+              ))}
+            </select>
+            <button
+              className="primary-button cx-primary"
+              disabled={busy || !recording}
+              onClick={() => onCreate({ source: 'openbci', recording_id: recording })}
+            >
+              <Plus size={14} /> Investigate my recording
+            </button>
+          </>
+        ) : (
+          <small>
+            Record with the bridge:{' '}
+            <code>python research/bridge/openbci.py --record 30 --label "eyes closed"</code>
+          </small>
+        ))}
+    </div>
+  );
 }
-function Histogram({ bins }: { bins: Array<{ state: string; count: number }> }) {
-  const max = Math.max(1, ...bins.map(b => b.count));
-  return <div className="cx-hist">
-    {bins.slice(0, 12).map(b => <div className="cx-hist-row" key={b.state}>
-      <code>{b.state}</code><div className="cx-hist-track"><span style={{ width: `${100 * b.count / max}%` }}/></div><span>{b.count}</span>
-    </div>)}
-  </div>;
-}
+
 export default function ResearchLab() {
-  const [token, setToken] = useState('');
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const signInHost = useRef<HTMLDivElement>(null);
-  const [activeTab, setActiveTab] = useState<'activity' | 'quantum'>('activity');
-  const [brainView, setBrainView] = useState<'anatomy' | 'inside' | 'avatar'>('inside');
-  const [provider, setProvider] = useState<Provider>('classical');
+  const auth = useAuth();
+  const { client, config, me, token } = auth;
+  const compact = useCompact();
+  const [leftOpen, setLeftOpen] = useState(() => !compact);
+  const [rightOpen, setRightOpen] = useState(() => !compact);
+  const [leftWidth, setLeftWidth] = useState(286);
+  const [rightWidth, setRightWidth] = useState(420);
+  const [tab, setTab] = useState<Tab>('experiment');
+  const [inside, setInside] = useState(true);
+  const [fibers, setFibers] = useState(true);
+  const [showQuantum, setShowQuantum] = useState(true);
+  const [experiments, setExperiments] = useState<Experiment[]>([]);
+  const [selectedExp, setSelectedExp] = useState<string | null>(null);
+  const [detail, setDetail] = useState<ExperimentDetail | null>(null);
   const [jobs, setJobs] = useState<Job[]>([]);
-  const [selected, setSelected] = useState<string | null>(null);
-  const [analyses, setAnalyses] = useState<Analysis[]>([]);
-  const [prompt, setPrompt] = useState('');
-  const [phase, setPhase] = useState(0);
-  const [live, setLive] = useState(false);
-  const [signal, setSignal] = useState<Signal | null>(null);
+  const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+  const [feed, setFeed] = useState<FeedItem[]>([]);
+  const [session, setSession] = useState<Session | null>(null);
+  const [datasets, setDatasets] = useState<Dataset[]>([]);
+  const [presets, setPresets] = useState<SyntheticPreset[]>([]);
+  const [recordings, setRecordings] = useState<Recording[]>([]);
+  const [run, setRun] = useState<RunSettings>(DEFAULT_RUN);
   const [busy, setBusy] = useState(false);
-  const [autopilot, setAutopilot] = useState(false);
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  const [confirmQpu, setConfirmQpu] = useState<'ibm_quantum' | 'ionq_qpu' | null>(null);
   const [ingestToken, setIngestToken] = useState('');
-  const [info, setInfo] = useState('preview mode: illustrative eeg. hardware and cloud jobs require authentication and a deployed api.');
-  const [leftOpen, setLeftOpen] = useState(true);
-  const [rightOpen, setRightOpen] = useState(true);
-  const [opacity, setOpacity] = useState(0.52);
-  const clock = useRef(0);
-  const selectedJob = jobs.find(j => j.id === selected) || jobs[0] || null;
-  const actualCircuit = (selectedJob?.result?.circuit as CircuitData | undefined) || selectedJob?.circuit;
-  const bins = useMemo(() => {
-    const counts = selectedJob?.result?.counts;
-    return counts && typeof counts === 'object'
-      ? Object.entries(counts as Record<string, number>).map(([state, count]) => ({state, count})).sort((a,b)=>b.count-a.count)
-      : [];
-  }, [selectedJob]);
+  const [newOpen, setNewOpen] = useState(false);
+  const [mood, setMood] = useState<ResearchMood>('idle');
+  const [phase, setPhase] = useState(0);
+  const lastFrame = useRef<HTMLCanvasElement | null>(null);
+  const googleHost = useRef<HTMLDivElement>(null);
+  const signedIn = !!me && !!token;
+  const { status: bridgeStatus, live } = useBridge(signedIn ? client : null, signedIn);
+
+  const fail = useCallback(
+    (e: unknown) => {
+      if (e instanceof ApiError && e.status === 401) auth.onUnauthorized();
+      setError(e instanceof Error ? e.message : String(e));
+    },
+    [auth],
+  );
+
   useEffect(() => {
-    const timer = window.setInterval(() => { clock.current++; setPhase(clock.current); }, 220);
-    return () => window.clearInterval(timer);
-  }, []);
+    auth.mountGoogle(googleHost.current);
+  }, [auth.mountGoogle, signedIn]);
+
+  // Keyboard: Cmd/Ctrl+\ toggles the analysis pane, Escape closes overlays (as in the original app).
   useEffect(() => {
-    if (!GOOGLE_CLIENT_ID || token) return;
-    const script = document.createElement('script');
-    script.src = 'https://accounts.google.com/gsi/client';
-    script.async = true;
-    script.onload = () => {
-      const google = (window as any).google;
-      if (!google || !signInHost.current) return;
-      google.accounts.id.initialize({
-        client_id: GOOGLE_CLIENT_ID,
-        callback: (r: { credential: string }) => setToken(r.credential),
-      });
-      google.accounts.id.renderButton(signInHost.current, { theme: 'outline', size: 'medium', shape: 'pill' });
+    const key = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setConfirmQpu(null);
+        if (compact) setRightOpen(false);
+      }
+      if ((event.metaKey || event.ctrlKey) && event.key === '\\') {
+        event.preventDefault();
+        setRightOpen((o) => !o);
+      }
     };
-    document.head.appendChild(script);
-    return () => { script.remove(); };
-  }, [token]);
+    window.addEventListener('keydown', key);
+    return () => window.removeEventListener('keydown', key);
+  }, [compact]);
+
   useEffect(() => {
-    if (!token) { setUser(null); setJobs([]); setIngestToken(''); setAutopilot(false); return; }
-    let alive = true;
-    fetch(`${API}/v1/me`, { headers: { Authorization: `Bearer ${token}` } })
-      .then(async r => { if (!r.ok) throw new Error(`sign-in rejected (${r.status})`); return r.json(); })
-      .then(data => { if (alive) { setUser(data); setInfo('authenticated. experiments are persisted on the research backend.'); } })
-      .catch(e => { if (alive) { setToken(''); setInfo(String(e)); } });
-    return () => { alive = false; };
-  }, [token]);
+    if (!signedIn) return;
+    client
+      .datasets()
+      .then((d) => (setDatasets(d.datasets), setPresets(d.synthetic_presets)))
+      .catch(fail);
+    client.session().then(setSession).catch(fail);
+    client
+      .recordings()
+      .then((r) => setRecordings(r.recordings))
+      .catch(() => {});
+  }, [client, signedIn, fail]);
+
+  usePoll(
+    async () => {
+      const [e, j] = await Promise.all([client.experiments(), client.jobs()]);
+      setExperiments(e.experiments);
+      setJobs(j.jobs);
+      setSelectedExp((s) => s ?? e.experiments[0]?.id ?? null);
+    },
+    2500,
+    [client],
+    signedIn,
+  );
+  usePoll(
+    async (signal) => {
+      if (!selectedExp) return setDetail(null);
+      const d = await client.experiment(selectedExp, signal);
+      setDetail(d);
+    },
+    2500,
+    [client, selectedExp],
+    signedIn && !!selectedExp,
+  );
+  usePoll(
+    async () => {
+      const f = await client.feed(null);
+      setFeed(f.items);
+    },
+    3000,
+    [client],
+    signedIn,
+  );
+  usePoll(
+    async () => {
+      setSession(await client.session());
+    },
+    10000,
+    [client],
+    signedIn,
+  );
+
+  const selectedJob = useMemo(
+    () =>
+      jobs.find((j) => j.id === selectedJobId) ??
+      detail?.jobs.find((j) => j.id === selectedJobId) ??
+      null,
+    [jobs, detail, selectedJobId],
+  );
+  const stageJob = useMemo(() => {
+    if (selectedJob?.kind === 'sample') return selectedJob;
+    const pool = (detail?.jobs ?? jobs).filter((j) => j.kind === 'sample');
+    return pool.find(isActive) ?? pool[0] ?? null;
+  }, [selectedJob, detail, jobs]);
+  const anyActive = jobs.some(isActive);
+  const exp = detail?.experiment ?? null;
+
+  // Cute reactions, driven by real events.
+  const prevVerdicts = useRef<string>('');
+  const prevCompleted = useRef<Set<string>>(new Set());
   useEffect(() => {
-    if (!token) return;
-    let cancelled = false;
-    const reload = async () => {
-      try {
-        const headers = { Authorization: `Bearer ${token}` };
-        const [jr, sr, ar] = await Promise.all([
-          fetch(`${API}/v1/jobs`, { headers }),
-          fetch(`${API}/v1/eeg/latest`, { headers }),
-          fetch(`${API}/v1/analyses`, { headers }),
-        ]);
-        if (!jr.ok) throw new Error(`jobs unavailable (${jr.status})`);
-        if (!cancelled) {
-          setJobs((await jr.json()).jobs || []);
-          if (sr.ok) { const e = await sr.json(); setSignal(e.signal || null); setLive(Boolean(e.live)); }
-          if (ar.ok) setAnalyses((await ar.json()).analyses || []);
-        }
-      } catch (e) { if (!cancelled) setInfo(String(e)); }
-    };
-    void reload();
-    const timer = window.setInterval(() => void reload(), 4000);
-    return () => { cancelled = true; window.clearInterval(timer); };
-  }, [token]);
-  const send = async (path: string, data: Record<string, unknown>) => {
-    if (!token) { setInfo('sign in with google before submitting cloud work.'); return; }
+    const improved = (detail?.revisions ?? [])
+      .filter((r) => r.verdict === 'improved')
+      .map((r) => r.id)
+      .join(',');
+    const completedGood = jobs
+      .filter((j) => j.status === 'completed' && j.evaluation?.best_consistent)
+      .map((j) => j.id);
+    const fresh = completedGood.filter((id) => !prevCompleted.current.has(id));
+    const firstLoad =
+      prevCompleted.current.size === 0 && completedGood.length > 0 && !prevVerdicts.current;
+    let next: ResearchMood = anyActive
+      ? 'curious'
+      : live.source !== 'none'
+        ? 'idle'
+        : experiments.length
+          ? 'idle'
+          : 'sleepy';
+    if (
+      !firstLoad &&
+      ((improved && improved !== prevVerdicts.current && prevVerdicts.current !== '') ||
+        fresh.length)
+    )
+      next = 'happy';
+    prevVerdicts.current = improved || prevVerdicts.current || '-';
+    completedGood.forEach((id) => prevCompleted.current.add(id));
+    setMood(next);
+    if (next === 'happy') {
+      const t = window.setTimeout(() => setMood(anyActive ? 'curious' : 'idle'), 3500);
+      return () => window.clearTimeout(t);
+    }
+  }, [detail?.revisions, jobs, anyActive, live.source, experiments.length]);
+  // Seizure excerpt or high-amplitude burst → surprised for a moment.
+  const lastRms = useRef(0);
+  useEffect(() => {
+    const seizure =
+      exp?.target.source === 'recording' && String(exp.target.meta?.segment ?? '') === 'ictal';
+    if (seizure) {
+      setMood('surprised');
+      const t = window.setTimeout(() => setMood('idle'), 2600);
+      return () => window.clearTimeout(t);
+    }
+  }, [exp?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!live.frame) return;
+    const r = rms(live.buffer[0]?.slice(-Math.round(live.frame.fs * 0.5)) ?? []);
+    if (lastRms.current && r > lastRms.current * 3.5) {
+      setMood('surprised');
+      window.setTimeout(() => setMood('idle'), 1600);
+    }
+    lastRms.current = lastRms.current ? lastRms.current * 0.95 + r * 0.05 : r;
+  }, [live]);
+
+  useEffect(() => {
+    if (live.frame) return;
+    const t = window.setInterval(() => setPhase((p) => p + 1), 120);
+    return () => window.clearInterval(t);
+  }, [live.frame]);
+
+  const anchors = useMemo(
+    () => (live.frame ? anchorsFromEEG(live.frame, live.buffer) : idleAnchors(phase * 0.12)),
+    [live, phase],
+  );
+  const overlay = useMemo(
+    () => ({
+      intensities: fibers ? anchors.intensities : anchors.intensities.map(() => 0),
+      labels: anchors.labels,
+      values: anchors.values,
+      opacity: fibers ? 0.9 : 0,
+      shellOpacity: inside ? 0.2 : 0.62,
+      mood,
+      blinkSignal: live.blinkCount,
+      gaze: null,
+    }),
+    [anchors, fibers, inside, mood, live.blinkCount],
+  );
+
+  const createExperiment = async (body: NewExperiment) => {
+    setBusy(true);
+    setError('');
+    try {
+      const { experiment } = await client.createExperiment(body);
+      setExperiments((e) => [experiment, ...e.filter((x) => x.id !== experiment.id)]);
+      setSelectedExp(experiment.id);
+      setTab('experiment');
+      setNewOpen(false);
+      if (!rightOpen) setRightOpen(true);
+    } catch (e) {
+      fail(e);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const runJob = async (req: JobRequest) => {
+    if (!exp) return;
+    setBusy(true);
+    setError('');
+    try {
+      const { job } = await client.createJob(exp.id, req);
+      setJobs((j) => [job, ...j]);
+      setSelectedJobId(job.id);
+      setNotice(`${job.provider} queued`);
+    } catch (e) {
+      fail(e);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const sendSnapshot = async () => {
+    if (!exp || !lastFrame.current) return;
+    try {
+      await client.snapshot(exp.id, lastFrame.current.toDataURL('image/png'));
+    } catch {
+      /* the agent still receives numeric diagnostics */
+    }
+  };
+  const iterate = async (instruction?: string) => {
+    if (!exp) return;
     setBusy(true);
     try {
-      const r = await fetch(`${API}${path}`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify(data),
-      });
-      const payload = await r.json();
-      if (!r.ok) throw new Error(payload.detail || `http ${r.status}`);
-      setInfo(payload.message || 'request accepted');
-      if (payload.job) { setJobs(j => [payload.job, ...j]); setSelected(payload.job.id); }
-      if (payload.token) setIngestToken(payload.token);
-      if (payload.analysis) setAnalyses(a => [payload.analysis, ...a]);
-    } catch(e) { setInfo(String(e)); }
-    finally { setBusy(false); }
+      await sendSnapshot();
+      const { job } = await client.iterate(exp.id, instruction);
+      setJobs((j) => [job, ...j]);
+      setTab('agent');
+      setNotice('Agent iteration started');
+    } catch (e) {
+      fail(e);
+    } finally {
+      setBusy(false);
+    }
   };
-  useEffect(() => {
-    if (!token) return;
-    fetch(`${API}/v1/session`, { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.ok ? r.json() : Promise.reject(new Error('session settings unavailable')))
-      .then(v => setAutopilot(Boolean(v.autopilot)))
-      .catch(e => setInfo(String(e)));
-  }, [token]);
-  const toggleAutopilot = async (enabled: boolean) => {
-    if (!token) return;
+  const compareProviders = async () => {
+    if (!exp) return;
+    const available = new Set(
+      (config?.providers ?? []).filter((p) => p.available).map((p) => p.id),
+    );
+    for (const provider of ['random', 'classical_anneal', 'thrml', 'aer_noisy'] as const)
+      if (!config || available.has(provider))
+        await runJob(toJobRequest({ ...run, provider }, exp.baseline));
+    setTab('experiment');
+  };
+  const sendMessage = async (text: string) => {
     try {
-      const r = await fetch(`${API}/v1/session`, { method: 'POST',
-        headers: {'Content-Type':'application/json',Authorization:`Bearer ${token}`},
-        body: JSON.stringify({autopilot:enabled}) });
-      if (!r.ok) throw new Error(`autopilot update failed (${r.status})`);
-      const result = await r.json();
-      setAutopilot(Boolean(result.autopilot));
-      setInfo(result.autopilot ? 'bounded research autopilot enabled (max 4 automatic software jobs)' : 'autopilot disabled');
-    } catch (e) { setInfo(String(e)); }
+      const { item, job } = await client.message(text, exp?.id);
+      setFeed((f) => [item, ...f]);
+      setJobs((j) => [job, ...j]);
+      setTab('feed');
+      return true;
+    } catch (e) {
+      fail(e);
+      return false;
+    }
   };
-  const project = sources.map((n, i) => ({
-    ...n,
-    value: signal ? [signal.alpha,signal.beta,signal.theta,signal.delta][i % 4] / 100 :
-      (0.25 + Math.sin(phase * .16 + i * 1.18) * .19 + Math.sin(phase * .08 - i) * .09),
-  }));
-  return <div className="cx-shell">
-    <header className="cx-top">
-      <div className="cx-brand"><button onClick={() => setLeftOpen(!leftOpen)} aria-label="toggle left pane">☷</button><Brain size={19}/><b>cortex²</b><span className="cx-subtitle">my little research brain</span></div>
-      <div className="cx-head-status"><span className={live ? 'cx-dot live' : 'cx-dot'}/>{live ? 'live eeg stream' : 'synthetic preview'} <span className="cx-divider">·</span> {jobs.filter(j=>['queued','running','submitted'].includes(j.status)).length} active jobs</div>
-      <div className="cx-auth">{user ? <><span>{user.name || user.email}</span><button onClick={() => {setToken('');setUser(null);}}>sign out <LogOut size={13}/></button></> : <><div ref={signInHost}/>{!GOOGLE_CLIENT_ID && <span>google oauth not configured</span>}</> }
-        <button onClick={() => setRightOpen(!rightOpen)} aria-label="toggle analysis pane"><SlidersHorizontal size={16}/></button>
-      </div>
-    </header>
-    <div className="cx-body">
-      {leftOpen && <aside className="cx-side cx-left">
-        <div className="cx-side-title">research workspace <button title="add experiment" onClick={() => setInfo('create a job from the quantum pane or ask the agent to investigate a hypothesis.')}><Plus size={16}/></button></div>
-        <div className="cx-group-title"><Radio size={14}/> acquisition</div>
-        <div className="cx-item selected"><Activity size={16}/><span>eeg session<small>{live ? 'connected • real samples' : 'synthetic demonstration'}</small></span></div>
-        <button className="cx-item" disabled={!user || busy} onClick={()=>void send('/v1/eeg/ingest-token',{})}><Radio size={16}/> pair openbci bridge</button>
-        {ingestToken && <div className="cx-ingest"><b>45-minute bridge token</b><code>{ingestToken}</code><button onClick={()=>void navigator.clipboard?.writeText(ingestToken)}>copy token</button><small>run the local bridge with CORTEX_INGEST_TOKEN. keep this token private.</small></div>}
-        <div className="cx-group-title"><FlaskConical size={14}/> experiments</div>
-        <div className="cx-job-list">
-          {jobs.length === 0 ? <p className="cx-empty">no experiments yet. sign in, then dispatch a benchmark or solver job.</p> : jobs.map(job => <button key={job.id} className={selectedJob?.id === job.id ? 'cx-item selected' : 'cx-item'} onClick={() => {setSelected(job.id);setActiveTab('quantum');}}>
-            <Cpu size={16}/><span>{job.title || job.provider}<small>{job.provider.replace('_',' ')} · {job.status}</small></span><ChevronRight size={13}/>
-          </button>)}
-        </div>
-        <div className="cx-group-title"><Sparkles size={14}/> research agent</div>
-        <button className="cx-item" onClick={() => setInfo('all agent events and provider jobs are durable server records, not browser-local timers.')}><Sparkles size={16}/> session memory <CircleHelp size={13}/></button>
-        <div className="cx-left-bottom"><a href="/" aria-label="return to my little brain">← original little brain</a><span>hackathon research module</span></div>
-      </aside>}
-      <main className="cx-center">
-        <div className="cx-stage-toolbar"><div className="cx-tabs"><button className={activeTab==='activity'?'current':''} onClick={()=>setActiveTab('activity')}>brain activity</button><button className={activeTab==='quantum'?'current':''} onClick={()=>setActiveTab('quantum')}>quantum workbench</button></div>
-          <span>{activeTab==='activity' ? 'orbit to inspect · hover signal nodes' : 'computational backend: '+(selectedJob?.provider||provider)}</span>
-        </div>
-        {activeTab==='activity' ? <>
-          <div className="cx-stage">
-            <BrainScene thoughts={[]} activeThoughtId={null} thinking={false} paused={false} showThoughts={false} onThoughtSelect={()=>{}} anatomyMode={brainView !== 'avatar'} color="#e0b4ba" researchOverlay={{ intensities: project.map(p=>p.value), opacity, shellOpacity: brainView === "inside" ? .23 : brainView === "anatomy" ? .72 : 1 }}/>
-            <div className="cx-legend"><b>activity propagation</b><span>{live ? 'eeg-derived features' : 'SIMULATED · not source-localized'}</span></div>
-            <div className="cx-stage-controls">
-              <button className={brainView==='avatar'?'active':''} onClick={()=>setBrainView('avatar')}>cute</button>
-              <button className={brainView==='anatomy'?'active':''} onClick={()=>setBrainView('anatomy')}>cortex</button>
-              <button className={brainView==='inside'?'active':''} onClick={()=>setBrainView('inside')}>x-ray</button>
-            </div>
+  const updateSession = async (patch: Partial<Session>) => {
+    setSession((s) => (s ? { ...s, ...patch } : s));
+    try {
+      setSession(await client.updateSession(patch));
+    } catch (e) {
+      fail(e);
+    }
+  };
+  const ibmProvider = config?.providers.find((p) => p.id === 'ibm_quantum');
+  const ionqProvider = config?.providers.find((p) => p.id === 'ionq_qpu');
+  const truth = exp?.target.truth_bitstring ?? null;
+  const status = !signedIn
+    ? 'signed out'
+    : anyActive
+      ? `${jobs.filter(isActive).length} job${jobs.filter(isActive).length === 1 ? '' : 's'} running`
+      : live.source !== 'none'
+        ? 'listening to EEG'
+        : 'ready';
 
-          </div>
-          <div className="cx-strip"><span>overlay opacity</span><input aria-label="overlay opacity" type="range" min={0} max={1} step={.01} value={opacity} onChange={e=>setOpacity(+e.target.value)}/><span>activity nodes: 8 · illustrative atlas mapping</span></div>
-          <div className="cx-signals"><div className="cx-signals-head"><b>eeg signatures</b><span>{live?'hardware stream':'synthetic preview'} · {live ? '1 acquired channel' : '4 simulated channels'}</span></div>
-            {(live ? [0] : [0,1,2,3]).map((i)=><div className="cx-signal-row" key={i}><span>ch {i+1}</span><Trace values={live && signal?.samples?.length ? signal.samples : sampleWave(phase,i)} tint={['#80ab9b','#b39bbd','#a4a8d0','#b8a084'][i]}/><small>{live ? 'live' : 'demo'}</small></div>)}
-          </div>
-        </> : <div className="cx-workbench">
-          <div className="cx-section-head"><div><h2>quantum hypothesis exploration</h2><p>shared 8-bit binary energy objective · 4 neural parameters · 256 candidate configurations</p></div><Cpu size={22}/></div>
-          <label className="cx-label">compute provider</label>
-          <select value={provider} onChange={e => setProvider(e.target.value as Provider)}><option value="classical">classical exact enumeration</option><option value="ibm_simulator">qiskit statevector simulator</option><option value="ibm_quantum">ibm quantum physical qpu</option><option value="extropic_simulator">extropic-compatible thermodynamic simulator</option></select>
-          <button className="cx-primary" disabled={!user || busy} onClick={()=>void send('/v1/jobs',{provider, kind:'inverse_search', title:'8-bit neural inverse search'})}><Play size={14}/> dispatch experiment</button>
-          <div className="cx-circuit"><div className="cx-circuit-head"><b>qaoa circuit inspector</b><span>{selectedJob?.provider_job_id ? 'provider id: '+selectedJob.provider_job_id : 'awaiting execution'}</span></div>
-            {actualCircuit ? <>
-              <div className="cx-circuit-meta">real compiled circuit · {actualCircuit.qubits} qubits · {actualCircuit.logical_gates} operations · depth {actualCircuit.depth}</div>
-              <div className="cx-ops">{actualCircuit.operations.map((op,k) =>
-                <div className="cx-operation" key={k}><span>{String(k+1).padStart(3,'0')}</span><b>{op.gate}</b><code>{op.qubits.map(q=>'q'+q).join(', ')}</code></div>)}
-              </div>
-              {actualCircuit.truncated && <p>first 240 operations shown; full circuit retained in job provenance.</p>}
-            </> : <>
-              {Array.from({length:8},(_,i)=><div className="cx-qubit" key={i}><code>q{i}</code><span className="cx-wire"/>{Array.from({length:7},(_,k)=><span className={k%3===0?'cx-gate accent':'cx-gate'} key={k}>{k%3===0?'h':k%3===1?'rz':'rx'}</span>)}</div>)}
-              <p>illustrative schematic only — select a completed qiskit/ibm job to inspect real gates.</p>
-            </>}
-          </div>
-          <div className="cx-hist-card"><b>sampled bitstrings</b>{bins.length?<Histogram bins={bins}/>:<p className="cx-empty">no measured results. launch a provider job to populate this histogram.</p>}</div>
-          {selectedJob?.error && <p className="cx-error">{selectedJob.error}</p>}
-        </div>}
-      </main>
-      {rightOpen && <aside className="cx-side cx-right">
-        <div className="cx-side-title">analyses <button aria-label="close analysis" onClick={()=>setRightOpen(false)}><X size={16}/></button></div>
-        <div className="cx-analysis-scroll"><div className="cx-analysis-card"><div className="cx-card-kicker"><Activity size={13}/> observation</div><h3>eeg feature summary</h3>
-          {(['alpha','beta','theta','delta'] as const).map((band,i)=><div className="cx-feature" key={band}><span>{band}</span><div><i style={{width:`${signal ? signal[band] : [58,32,45,18][i]}%`}}/></div><b>{signal ? signal[band].toFixed(1) : [58,32,45,18][i]}%</b></div>)}
-          <small>{live?'stream-derived bandpower':'illustrative values — not measured data'}</small></div>
-          <div className="cx-analysis-card"><div className="cx-card-kicker"><Cpu size={13}/> active hypothesis</div><h3>inverse neural model</h3><p>search excitatory drive, inhibitory gain, recurrent excitation and synaptic timescale. compare synthetic ground truth to inferred configurations.</p><small>no diagnosis or seizure localization claims</small></div>
-          {selectedJob && <div className="cx-analysis-card"><div className="cx-card-kicker"><Cpu size={13}/> {selectedJob.status}</div><h3>{selectedJob.title}</h3><p>provider: {selectedJob.provider}</p><p>objective: {typeof selectedJob.objective==='number' ? selectedJob.objective.toFixed(5) : 'pending'}</p><code>{selectedJob.id}</code></div>}
-          {analyses.map(a => <div className="cx-analysis-card" key={a.id}><div className="cx-card-kicker"><Sparkles size={13}/> {a.kind}</div><p>{a.text}</p><small>{a.time}</small></div>)}
-        </div>
-        <div className="cx-agent"><div className="cx-agent-heading"><Sparkles size={15}/> gpt research operator <span>{user?'authenticated':'sign in required'}</span></div>
-          <label className="cx-autopilot"><input type="checkbox" checked={autopilot} disabled={!user} onChange={e=>void toggleAutopilot(e.target.checked)}/> allow bounded autonomous follow-ups <small>software only · max 4</small></label>
-          <form onSubmit={e=>{e.preventDefault();if(!prompt.trim())return;void send('/v1/agent/commands',{command:prompt.trim()});setPrompt('');}}><textarea aria-label="agent command" placeholder="ask the agent to design, run, inspect or revise an experiment…" value={prompt} onChange={e=>setPrompt(e.target.value)}/><button disabled={!user || busy || !prompt.trim()} aria-label="send agent command"><Send size={16}/></button></form>
-          <p>{info}</p>
-        </div>
-      </aside>}
+  const quick = (
+    <div className="cx-chips" role="toolbar" aria-label="Quick actions">
+      <button disabled={!exp || busy} onClick={() => void iterate()}>
+        <Sparkles size={13} /> Run iteration
+      </button>
+      <button
+        disabled={!exp || busy}
+        onClick={() => void runJob(toJobRequest({ ...run, provider: 'aer_noisy' }, exp?.baseline))}
+      >
+        <Atom size={13} /> Run on simulator
+      </button>
+      <button
+        disabled={!exp || busy || !ibmProvider?.available}
+        title={
+          ibmProvider?.available ? undefined : (ibmProvider?.reason ?? 'IBM Quantum not configured')
+        }
+        onClick={() => setConfirmQpu('ibm_quantum')}
+      >
+        <Atom size={13} /> Submit to IBM
+      </button>
+      <button
+        disabled={!exp || busy || !ionqProvider?.available}
+        title={ionqProvider?.available ? undefined : (ionqProvider?.reason ?? 'IonQ not configured')}
+        onClick={() => setConfirmQpu('ionq_qpu')}
+      >
+        <Atom size={13} /> Submit to IonQ
+      </button>
+      <button disabled={!exp || busy} onClick={() => void compareProviders()}>
+        <Layers size={13} /> Compare providers
+      </button>
     </div>
-    <style>{`
-      .cx-shell{--ink:#526358;--line:#dce5db;--wash:#f1f5ef;--glass:rgba(255,255,255,.82);display:flex;flex-direction:column;height:100dvh;background:#f2f5ef;color:var(--ink);font:13px/1.5 "DM Sans",sans-serif}
-      .cx-shell *{box-sizing:border-box}.cx-shell button,.cx-shell select,.cx-shell textarea{font:inherit}.cx-shell button{cursor:pointer}.cx-shell button:disabled{opacity:.45;cursor:not-allowed}.cx-top{height:61px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);padding:0 18px;gap:12px;background:#f8fbf7}
-      .cx-brand,.cx-auth,.cx-head-status,.cx-side-title,.cx-group-title,.cx-item,.cx-stage-toolbar,.cx-tabs,.cx-stage-controls,.cx-feature,.cx-agent-heading,.cx-circuit-head,.cx-signals-head,.cx-signal-row,.cx-qubit{display:flex;align-items:center;gap:9px}
-      .cx-brand b{font-size:17px;color:#405c4a}.cx-brand button,.cx-auth button,.cx-side-title button{display:flex;align-items:center;justify-content:center;padding:7px;border-radius:9px;color:#748377}.cx-subtitle{color:#96a398;margin-left:10px;font-size:12px}
-      .cx-head-status{font-size:12px;color:#849184}.cx-divider{color:#cad5c9}.cx-dot{width:8px;height:8px;border-radius:50%;background:#d3b77e}.cx-dot.live{background:#4ba984}.cx-auth{font-size:11px;white-space:nowrap}.cx-auth button{gap:5px}
-      .cx-body{flex:1;min-height:0;display:flex}.cx-side{display:flex;flex-direction:column;min-width:0;background:var(--glass);backdrop-filter:blur(22px)}.cx-left{width:242px;flex-shrink:0;border-right:1px solid var(--line)}.cx-right{width:354px;flex-shrink:0;border-left:1px solid var(--line)}
-      .cx-side-title{justify-content:space-between;font-weight:700;font-size:12px;padding:17px 17px 15px;border-bottom:1px solid var(--line)}.cx-group-title{padding:25px 18px 9px;color:#8f9a91;font-size:11px;letter-spacing:.04em;text-transform:uppercase}
-      .cx-item{border-radius:12px;text-align:left;min-height:42px;width:calc(100% - 20px);margin:3px 10px;padding:9px 11px;color:#647668}.cx-item.selected{background:#e8f0e6;color:#446b52}.cx-item span{flex:1}.cx-item small{display:block;font-size:10px;opacity:.72}.cx-job-list{overflow-y:auto;max-height:38vh}.cx-empty{font-size:12px;color:#9aaa9b;padding:10px 14px;line-height:1.7}.cx-ingest{margin:8px 16px;padding:9px;border-radius:10px;background:#e9f2ea;font-size:10px;overflow-wrap:anywhere}.cx-ingest code{display:block;padding:7px 0;word-break:break-all}.cx-ingest small{display:block;color:#849586}.cx-autopilot{font-size:11px;display:flex;align-items:center;gap:7px;margin-bottom:10px}.cx-autopilot small{color:#99a69b;margin-left:auto}.cx-left-bottom{margin-top:auto;padding:16px;display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--line);font-size:11px}.cx-left-bottom span{color:#a0aa9d}
-      .cx-center{flex:1;min-width:0;display:flex;flex-direction:column}.cx-stage-toolbar{height:49px;border-bottom:1px solid var(--line);justify-content:space-between;padding:0 19px;font-size:11px;color:#92a092}.cx-tabs{height:100%;gap:18px}.cx-tabs button{height:100%;border-bottom:2px solid transparent;color:#879789}.cx-tabs button.current{color:#53695a;border-color:#819c84;font-weight:700}
-      .cx-stage{flex:1;position:relative;min-height:220px;overflow:hidden;background:radial-gradient(ellipse at 50% 42%,#fcfffa,#eaf2e9)}.cx-stage-controls{position:absolute;top:15px;right:17px;padding:4px;background:#fffc;border:1px solid #dce7dd;border-radius:12px;z-index:8}.cx-stage-controls button{padding:5px 11px;border-radius:8px;font-size:11px}.cx-stage-controls button.active{background:#e5eee3;color:#477357}
-      .cx-legend{position:absolute;bottom:16px;left:17px;z-index:8;display:flex;flex-direction:column;gap:2px;font-size:11px}.cx-legend span{font-size:10px;color:#8b9b8e}.cx-marker-layer{position:absolute;inset:0;pointer-events:none;z-index:7}.cx-marker{position:absolute;pointer-events:auto;border:1px solid #729e9b;background:#68a9b366;width:11px;height:11px;border-radius:50%;box-shadow:0 0 0 5px #5ea9b213}.cx-tooltip{position:absolute;bottom:20px;left:15px;width:155px;padding:10px;text-align:left;background:#fff;border:1px solid var(--line);border-radius:11px;box-shadow:0 12px 35px #49614a22;font-size:11px;z-index:9}.cx-tooltip strong{display:block;font-size:17px}.cx-tooltip small{display:block;color:#9daa9e}
-      .cx-strip{height:37px;border-top:1px solid var(--line);display:flex;align-items:center;gap:15px;padding:0 19px;font-size:11px;color:#849486}.cx-strip input{width:105px}.cx-strip span:last-child{margin-left:auto}
-      .cx-signals{background:#fafcf9;border-top:1px solid var(--line);padding:13px 18px 15px}.cx-signals-head{justify-content:space-between;font-size:12px;margin-bottom:7px}.cx-signals-head span{font-size:10px;color:#9da99d}.cx-signal-row{height:31px;gap:12px;color:#93a092;font-size:11px}.cx-signal-row>span{width:25px}.cx-trace{width:100%;height:30px}.cx-signal-row>small{width:31px}
-      .cx-analysis-scroll{flex:1;min-height:0;overflow:auto;padding:13px}.cx-analysis-card{background:#fffaf9a6;border:1px solid #e0e7df;border-radius:15px;margin-bottom:11px;padding:15px;box-shadow:0 7px 30px #556c5908}.cx-card-kicker{display:flex;gap:6px;align-items:center;color:#849b8e;text-transform:uppercase;font-size:10px;letter-spacing:.04em}.cx-analysis-card h3{font-size:14px;color:#4f6554;margin:8px 0}.cx-analysis-card p{font-size:12px;color:#728174}.cx-analysis-card small{font-size:10px;color:#a0a9a0}.cx-analysis-card code{font-size:10px;overflow-wrap:anywhere}
-      .cx-feature{justify-content:space-between;margin:9px 0;font-size:11px}.cx-feature span{width:35px}.cx-feature>div{height:6px;background:#e8ece9;border-radius:9px;flex:1;overflow:hidden}.cx-feature i{display:block;height:100%;background:#a8b6cf;border-radius:9px}.cx-feature b{width:38px;font-size:10px;text-align:right}
-      .cx-agent{border-top:1px solid var(--line);padding:13px}.cx-agent-heading{font-weight:700;font-size:12px;margin-bottom:10px}.cx-agent-heading span{font-weight:400;font-size:10px;color:#a1aaa1;margin-left:auto}.cx-agent form{position:relative}.cx-agent textarea{width:100%;min-height:80px;max-height:170px;resize:vertical;border:1px solid #d7e3d7;border-radius:13px;background:#fff;padding:11px 38px 11px 11px;font-size:12px;color:#506654}.cx-agent form button{position:absolute;bottom:10px;right:9px;background:#dfeee0;border-radius:8px;padding:6px}.cx-agent>p{color:#92a094;font-size:10px;max-height:70px;overflow:auto}
-      .cx-workbench{flex:1;overflow:auto;padding:24px;max-width:900px;width:100%;margin:auto}.cx-section-head{display:flex;align-items:center;justify-content:space-between}.cx-section-head h2{font-size:20px;margin:0;color:#4e6554}.cx-section-head p{font-size:12px;color:#93a093}.cx-label{display:block;font-size:11px;font-weight:700;margin:22px 0 7px}.cx-workbench select{background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px;width:100%;color:#52665a}.cx-primary{background:#698a74!important;color:#fff!important;padding:10px 16px;border-radius:10px;display:flex;gap:8px;align-items:center;margin-top:14px}.cx-circuit,.cx-hist-card{border:1px solid var(--line);background:#fff9;border-radius:14px;padding:17px;margin-top:20px}.cx-circuit-head{justify-content:space-between;margin-bottom:14px}.cx-circuit-head span{font-size:10px;color:#a6aba6}.cx-qubit{height:28px;gap:6px;font-size:11px}.cx-qubit code{width:30px}.cx-wire{height:1px;flex:1;background:#a6acb0}.cx-gate{border:1px solid #a3b6ac;border-radius:5px;min-width:31px;text-align:center;background:#edf5ed;padding:2px}.cx-gate.accent{background:#eee7f8;border-color:#c9b5df}.cx-circuit>p{color:#9aa59b;font-size:10px}.cx-circuit-meta{font-size:11px;color:#789480;padding:7px 0 12px}.cx-ops{max-height:250px;overflow:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:5px}.cx-operation{border:1px solid #e2e9e3;border-radius:7px;padding:5px;display:flex;gap:7px;align-items:center;font-size:10px}.cx-operation span{color:#9eaca2}.cx-operation b{background:#e9e7f5;color:#66608c;border-radius:4px;padding:2px 4px}.cx-operation code{color:#7a9182}.cx-hist-row{display:flex;align-items:center;gap:8px;font-size:11px;margin:5px 0}.cx-hist-row code{width:72px}.cx-hist-track{flex:1;background:#e6eee6;height:7px;border-radius:5px}.cx-hist-track span{height:100%;background:#91acb7;display:block;border-radius:5px}.cx-hist-row>span{width:34px;text-align:right}.cx-error{color:#aa5050}
-      @media(max-width:950px){.cx-left{width:183px}.cx-right{width:300px}.cx-subtitle,.cx-head-status{display:none}}@media(max-width:700px){.cx-left{display:none}.cx-right{width:100%;position:absolute;right:0;top:61px;bottom:0;z-index:20;background:#fafcf8}.cx-strip span:last-child{display:none}}
-    `}</style>
-  </div>;
+  );
+  const qpuName = confirmQpu === 'ionq_qpu' ? 'IonQ' : 'IBM';
+  const ibmConfirm = confirmQpu && exp && (
+    <div className="cx-confirm" role="dialog" aria-label={`Confirm ${qpuName} submission`}>
+      <p>
+        Submit this circuit ({run.approximation}, reps {run.reps}, ≤{run.maxCouplings ?? 28}{' '}
+        couplings, {run.shots} shots) to real {qpuName} quantum hardware?{' '}
+        {confirmQpu === 'ionq_qpu'
+          ? 'Trapped ions are all-to-all connected, so no SWAPs are added. QPU time is billed to your IonQ account and jobs may queue.'
+          : 'It uses QPU time from the open plan (10 min / 28 days) and may wait in a queue.'}
+      </p>
+      <div>
+        <button className="outline-button" onClick={() => setConfirmQpu(null)}>
+          Cancel
+        </button>
+        <button
+          className="primary-button cx-primary"
+          onClick={() => {
+            const provider = confirmQpu;
+            setConfirmQpu(null);
+            void runJob(toJobRequest({ ...run, provider }, exp.baseline));
+          }}
+        >
+          Submit to {qpuName}
+        </button>
+      </div>
+    </div>
+  );
+  const composer = (c?: boolean) => (
+    <LabComposer
+      compact={c}
+      disabled={!signedIn}
+      placeholder={
+        signedIn
+          ? exp
+            ? 'Ask the agent to investigate, run, or babysit…'
+            : 'Ask the research agent…'
+          : 'Sign in to talk to the agent'
+      }
+      onSend={sendMessage}
+    />
+  );
+
+  return (
+    <div
+      className="app simple-app cx-lab"
+      style={{ '--chat-width': `${rightWidth}px` } as CSSProperties}
+    >
+      <main className="workspace">
+        <header className="simple-header">
+          <div className="workspace-brand">
+            <IconButton
+              label={leftOpen ? 'Hide laboratory pane' : 'Open laboratory pane'}
+              active={leftOpen}
+              onClick={() => (setLeftOpen((o) => !o), compact && setRightOpen(false))}
+            >
+              <PanelLeft size={19} />
+            </IconButton>
+            <span className="cute-logo">
+              <Brain size={21} />
+            </span>
+            <span>
+              cortex² <small className="cx-tagline">the quantum brain detective</small>
+            </span>
+          </div>
+          <div className="focused-brain">
+            <span className="twin-dot" style={{ background: anyActive ? '#f2b067' : '#9caf8d' }} />
+            <strong>{exp?.title ?? 'No experiment'}</strong>
+            <span className="brain-status" aria-live="polite">
+              {status}
+            </span>
+          </div>
+          <div className="simple-header-actions">
+            <IconButton
+              label={showQuantum ? 'Hide quantum view' : 'Show quantum view'}
+              active={showQuantum}
+              onClick={() => setShowQuantum((v) => !v)}
+            >
+              <Atom size={17} />
+            </IconButton>
+            <button
+              className={`chat-toggle ${rightOpen ? 'active' : ''}`}
+              aria-label={rightOpen ? 'Close analysis' : 'Open analysis'}
+              onClick={() => (setRightOpen((o) => !o), compact && setLeftOpen(false))}
+            >
+              <FlaskConical size={18} />
+              <span>Analysis</span>
+            </button>
+          </div>
+        </header>
+        <div className="workspace-body">
+          {leftOpen && (
+            <WorkspacePane
+              side="left"
+              title="Laboratory"
+              width={leftWidth}
+              onResize={setLeftWidth}
+              onClose={() => setLeftOpen(false)}
+              actions={
+                signedIn ? (
+                  <IconButton
+                    label="New experiment"
+                    onClick={() => setNewOpen((o) => !o)}
+                    active={newOpen}
+                  >
+                    <Plus size={17} />
+                  </IconButton>
+                ) : undefined
+              }
+            >
+              <div className="cx-left-scroll">
+                <section className="cx-section cx-account">
+                  {signedIn ? (
+                    <div className="cx-me">
+                      {me?.picture ? (
+                        <img src={me.picture} alt="" referrerPolicy="no-referrer" />
+                      ) : (
+                        <span className="pane-brain-avatar">
+                          <Brain size={20} />
+                        </span>
+                      )}
+                      <span>
+                        <strong>{me?.name || me?.email || 'Signed in'}</strong>
+                        <small>{me?.email}</small>
+                      </span>
+                      <IconButton label="Sign out" onClick={auth.signOut}>
+                        <LogOut size={15} />
+                      </IconButton>
+                    </div>
+                  ) : (
+                    <div className="cx-signin">
+                      <strong>Sign in to run experiments</strong>
+                      <small>
+                        Jobs, recordings and agent sessions are stored per Google account.
+                      </small>
+                      <div ref={googleHost} className="cx-google" />
+                      {config?.auth.dev_auth && (
+                        <button className="outline-button" onClick={auth.signInDev}>
+                          Continue as dev (local only)
+                        </button>
+                      )}
+                      {config && !config.auth.google_client_id && !config.auth.dev_auth && (
+                        <small className="cx-note warn">
+                          Google sign-in is not configured on the server (GOOGLE_OAUTH_CLIENT_ID).
+                        </small>
+                      )}
+                      {auth.configError && (
+                        <small className="cx-note warn">
+                          {auth.configError === 'The research service is unreachable.'
+                            ? 'The research service is unreachable. Start it (uvicorn) or set VITE_CORTEX_API.'
+                            : `Research service: ${auth.configError}`}
+                        </small>
+                      )}
+                      {auth.authError && <small className="cx-note warn">{auth.authError}</small>}
+                    </div>
+                  )}
+                </section>
+                {signedIn && newOpen && (
+                  <section className="cx-section">
+                    <header className="cx-section-head">
+                      <h3>New experiment</h3>
+                    </header>
+                    <NewExperimentForm
+                      presets={presets}
+                      datasets={datasets}
+                      recordings={recordings}
+                      onCreate={createExperiment}
+                      busy={busy}
+                    />
+                  </section>
+                )}
+                {signedIn && (
+                  <section className="cx-section">
+                    <header className="cx-section-head">
+                      <h3>Experiments</h3>
+                      <span className="cx-count">{experiments.length}</span>
+                    </header>
+                    {!experiments.length ? (
+                      <div className="cx-empty-line">
+                        No experiments yet.{' '}
+                        <button className="cx-link" onClick={() => setNewOpen(true)}>
+                          Create one
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="pane-brain-list cx-exp-list">
+                        {experiments.map((e) => (
+                          <button
+                            key={e.id}
+                            className={`pane-brain ${e.id === selectedExp ? 'selected' : ''}`}
+                            aria-pressed={e.id === selectedExp}
+                            onClick={() => (
+                              setSelectedExp(e.id),
+                              setTab('experiment'),
+                              compact && setLeftOpen(false)
+                            )}
+                          >
+                            <span
+                              className="pane-brain-avatar"
+                              style={{
+                                background:
+                                  e.target.source === 'synthetic'
+                                    ? '#e4dff4'
+                                    : e.target.source === 'recording'
+                                      ? '#fae2ed'
+                                      : '#d6eadf',
+                              }}
+                            >
+                              {e.target.source === 'synthetic' ? (
+                                <Sparkles size={18} />
+                              ) : (
+                                <Waves size={18} />
+                              )}
+                            </span>
+                            <span>
+                              <strong>{e.title}</strong>
+                              <small>
+                                {e.target.source} · {e.rounds ?? 0} rounds
+                                {e.best ? ` · best ${e.best.nonlinear_loss.toFixed(3)}` : ''}
+                              </small>
+                            </span>
+                            {e.id === selectedExp && <span className="selected-dot" />}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </section>
+                )}
+                <EEGPanel
+                  bridge={bridgeStatus}
+                  live={live}
+                  ingestToken={ingestToken}
+                  onIngestToken={
+                    signedIn
+                      ? () =>
+                          client
+                            .ingestToken()
+                            .then((t) => setIngestToken(t.token))
+                            .catch(fail)
+                      : undefined
+                  }
+                />
+                <JobsPanel
+                  jobs={jobs}
+                  selectedId={selectedJobId}
+                  signedIn={signedIn}
+                  onSelect={(j) => {
+                    setSelectedJobId(j.id);
+                    if (j.experiment_id && j.experiment_id !== selectedExp)
+                      setSelectedExp(j.experiment_id);
+                    setTab(
+                      j.kind === 'agent_iteration'
+                        ? 'agent'
+                        : j.kind === 'agent_operator'
+                          ? 'feed'
+                          : 'job',
+                    );
+                    if (!rightOpen) setRightOpen(true);
+                    if (compact) setLeftOpen(false);
+                  }}
+                  onCancel={(j) =>
+                    client
+                      .cancelJob(j.id)
+                      .then(({ job }) =>
+                        setJobs((all) => all.map((x) => (x.id === job.id ? job : x))),
+                      )
+                      .catch(fail)
+                  }
+                  session={session}
+                  onSession={(p) => void updateSession(p)}
+                />
+              </div>
+              <div className="pane-bottom">
+                <a href="/" className="cx-bottom-link">
+                  <Brain size={15} /> My Little Brain companion
+                </a>
+              </div>
+            </WorkspacePane>
+          )}
+          <section className="main-content">
+            <div
+              className={`simple-habitat cx-habitat ${showQuantum && signedIn ? 'with-qviz' : ''}`}
+            >
+              <BrainScene
+                thoughts={[]}
+                activeThoughtId={null}
+                thinking={anyActive}
+                paused={false}
+                showThoughts={false}
+                onThoughtSelect={() => {}}
+                anatomyMode={inside}
+                researchOverlay={overlay}
+                onFrame={signedIn && exp ? (c) => (lastFrame.current = c) : undefined}
+              />
+              <div className="cx-stage-note">
+                {live.frame ? (
+                  <>
+                    <i className="status-dot live" /> markers: measured{' '}
+                    {live.source === 'bridge' ? 'OpenBCI' : 'cloud'} EEG mapped to 10-20 sites (
+                    {anchors.mapped}/19)
+                  </>
+                ) : (
+                  <>markers: illustrative idle animation · no EEG streaming</>
+                )}
+                <br />
+                fibers: illustrative anatomical overlay, not tractography reconstructed from scalp
+                EEG
+              </div>
+              {live.frame && <TraceStrip live={live} />}
+            </div>
+            <div className="scene-options">
+              <button
+                className={inside ? 'selected' : ''}
+                aria-pressed={inside}
+                onClick={() => setInside((v) => !v)}
+              >
+                <Layers size={15} />
+                <span>Inside</span>
+              </button>
+              <button
+                className={fibers ? 'selected' : ''}
+                aria-pressed={fibers}
+                onClick={() => setFibers((v) => !v)}
+              >
+                <Waves size={15} />
+                <span>Fibers</span>
+              </button>
+              <button
+                className={showQuantum ? 'selected' : ''}
+                aria-pressed={showQuantum}
+                onClick={() => setShowQuantum((v) => !v)}
+              >
+                <Atom size={15} />
+                <span>Quantum</span>
+              </button>
+            </div>
+            {showQuantum && signedIn && (
+              <QuantumViz
+                job={stageJob}
+                budget={config?.gate_budget ?? 130}
+                truth={truth}
+                onClose={() => setShowQuantum(false)}
+              />
+            )}
+            {(error || notice) && (
+              <div
+                className={`connection-feedback cx-toast ${error ? 'error' : ''}`}
+                role={error ? 'alert' : 'status'}
+              >
+                {error || notice}
+                <button onClick={() => (setError(''), setNotice(''))}>Dismiss</button>
+              </div>
+            )}
+            {!rightOpen && <div className="floating-compose">{composer()}</div>}
+          </section>
+          {rightOpen && (
+            <WorkspacePane
+              side="right"
+              title="Analysis"
+              width={rightWidth}
+              onResize={setRightWidth}
+              onClose={() => setRightOpen(false)}
+              actions={
+                <IconButton
+                  label="Agent feed"
+                  onClick={() => setTab('feed')}
+                  active={tab === 'feed'}
+                >
+                  <MessageCircle size={16} />
+                </IconButton>
+              }
+            >
+              <div className="cx-right">
+                <div className="cx-tabs" role="tablist" aria-label="Analysis views">
+                  {(['experiment', 'job', 'agent', 'feed'] as Tab[]).map((t) => (
+                    <button
+                      key={t}
+                      role="tab"
+                      aria-selected={tab === t}
+                      className={tab === t ? 'selected' : ''}
+                      onClick={() => setTab(t)}
+                    >
+                      {t === 'experiment'
+                        ? 'Experiment'
+                        : t === 'job'
+                          ? 'Job'
+                          : t === 'agent'
+                            ? `Agent${detail?.revisions.length ? ` ${detail.revisions.length}` : ''}`
+                            : 'Feed'}
+                    </button>
+                  ))}
+                </div>
+                <div className="cx-right-scroll">
+                  {!signedIn ? (
+                    <div className="cx-empty">
+                      <h3>Welcome to cortex²</h3>
+                      <p>
+                        We work backwards from an EEG recording to the brain-model parameters that
+                        could have produced it, using AI-designed quantum circuits on IBM hardware,
+                        Extropic&apos;s THRML sampler and classical baselines. Sign in in the left
+                        pane to begin.
+                      </p>
+                    </div>
+                  ) : tab === 'experiment' ? (
+                    <ExperimentTab
+                      detail={detail}
+                      config={config}
+                      client={client}
+                      selectedJob={selectedJob}
+                      run={run}
+                      setRun={setRun}
+                      onRun={(r) => void runJob(r)}
+                      busy={busy}
+                      onSelectJob={(id) => (setSelectedJobId(id), setTab('job'))}
+                    />
+                  ) : tab === 'job' ? (
+                    <JobTab job={selectedJob ?? stageJob} config={config} truth={truth} />
+                  ) : tab === 'agent' ? (
+                    <AgentTimeline
+                      revisions={detail?.revisions ?? []}
+                      client={client}
+                      onSelectJob={(id) => (setSelectedJobId(id), setTab('job'))}
+                      agentConfigured={config?.agent_configured ?? false}
+                      model={config?.model ?? 'agent'}
+                    />
+                  ) : (
+                    <FeedTab items={feed} />
+                  )}
+                </div>
+                {signedIn && (
+                  <div className="chat-compose cx-compose">
+                    {ibmConfirm}
+                    {quick}
+                    {composer(true)}
+                  </div>
+                )}
+              </div>
+            </WorkspacePane>
+          )}
+        </div>
+      </main>
+    </div>
+  );
 }

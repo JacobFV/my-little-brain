@@ -6,6 +6,13 @@ import { createPluginInteractions, type PluginInteraction } from './interactions
 export type { PluginInteraction } from './interactions';
 import { dragOrbit, returnOrbit, type OrbitState } from './motion';
 import { disposeAnatomy, loadAnatomy, setAnatomyMode } from './anatomy';
+import {
+  createResearchOverlay,
+  moodEyes,
+  RESEARCH_ANCHORS,
+  type ResearchOverlay,
+} from './research';
+export { RESEARCH_ANCHORS, mniToScene, type ResearchMood, type ResearchOverlay } from './research';
 
 export interface BrainSceneProps {
   thoughts: Array<{ id: string; text: string; x: number; y: number }>;
@@ -25,8 +32,8 @@ export interface BrainSceneProps {
   onPluginFocus?: (id: string) => void;
   activePluginInteractionId?: string | null;
   distraction?: DistractionKind | null;
-  /** Hackathon-only illustrative field propagation; not anatomical source localization. */
-  researchOverlay?: { intensities: number[]; opacity: number; shellOpacity?: number };
+  /** Cortex² illustrative fibre/activity overlay; not tractography or source localization. */
+  researchOverlay?: ResearchOverlay;
   /** At most four frames/second, copied to a stable canvas. Portal surfaces are
    * excluded from snapshots, bounding reciprocal viewing to one environment. */
   onFrame?: (canvas: HTMLCanvasElement) => void;
@@ -39,6 +46,7 @@ export function BrainScene(props: BrainSceneProps) {
   const host = useRef<HTMLDivElement>(null);
   const pluginButtons = useRef(new Map<string, HTMLButtonElement>());
   const researchButtons = useRef(new Map<number, HTMLButtonElement>());
+  const [hoverAnchor, setHoverAnchor] = useState<number | null>(null);
   const pluginDrag = useRef<{
     id: string;
     pointer: number;
@@ -105,45 +113,12 @@ export function BrainScene(props: BrainSceneProps) {
     const { group, eyes, eyeRoots, cortex, subcortex } = createBrain(props.color);
     group.visible = false;
     scene.add(group);
-    // Cortex² research overlay: translucent stylized pathways and traveling activity pulses.
-    // These coordinates are anatomical illustrations, not EEG inverse localizations.
-    const activityNodes = [
-      [-0.53, 0.38, 0.20], [0.53, 0.38, 0.20],
-      [-0.74, 0.03, -0.08], [0.74, 0.03, -0.08],
-      [-0.36, 0.03, 0.43], [0.36, 0.03, 0.43],
-      [-0.35, -0.31, -0.38], [0.35, -0.31, -0.38],
-    ].map((v) => new THREE.Vector3(...(v as [number, number, number])));
-    const activityRoot = new THREE.Group();
-    group.add(activityRoot);
-    const activityBeads: THREE.Mesh[] = [];
-    const activityEdges: Array<{ mesh: THREE.Mesh; curve: THREE.CatmullRomCurve3; a: number; b: number; pulse: THREE.Mesh }> = [];
-    const activityLinks = [[0,4],[1,5],[2,4],[3,5],[4,6],[5,7],[4,5],[0,1],[6,7],[2,6],[3,7]];
-    for (const [a,b] of activityLinks) {
-      const start = activityNodes[a], end = activityNodes[b];
-      const curve = new THREE.CatmullRomCurve3([
-        start, start.clone().lerp(end, .35).add(new THREE.Vector3(0,.18,-.12)),
-        start.clone().lerp(end,.67).add(new THREE.Vector3(0,-.13,.08)), end,
-      ]);
-      const mesh = new THREE.Mesh(
-        new THREE.TubeGeometry(curve, 32, .008, 6, false),
-        new THREE.MeshBasicMaterial({color:'#65a8ab',transparent:true,opacity:.22,depthWrite:false}),
-      );
-      const pulse = new THREE.Mesh(
-        new THREE.SphereGeometry(.028, 10, 8),
-        new THREE.MeshBasicMaterial({color:'#e4ae69',transparent:true,opacity:.5,depthWrite:false}),
-      );
-      activityRoot.add(mesh,pulse);
-      activityEdges.push({mesh,curve,a,b,pulse});
-    }
-    for (const point of activityNodes) {
-      const bead = new THREE.Mesh(
-        new THREE.SphereGeometry(.046, 12, 10),
-        new THREE.MeshBasicMaterial({color:'#80d1bb',transparent:true,opacity:.75,depthWrite:false}),
-      );
-      bead.position.copy(point);
-      activityRoot.add(bead);
-      activityBeads.push(bead);
-    }
+    // Cortex² research overlay: see-through brain with illustrative fibre bundles and pulses.
+    const research = createResearchOverlay();
+    research.root.visible = false;
+    group.add(research.root);
+    let lastBlinkSignal = current.current.researchOverlay?.blinkSignal ?? 0;
+    let forcedBlinkAt = -Infinity;
     const distraction = createDistraction();
     scene.add(distraction.root);
     const pluginInteractions = createPluginInteractions();
@@ -218,20 +193,7 @@ export function BrainScene(props: BrainSceneProps) {
         cortex.add(loaded.cortex);
         subcortex.add(loaded.subcortex);
         setAnatomyMode(cortex, subcortex, anatomyMode);
-        // On the lab route, the original meshes are drawn as a see-through shell.
-        // Material instances come from the separately loaded anatomy assets.
-        if (current.current.researchOverlay) {
-          for (const root of [loaded.cortex, loaded.subcortex])
-            root.traverse((obj) => {
-              if (!(obj instanceof THREE.Mesh)) return;
-              for (const material of Array.isArray(obj.material) ? obj.material : [obj.material]) {
-                material.transparent = true;
-                material.opacity = .28;
-                material.depthWrite = false;
-                material.needsUpdate = true;
-              }
-            });
-        }
+        lastShellOpacity = -1; // re-apply the research shell to the newly loaded meshes
         group.visible = true;
         setAnatomyState('ready');
       })
@@ -282,43 +244,38 @@ export function BrainScene(props: BrainSceneProps) {
       if (Boolean(p.anatomyMode) !== anatomyMode) {
         anatomyMode = Boolean(p.anatomyMode);
         setAnatomyMode(cortex, subcortex, anatomyMode);
+        lastShellOpacity = -1;
       }
       const overlay = p.researchOverlay;
       if (overlay) {
-        const shellOpacity = clamp(overlay.shellOpacity ?? .28, .08, 1);
-        if (Math.abs(lastShellOpacity - shellOpacity) > .001) {
+        const shellOpacity = clamp(overlay.shellOpacity ?? 0.28, 0.08, 1);
+        if (Math.abs(lastShellOpacity - shellOpacity) > 0.001) {
           lastShellOpacity = shellOpacity;
-          for (const root of [cortex, subcortex]) root.traverse(obj => {
-            if (!(obj instanceof THREE.Mesh)) return;
-            for (const material of Array.isArray(obj.material) ? obj.material : [obj.material]) {
-              material.transparent = shellOpacity < .999;
-              material.opacity = shellOpacity;
-              material.depthWrite = shellOpacity >= .999;
-              material.needsUpdate = true;
-            }
-          });
+          for (const root of [cortex, subcortex])
+            root.traverse((obj) => {
+              if (!(obj instanceof THREE.Mesh)) return;
+              for (const material of Array.isArray(obj.material) ? obj.material : [obj.material]) {
+                material.transparent = shellOpacity < 0.999;
+                material.opacity = shellOpacity;
+                material.depthWrite = shellOpacity >= 0.999;
+                material.needsUpdate = true;
+              }
+            });
         }
       }
-      activityRoot.visible = Boolean(overlay);
+      research.root.visible = Boolean(overlay);
       if (overlay) {
-        const opacity = clamp(overlay.opacity, 0, 1);
-        for (let i = 0; i < activityBeads.length; i++) {
-          const intensity = clamp(overlay.intensities[i] ?? 0, 0, 1);
-          const bead = activityBeads[i];
-          bead.scale.setScalar(.65 + .9 * intensity);
-          const material = bead.material as THREE.MeshBasicMaterial;
-          material.opacity = opacity * (.3 + .7 * intensity);
+        research.update(overlay, now / 1000, Boolean(p.reducedMotion));
+        const signal = overlay.blinkSignal ?? 0;
+        if (signal !== lastBlinkSignal) {
+          lastBlinkSignal = signal;
+          forcedBlinkAt = now / 1000;
         }
-        for (let i = 0; i < activityEdges.length; i++) {
-          const edge = activityEdges[i];
-          const signal = clamp(((overlay.intensities[edge.a] ?? 0)+(overlay.intensities[edge.b] ?? 0)) / 2,0,1);
-          (edge.mesh.material as THREE.MeshBasicMaterial).opacity = opacity * (.16 + .58*signal);
-          (edge.pulse.material as THREE.MeshBasicMaterial).opacity = opacity * (.28 + .65*signal);
-          const progress = ((now * (.00016 + signal*.00015) + i*.117) % 1);
-          edge.pulse.position.copy(edge.curve.getPoint(progress));
-          edge.pulse.scale.setScalar(.55 + signal);
-        }
+      } else if (lastShellOpacity !== -1) {
+        lastShellOpacity = -1;
+        setAnatomyMode(cortex, subcortex, anatomyMode);
       }
+      const mood = moodEyes(overlay?.mood, now / 1000);
       const energy = clamp(p.energy ?? 1, 0, 1);
       if (!p.paused) {
         orbit = returnOrbit(orbit, now, dt, Boolean(p.reducedMotion));
@@ -349,8 +306,9 @@ export function BrainScene(props: BrainSceneProps) {
         button.style.height = `${bounds.height}%`;
       }
       const target = p.thoughts.find((thought) => thought.id === p.activeThoughtId);
-      const targetX = target?.x ?? 0,
-        targetY = target?.y ?? 0;
+      const researchGaze = !target ? p.researchOverlay?.gaze : null;
+      const targetX = target?.x ?? researchGaze?.x ?? mood.glance,
+        targetY = target?.y ?? researchGaze?.y ?? (mood.glance ? -0.1 : 0);
       if (!p.paused) {
         elapsed += dt;
         if (p.reducedMotion) {
@@ -373,7 +331,11 @@ export function BrainScene(props: BrainSceneProps) {
         }
         const motion = p.reducedMotion ? 0 : 1;
         group.position.y =
-          Math.sin(elapsed * (0.7 + energy * 0.45)) * 0.033 * motion * (0.3 + 0.7 * energy);
+          Math.sin(elapsed * (0.7 + energy * 0.45) * mood.bob) *
+          0.033 *
+          motion *
+          (0.3 + 0.7 * energy) *
+          Math.min(1.6, mood.bob);
         group.rotation.y = (Math.sin(elapsed * 0.35) * 0.026 + gazeX * 0.055) * motion;
         const breath = 1 + Math.sin(elapsed * 1.7) * 0.006 * motion;
         group.scale.set(breath, breath, breath);
@@ -396,6 +358,12 @@ export function BrainScene(props: BrainSceneProps) {
           !p.reducedMotion && blinkPhase > 0.1 && blinkPhase < 0.24
             ? Math.max(0.08, Math.abs(blinkPhase - 0.17) / 0.07)
             : 1;
+        const sinceForced = now / 1000 - forcedBlinkAt;
+        const forced =
+          sinceForced >= 0 && sinceForced < 0.16
+            ? Math.max(0.08, Math.abs(sinceForced - 0.08) / 0.08)
+            : 1;
+        const lid = Math.min(blink, forced) * mood.lid;
         for (let i = 0; i < eyes.length; i++) {
           const direction = gazeTarget.clone().sub(eyeRoots[i].position);
           eyes[i].rotation.set(
@@ -403,18 +371,30 @@ export function BrainScene(props: BrainSceneProps) {
             clamp(Math.atan2(direction.x, direction.z), -0.58, 0.58),
             0,
           );
-          eyes[i].scale.y = blink;
+          eyes[i].scale.y = lid * mood.scale;
+          eyes[i].scale.x = eyes[i].scale.z = mood.scale;
         }
       }
       if (p.researchOverlay) {
-        activityRoot.updateWorldMatrix(true, false);
-        for (let i=0; i<activityNodes.length; i++) {
-          const marker=researchButtons.current.get(i);
+        research.root.updateWorldMatrix(true, false);
+        const v = new THREE.Vector3();
+        const toCamera = new THREE.Vector3();
+        for (let i = 0; i < research.anchors.length; i++) {
+          const marker = researchButtons.current.get(i);
           if (!marker) continue;
-          const projected=activityNodes[i].clone().applyMatrix4(activityRoot.matrixWorld).project(camera);
-          marker.hidden=projected.z>1 || projected.z< -1 || Math.abs(projected.x)>1 || Math.abs(projected.y)>1;
-          marker.style.left=`${(projected.x+1)*50}%`;
-          marker.style.top=`${(1-projected.y)*50}%`;
+          v.copy(research.anchors[i]).applyMatrix4(research.root.matrixWorld);
+          // anchors facing away from the camera fade out (they sit behind the brain)
+          toCamera.copy(camera.position).sub(v).normalize();
+          const facing = v.clone().sub(group.position).normalize().dot(toCamera);
+          const projected = v.project(camera);
+          marker.hidden =
+            projected.z > 1 ||
+            projected.z < -1 ||
+            Math.abs(projected.x) > 1 ||
+            Math.abs(projected.y) > 1;
+          marker.style.left = `${(projected.x + 1) * 50}%`;
+          marker.style.top = `${(1 - projected.y) * 50}%`;
+          marker.style.opacity = String(facing > -0.15 ? 1 : 0.3);
         }
       }
       if (p.paused) for (const eye of eyes) eye.scale.y = 1;
@@ -471,6 +451,7 @@ export function BrainScene(props: BrainSceneProps) {
       renderer.domElement.removeEventListener('webglcontextlost', lose);
       renderer.domElement.removeEventListener('webglcontextrestored', restore);
       pluginInteractions.dispose();
+      research.dispose();
       const geometries = new Set<THREE.BufferGeometry>();
       const materials = new Set<THREE.Material>();
       scene.traverse((object) => {
@@ -521,16 +502,60 @@ export function BrainScene(props: BrainSceneProps) {
         isolation: 'isolate',
       }}
     >
-      {props.researchOverlay && <div aria-label="research brain activity markers" style={{position:'absolute',inset:0,pointerEvents:'none',zIndex:4}}>
-        {['frontal left','frontal right','temporal left','temporal right','parietal left','parietal right','occipital left','occipital right'].map((name,i) =>
-          <button key={name} ref={node=>{if(node)researchButtons.current.set(i,node);else researchButtons.current.delete(i);}}
-            type="button" title={`${name}: ${((props.researchOverlay?.intensities[i] ?? 0)*100).toFixed(1)}% normalized synthetic feature proxy`}
-            aria-label={`${name}: ${((props.researchOverlay?.intensities[i] ?? 0)*100).toFixed(1)}% activity`}
-            style={{position:'absolute',pointerEvents:'auto',transform:'translate(-50%,-50%)',
-              width:12,height:12,padding:0,borderRadius:'50%',border:'1px solid #73a9a7',
-              background:'#9bdccc',boxShadow:'0 0 0 5px #74c3b325',cursor:'help'}}/>
-        )}
-      </div>}
+      {props.researchOverlay && (
+        <div
+          className="brain-research-markers"
+          aria-label="Activity markers (illustrative anatomy overlay)"
+        >
+          {RESEARCH_ANCHORS.map((name, i) => {
+            const overlay = props.researchOverlay!;
+            const intensity = clamp(overlay.intensities[i] ?? 0, 0, 1);
+            const label = overlay.labels?.[i] ?? name;
+            const rows = overlay.values?.[i];
+            return (
+              <button
+                key={name}
+                ref={(node) => {
+                  if (node) researchButtons.current.set(i, node);
+                  else researchButtons.current.delete(i);
+                }}
+                type="button"
+                className="brain-research-marker"
+                style={{ ['--mark' as string]: String(intensity) }}
+                aria-label={`${label}: ${(intensity * 100).toFixed(0)}% relative activity`}
+                aria-describedby={hoverAnchor === i ? 'brain-research-tip' : undefined}
+                onPointerEnter={() => setHoverAnchor(i)}
+                onPointerLeave={() => setHoverAnchor((h) => (h === i ? null : h))}
+                onFocus={() => setHoverAnchor(i)}
+                onBlur={() => setHoverAnchor((h) => (h === i ? null : h))}
+              >
+                {hoverAnchor === i && (
+                  <span id="brain-research-tip" role="tooltip" className="brain-research-tip">
+                    <strong>{label}</strong>
+                    <span className="brain-research-row">
+                      <span>relative activity</span>
+                      <b>{(intensity * 100).toFixed(1)}%</b>
+                    </span>
+                    {rows &&
+                      Object.entries(rows).map(([k, value]) => (
+                        <span className="brain-research-row" key={k}>
+                          <span>{k}</span>
+                          <b>
+                            {typeof value === 'number'
+                              ? Math.abs(value) >= 100
+                                ? value.toFixed(0)
+                                : value.toFixed(2)
+                              : value}
+                          </b>
+                        </span>
+                      ))}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
       <style>{`
       .brain-plugin-hit { position:absolute;z-index:3;border:0;background:transparent;border-radius:14px;touch-action:none;cursor:grab;min-width:24px;min-height:24px;padding:0; }
       .brain-plugin-hit:focus-visible {outline:2px solid #9372ab;outline-offset:4px;}
@@ -540,6 +565,13 @@ export function BrainScene(props: BrainSceneProps) {
       .brain-thought:focus-visible { outline:2px solid #62866b; outline-offset:4px; }
       .brain-thought:active { cursor:grabbing; }
       .brain-fallback { position:absolute; inset:0; display:grid; align-content:center; justify-items:center; color:#81746f; gap:16px; font:12px/1.5 system-ui; }
+      .brain-research-markers { position:absolute; inset:0; pointer-events:none; z-index:4; }
+      .brain-research-marker { position:absolute; pointer-events:auto; transform:translate(-50%,-50%); width:14px; height:14px; padding:0; border-radius:50%; border:1px solid #ffffffc0; background:radial-gradient(circle, rgba(255,214,170,calc(.35 + var(--mark)*.65)) 0, rgba(111,195,182,.35) 70%); box-shadow:0 0 calc(4px + var(--mark)*14px) rgba(242,176,103,calc(.2 + var(--mark)*.6)); cursor:help; transition:opacity .3s; }
+      .brain-research-marker:focus-visible { outline:2px solid #62866b; outline-offset:3px; }
+      .brain-research-tip { position:absolute; left:50%; bottom:calc(100% + 10px); transform:translateX(-50%); min-width:150px; display:grid; gap:3px; padding:9px 11px; border-radius:13px; background:rgba(255,255,255,.93); border:1px solid #ffffffd9; box-shadow:0 8px 28px #62735f22; backdrop-filter:blur(14px); color:#5d6c58; font:11px/1.35 inherit; font-family:inherit; text-align:left; white-space:nowrap; pointer-events:none; z-index:10; }
+      .brain-research-tip strong { font-family:Manrope, sans-serif; font-weight:600; font-size:11.5px; color:#566a4f; }
+      .brain-research-row { display:flex; justify-content:space-between; gap:14px; font-size:10.5px; color:#889583; }
+      .brain-research-row b { font-weight:600; color:#5c6e55; font-variant-numeric:tabular-nums; }
       .brain-anatomy-note { position:absolute; bottom:12px; left:50%; transform:translateX(-50%); white-space:nowrap; font:10px/1.4 system-ui; color:#778177; opacity:.8; }
     `}</style>
       {props.pluginInteractions?.slice(-6).map((item) => (

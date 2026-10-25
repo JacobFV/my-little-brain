@@ -1,3 +1,5 @@
-brainflow>=5.16,<6
-numpy>=2.0,<3
-requests>=2.32,<3
+brainflow>=5.12
+numpy>=1.26
+scipy>=1.11
+websockets>=13
+requests>=2.31

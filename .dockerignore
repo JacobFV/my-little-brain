@@ -9,3 +9,9 @@ node_modules
 .DS_Store
 coverage
 *.log
+research/.venv
+research/.data
+research/.env
+**/__pycache__
+**/.pytest_cache
+apps/desktop/release

@@ -30,7 +30,11 @@ class AppBoundary extends React.Component<{ children: React.ReactNode }, { faile
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <AppBoundary>
-      {location.pathname.startsWith('/lab') ? <ResearchLab /> : <App />}
+      {import.meta.env.VITE_CORTEX_ONLY === '1' || location.pathname.startsWith('/lab') ? (
+        <ResearchLab />
+      ) : (
+        <App />
+      )}
     </AppBoundary>
   </React.StrictMode>,
 );
