@@ -16,3 +16,4 @@ test-results/
 !.dev.vars.example
 .agents/
 .codex/
+research/.venv
