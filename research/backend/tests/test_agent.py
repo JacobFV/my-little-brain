@@ -66,8 +66,10 @@ def test_design_iteration_records_measured_verdict(fake):
     assert rev["reference_job_id"] == ref["id"] and rev["revised_job_id"]
     assert rev["custom_qasm"] is True and rev["qasm_diff"]
     assert rev["verdict"] in ("improved", "regressed", "unchanged")
-    expected = agent.verdict(store().get("jobs", ref["id"]), store().get("jobs", rev["revised_job_id"]))
+    expected = agent.verdict(store().get("jobs", ref["id"]), store().get("jobs", rev["revised_job_id"]), rev["best_known_before"])
     assert rev["verdict"] == expected                         # computed, not claimed
+    assert rev["comparison_basis"] == "model_specified" and rev["information"] == "blind"
+    assert rev["forward_simulations_after"] >= rev["forward_simulations_before"]
     assert [t["tool"] for t in rev["tool_trace"]] == ["inspect_state", "compile_circuit", "run_experiment", "record_revision"]
     # the rendered comparison image was sent to the model after run_experiment
     sent = backend.requests[3]
@@ -152,3 +154,97 @@ def test_openai_history_conversion():
     items = b._input(hist)
     kinds = [i.get("type") or i.get("role") for i in items]
     assert kinds == ["user", "function_call", "function_call_output", "user"]
+
+
+# ---------------------------------------------------------------- blind information, economics, continuity
+
+ORACLE_KEYS = ("min_possible_loss", "approximation_ratio", "p_consistent", "truth", "qubo_quality", "oracle")
+
+
+def _deep_keys(x):
+    if isinstance(x, dict):
+        for k, v in x.items():
+            yield k
+            yield from _deep_keys(v)
+    elif isinstance(x, list):
+        for v in x:
+            yield from _deep_keys(v)
+
+
+def test_agent_sees_no_oracle_information():
+    exp = runner.create_experiment("blind-user", {"source": "synthetic", "truth_bitstring": "10101011"})
+    j = runner.create_job("blind-user", exp["id"], {"provider": "classical_anneal", "approximation": "trust_region"}, enqueue=False)
+    runner.execute_sample_job(store().get("jobs", j["id"]))
+    exp = store().get("experiments", exp["id"])
+    ds = agent.DesignSession({"owner": "blind-user", "experiment_id": exp["id"], "id": "x"})
+    views = [agent.experiment_state(exp), ds.build_problem("trust_region")[0],
+             ds.compile_circuit("trust_region", spec={"reps": 1, "max_couplings": 4})[0]]
+    for view in views:
+        leaked = [k for k in _deep_keys(view) if any(o in k for o in ORACLE_KEYS)]
+        assert not leaked, leaked
+    state = views[0]
+    assert state["economics"]["forward_simulations_used"] == len(state["simulated_hypotheses"]) > 0
+    assert "classical_exact" not in agent.SYNC_PROVIDERS
+    with_oracle = agent.experiment_state(exp, oracle=True)
+    assert "oracle_loss_stats" in with_oracle["problem"]
+
+
+def test_identical_configuration_is_not_rerun():
+    exp = runner.create_experiment("dedup-user", {"source": "synthetic", "truth_bitstring": "00110010"})
+    ds = agent.DesignSession({"owner": "dedup-user", "experiment_id": exp["id"], "id": "it1"})
+    first, png = ds.run_experiment("classical_anneal", "trust_region", baseline="00000000", shots=256)
+    assert png is not None and png.startswith(b"\x89PNG") and "not_rerun" not in first
+    used = first["economics"]["forward_simulations_used"]
+    again, png2 = ds.run_experiment("classical_anneal", "trust_region", baseline="00000000", shots=256)
+    assert again["not_rerun"] and again["duplicate_of"] == first["job"]["id"] and png2 is None
+    assert agent.economics(store().get("experiments", exp["id"]))["forward_simulations_used"] == used
+    forced, _ = ds.run_experiment("classical_anneal", "trust_region", baseline="00000000", shots=256, force_rerun=True)
+    assert "not_rerun" not in forced and forced["job"]["id"] != first["job"]["id"]
+
+
+def _job(jid, provider, shots, loss, ar, created, gates=100):
+    return {"id": jid, "kind": "sample", "provider": provider, "shots": shots, "created_at": created,
+            "evaluation": {"best_nonlinear_loss": loss, "p_consistent": 0.1, "approximation_ratio": ar},
+            "transpiled": {"gates": gates, "within_budget": True}}
+
+
+def test_reference_selection_prefers_equal_footing():
+    revised = _job("r", "aer_noisy", 1024, 1.0, 0.5, "3")
+    prior = [_job("a", "thrml", 1024, 0.5, 0.9, "1"), _job("b", "aer_noisy", 1024, 2.0, 0.2, "2"),
+             _job("c", "aer_noisy", 512, 1.5, 0.3, "2.5")]
+    ref, basis = agent.choose_reference(None, revised, prior, prior[0])
+    assert ref["id"] == "b" and basis == "same_provider"
+    ref, basis = agent.choose_reference(prior[0], revised, prior, None)
+    assert ref["id"] == "a" and basis == "model_specified_cross_provider"
+    ref, basis = agent.choose_reference(None, _job("z", "ionq_simulator", 64, 1, .1, "4"), prior, prior[0])
+    assert ref["id"] == "a" and basis == "experiment_best"
+
+
+def test_verdict_progress_and_distribution_quality():
+    ref, rev = _job("a", "aer_noisy", 1024, 0.5, 0.40, "1"), _job("b", "aer_noisy", 1024, 0.9, 0.70, "2")
+    assert agent.verdict(ref, rev, best_known_before=0.5) == "improved"          # better distribution, no new best
+    assert agent.verdict(rev, ref, best_known_before=0.5) == "regressed"
+    lucky = _job("c", "aer_noisy", 1024, 0.3, 0.10, "3")
+    assert agent.verdict(ref, lucky, best_known_before=0.5) == "improved"        # new best validated hypothesis
+    same = _job("d", "aer_noisy", 1024, 0.9, 0.41, "4", gates=100)
+    assert agent.verdict(ref, same, best_known_before=0.5) == "unchanged"
+    assert agent.verdict(None, same, best_known_before=None) == "untested"
+
+
+def test_iteration_carries_previous_next_step(fake):
+    uid = "carry-user"
+    exp = runner.create_experiment(uid, {"source": "synthetic", "truth_bitstring": "11111011"})
+    store().create("revisions", {"owner": uid, "experiment_id": exp["id"], "number": 1, "created_at": "1",
+                                 "verdict": "improved", "change": "switched to feature_regression",
+                                 "next_step": "re-anchor the trust region around 10111111"})
+    backend = fake["install"]([
+        [("run_experiment", {"provider": "classical_anneal", "approximation": "trust_region", "shots": 256})],
+        [("record_revision", {"observation": "o", "diagnosis": "d", "change": "c", "rationale": "r"})],
+    ])
+    job = store().create("jobs", {"owner": uid, "experiment_id": exp["id"], "kind": "agent_iteration", "status": "running",
+                                  "created_at": "x", "created_by": "user"})
+    done = agent.run_iteration(store().get("jobs", job["id"]))
+    first = backend.requests[0][0]["text"]
+    assert "re-anchor the trust region around 10111111" in first and "Forward simulations used so far: 0/256" in first
+    rev = store().get("revisions", done["revision_id"])
+    assert rev["number"] == 2 and rev["verdict"] == "untested" and rev["comparison_basis"] == "none"
