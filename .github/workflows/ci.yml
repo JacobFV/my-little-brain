@@ -24,7 +24,8 @@ jobs:
           cache-dependency-path: research/backend/requirements.txt
       - run: python -m pip install -r research/backend/requirements.txt pytest httpx brainflow websockets
       - run: python -m pytest -q research/backend/tests
-      - run: python -m py_compile research/bridge/openbci.py research/experiments/benchmark.py
+      - run: python -m py_compile research/bridge/openbci.py research/bridge/preflight.py research/experiments/benchmark.py
+      - run: python -m pytest -q research/bridge/test_bridge.py
       - run: npm run build --workspace=@little-brain/web
         env:
           VITE_CORTEX_ONLY: '1'
