@@ -17,3 +17,7 @@ test-results/
 .agents/
 .codex/
 research/.venv
+research/bridge/fixtures/
+research/bridge/recordings/
+__pycache__/
+.pytest_cache/
