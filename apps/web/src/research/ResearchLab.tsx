@@ -64,7 +64,6 @@ export default function ResearchLab() {
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
   const [opacity, setOpacity] = useState(0.52);
-  const [hoverNode, setHoverNode] = useState<number | null>(null);
   const clock = useRef(0);
   const selectedJob = jobs.find(j => j.id === selected) || jobs[0] || null;
   const bins = useMemo(() => {
@@ -205,7 +204,7 @@ export default function ResearchLab() {
               <button className={brainView==='anatomy'?'active':''} onClick={()=>setBrainView('anatomy')}>cortex</button>
               <button className={brainView==='inside'?'active':''} onClick={()=>setBrainView('inside')}>x-ray</button>
             </div>
-            <div className="cx-marker-layer" aria-label="regional activity markers">{project.map((n,i)=><button key={n.name} className="cx-marker" style={{left:`${n.x}%`,top:`${n.y}%`}} onMouseEnter={()=>setHoverNode(i)} onMouseLeave={()=>setHoverNode(null)} title={`${n.name}: ${(n.value*100).toFixed(1)}% normalized activity`}>{hoverNode===i && <span className="cx-tooltip">{n.name}<strong>{(n.value*100).toFixed(1)}%</strong><small>{live?'derived channel feature':'synthetic activity'}</small></span>}</button>)}</div>
+
           </div>
           <div className="cx-strip"><span>overlay opacity</span><input aria-label="overlay opacity" type="range" min={0} max={1} step={.01} value={opacity} onChange={e=>setOpacity(+e.target.value)}/><span>activity nodes: 8 · illustrative atlas mapping</span></div>
           <div className="cx-signals"><div className="cx-signals-head"><b>eeg signatures</b><span>{live?'hardware stream':'synthetic preview'} · 4 channels</span></div>
