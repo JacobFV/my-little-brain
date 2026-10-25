@@ -58,7 +58,7 @@ def settings_for(uid):
     ref=db.collection("research_sessions").document(uid)
     snap=ref.get()
     if snap.exists:return snap.to_dict()
-    default={"autopilot":False,"max_autonomous_jobs":4,
+    default={"autopilot":False,"max_autonomous_jobs":4,"autonomous_jobs_total":0,
              "enabled_providers":["classical","ibm_simulator","extropic_simulator"],
              "created_at":now().isoformat()}
     ref.set(default)
@@ -230,15 +230,26 @@ def run_agent(uid,command):
         plan={"summary":raw[:1200],"dispatch":False,"provider":None,"reason":"unstructured model reply"}
     provider=plan.get("provider")
     permitted={"classical","ibm_simulator","extropic_simulator"}
-    automated=sum(1 for job in recent if job.get("autonomous") is True)
+    automated=int(settings.get("autonomous_jobs_total",0))
     active=any(j.get("provider")==provider and j.get("status") in ("running","queued","submitted") for j in recent)
     launch=(plan.get("dispatch") is True and settings.get("autopilot") is True
             and provider in permitted and provider in allowed and not active
             and automated<int(settings.get("max_autonomous_jobs",4)))
     child=None
     if launch:
-        child=make_job(uid,provider,"agent follow-up: "+str(plan.get("reason","comparison"))[:75],
-                       extra={"autonomous":True})
+        ref=db.collection("research_sessions").document(uid)
+        @transactional
+        def reserve(tx):
+            snap=ref.get(transaction=tx)
+            policy=snap.to_dict() or {}
+            if (not policy.get("autopilot") or
+                int(policy.get("autonomous_jobs_total",0))>=int(policy.get("max_autonomous_jobs",4))):
+                return False
+            tx.update(ref,{"autonomous_jobs_total":int(policy.get("autonomous_jobs_total",0))+1})
+            return True
+        if reserve(db.transaction()):
+            child=make_job(uid,provider,"agent follow-up: "+str(plan.get("reason","comparison"))[:75],
+                           extra={"autonomous":True})
     return {"summary":str(plan.get("summary",""))[:1200],
             "recommended_provider":provider if provider in permitted else None,
             "dispatched_job":child["id"] if child else None}
