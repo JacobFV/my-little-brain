@@ -284,9 +284,28 @@ export interface EEGFrame {
   bands?: Partial<Record<Band, number>>;
   per_channel_bands?: Array<Partial<Record<Band, number>>>;
   blink?: boolean;
-  quality?: string;
+  /** v1: one string; bridge protocol v2: one label per channel (ok|railed|flat|noisy|no data). */
+  quality?: string | string[];
   t?: number;
+  // ---- bridge protocol v2 (additive)
+  state?: string;
+  blink_count?: number;
+  alpha_state?: AlphaState;
+  alpha_fraction?: number;
+  alpha_baseline?: number;
+  /** Mains power ÷ 1–45 Hz power per channel (raw signal). */
+  line_noise?: number[];
+  recording?: { label: string; seconds: number; elapsed: number } | null;
 }
+export type AlphaState = 'eyes_open' | 'eyes_closed' | 'unknown';
+/** Normalise v1/v2 quality to one label per channel. */
+export function channelQuality(frame: Pick<EEGFrame, 'quality' | 'channel_names'>): string[] {
+  const q = frame.quality;
+  const labels = Array.isArray(q) ? q : q && q.includes(',') ? q.split(',') : null; // cloud: "ok,ok,flat,…"
+  if (labels) return frame.channel_names.map((_, i) => labels[i] ?? 'unverified');
+  return frame.channel_names.map(() => (typeof q === 'string' && q) || 'unverified');
+}
+export const BAD_QUALITY = new Set(['railed', 'flat', 'no data', 'railed/noisy']);
 export type Band = 'delta' | 'theta' | 'alpha' | 'beta' | 'gamma';
 export const BANDS: Band[] = ['delta', 'theta', 'alpha', 'beta', 'gamma'];
 export interface Recording {
@@ -309,7 +328,7 @@ export interface JobRequest {
 export type NewExperiment =
   | { source: 'synthetic'; truth_bitstring?: string; random_seed?: number; title?: string }
   | { source: 'recording'; dataset_id: string; channel: string; segment: string; title?: string }
-  | { source: 'openbci'; recording_id: string; title?: string };
+  | { source: 'openbci'; recording_id: string; channel?: string; title?: string };
 
 export class ApiError extends Error {
   constructor(

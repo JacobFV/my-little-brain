@@ -1738,3 +1738,91 @@ p.cx-dim {
   right: 14px;
   transform: none;
 }
+
+/* ---- bridge protocol v2: status, quality, alpha, recording ---- */
+.cx-banner {
+  margin: 6px 0;
+  padding: 7px 10px;
+  border-radius: 10px;
+  background: #fdf6ec;
+  border: 1px solid #f3e3cb;
+  color: #8a6a3a;
+  font-size: 11px;
+}
+.cx-alpha {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0;
+  font-size: 11px;
+  color: var(--cx-soft, #7d8a86);
+}
+.cx-alpha.eyes_closed {
+  color: #6b72b8;
+  font-weight: 600;
+}
+.cx-quality {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 6px 0;
+}
+.cx-q {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 8px;
+  background: #ffffff90;
+  border: 1px solid #e3ebe6;
+}
+.cx-q.ok {
+  color: #4f8a6f;
+}
+.cx-q.warn {
+  color: #a0803f;
+  border-color: #f0e2c4;
+}
+.cx-q.bad {
+  color: #b05a5a;
+  border-color: #efd0d0;
+  background: #fbf0f0;
+}
+.cx-record {
+  display: grid;
+  gap: 6px;
+  margin: 6px 0;
+  font-size: 11px;
+}
+.cx-record .cx-row {
+  display: flex;
+  gap: 5px;
+}
+.cx-record input {
+  flex: 1;
+  min-width: 0;
+}
+.cx-rec-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #d9534f;
+  margin-right: 4px;
+  animation: cx-pulse 1s ease-in-out infinite;
+}
+@keyframes cx-pulse {
+  50% {
+    opacity: 0.3;
+  }
+}
+.cx-progress {
+  height: 4px;
+  border-radius: 3px;
+  background: #e9efec;
+  overflow: hidden;
+}
+.cx-progress i {
+  display: block;
+  height: 100%;
+  background: #8fb39b;
+  transition: width 0.4s;
+}

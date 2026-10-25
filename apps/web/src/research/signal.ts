@@ -1,6 +1,9 @@
 /** Pure helpers: EEG channel → anchor mapping, band power, landscape layout, histogram shaping. */
 import { RESEARCH_ANCHORS } from '@little-brain/brain';
-import { BANDS, type Band, type EEGFrame, type Landscape } from './api';
+import { BAD_QUALITY, BANDS, channelQuality, type Band, type EEGFrame, type Landscape } from './api';
+
+/** Anchors over visual cortex, where eyes-closed alpha is strongest. */
+export const OCCIPITAL = new Set(['O1', 'O2']);
 
 /** Old / alternative 10-20 names → modern names used by the anchors. */
 const ALIASES: Record<string, string> = {
@@ -130,11 +133,14 @@ export function anchorsFromEEG(frame: EEGFrame, buffer: number[][]): AnchorState
   const values: Array<Record<string, number | string>> = RESEARCH_ANCHORS.map(() => ({}));
   const rmsAll = frame.channel_names.map((_, i) => rms(buffer[i] ?? frame.samples[i] ?? []));
   const maxRms = Math.max(1e-9, ...rmsAll);
+  const quality = channelQuality(frame);
   frame.channel_names.forEach((name, ci) => {
     const bands =
       frame.per_channel_bands?.[ci] ?? bandPowers(buffer[ci] ?? frame.samples[ci] ?? [], frame.fs);
     const fast = ((bands.alpha ?? 0) + (bands.beta ?? 0) + (bands.gamma ?? 0)) / 100;
-    const level = 0.55 * Math.min(1, fast * 1.3) + 0.45 * (rmsAll[ci] / maxRms);
+    const bad = BAD_QUALITY.has(quality[ci]);
+    let level = 0.55 * Math.min(1, fast * 1.3) + 0.45 * (rmsAll[ci] / maxRms);
+    if (bad) level *= 0.15; // railed / flat electrodes are dimmed, not shown as activity
     for (const a of channelAnchors(name)) {
       sums[a] += level;
       counts[a] += 1;
@@ -150,12 +156,20 @@ export function anchorsFromEEG(frame: EEGFrame, buffer: number[][]): AnchorState
         'β beta %': bands.beta ?? 0,
         'γ gamma %': bands.gamma ?? 0,
         'rms (raw units)': rmsAll[ci],
+        quality: quality[ci],
+        ...(frame.line_noise?.[ci] !== undefined ? { 'mains ratio': frame.line_noise[ci] } : {}),
         source: 'measured',
       };
     }
   });
+  const intensities = sums.map((s, i) => (counts[i] ? s / counts[i] : 0.04));
+  // Eyes closed (bridge alpha detector): posterior alpha rhythm — glow the occipital anchors.
+  if (frame.alpha_state === 'eyes_closed')
+    RESEARCH_ANCHORS.forEach((name, i) => {
+      if (OCCIPITAL.has(name)) intensities[i] = Math.max(intensities[i], 0.85);
+    });
   return {
-    intensities: sums.map((s, i) => (counts[i] ? s / counts[i] : 0.04)),
+    intensities,
     labels,
     values,
     mapped: counts.filter(Boolean).length,

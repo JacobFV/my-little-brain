@@ -133,6 +133,13 @@ function NewExperimentForm({
   const [channel, setChannel] = useState('');
   const [segment, setSegment] = useState('ictal');
   const [recording, setRecording] = useState('');
+  const [recChannel, setRecChannel] = useState('');
+  const rec = recordings.find((r) => r.id === recording);
+  useEffect(() => {
+    // Default to an occipital electrode (eyes-closed alpha), else the first channel.
+    if (rec && !rec.channel_names.includes(recChannel))
+      setRecChannel(rec.channel_names.find((c) => /^O[12z]$/i.test(c)) ?? rec.channel_names[0] ?? '');
+  }, [rec, recChannel]);
   const ds = datasets.find((d) => d.id === dataset) ?? datasets[0];
   useEffect(() => {
     if (ds && !ds.channels.includes(channel)) setChannel(ds.channels[0] ?? '');
@@ -247,10 +254,23 @@ function NewExperimentForm({
                 </option>
               ))}
             </select>
+            {rec && (
+              <select
+                aria-label="Recording channel"
+                value={recChannel}
+                onChange={(e) => setRecChannel(e.target.value)}
+              >
+                {rec.channel_names.map((c) => (
+                  <option key={c}>{c}</option>
+                ))}
+              </select>
+            )}
             <button
               className="primary-button cx-primary"
               disabled={busy || !recording}
-              onClick={() => onCreate({ source: 'openbci', recording_id: recording })}
+              onClick={() =>
+                onCreate({ source: 'openbci', recording_id: recording, channel: recChannel || undefined })
+              }
             >
               <Plus size={14} /> Investigate my recording
             </button>
@@ -299,7 +319,8 @@ export default function ResearchLab() {
   const lastFrame = useRef<HTMLCanvasElement | null>(null);
   const googleHost = useRef<HTMLDivElement>(null);
   const signedIn = !!me && !!token;
-  const { status: bridgeStatus, live } = useBridge(signedIn ? client : null, signedIn);
+  const bridge = useBridge(signedIn ? client : null, signedIn);
+  const { status: bridgeStatus, live } = bridge;
 
   const { onUnauthorized } = auth;
   // Must keep a stable identity: it is a dependency of the bootstrap effect below.
@@ -398,6 +419,7 @@ export default function ResearchLab() {
   const anyActive = jobs.some(isActive);
   const exp = detail?.experiment ?? null;
 
+  const alphaState = live.source === 'bridge' ? live.frame?.alpha_state : undefined;
   // Cute reactions, driven by real events.
   const prevVerdicts = useRef<string>('');
   const prevCompleted = useRef<Set<string>>(new Set());
@@ -414,7 +436,9 @@ export default function ResearchLab() {
       prevCompleted.current.size === 0 && completedGood.length > 0 && !prevVerdicts.current;
     let next: ResearchMood = anyActive
       ? 'curious'
-      : live.source !== 'none'
+      : alphaState === 'eyes_closed'
+        ? 'sleepy'
+        : live.source !== 'none'
         ? 'idle'
         : experiments.length
           ? 'idle'
@@ -432,7 +456,7 @@ export default function ResearchLab() {
       const t = window.setTimeout(() => setMood(anyActive ? 'curious' : 'idle'), 3500);
       return () => window.clearTimeout(t);
     }
-  }, [detail?.revisions, jobs, anyActive, live.source, experiments.length]);
+  }, [detail?.revisions, jobs, anyActive, live.source, experiments.length, alphaState]);
   // Seizure excerpt or high-amplitude burst → surprised for a moment.
   const lastRms = useRef(0);
   useEffect(() => {
@@ -453,6 +477,28 @@ export default function ResearchLab() {
     }
     lastRms.current = lastRms.current ? lastRms.current * 0.95 + r * 0.05 : r;
   }, [live]);
+
+  // Eyes closed (bridge alpha detector) → relaxed, half-lidded brain; reopening → awake again.
+  const prevAlpha = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    if (alphaState === prevAlpha.current) return;
+    if (alphaState === 'eyes_closed') setMood('sleepy');
+    else if (prevAlpha.current === 'eyes_closed') setMood(anyActive ? 'curious' : 'idle');
+    prevAlpha.current = alphaState;
+  }, [alphaState, anyActive]);
+
+  // A finished bridge recording that was uploaded becomes selectable as an OpenBCI experiment.
+  useEffect(() => {
+    const r = bridge.lastRecording;
+    if (!r || !signedIn) return;
+    if (r.recordingId) {
+      client
+        .recordings()
+        .then((x) => setRecordings(x.recordings))
+        .catch(() => {});
+      setNotice('Recording uploaded — New experiment → OpenBCI to investigate it.');
+    }
+  }, [bridge.lastRecording, client, signedIn]);
 
   useEffect(() => {
     if (live.frame) return;
@@ -835,6 +881,11 @@ export default function ResearchLab() {
                 <EEGPanel
                   bridge={bridgeStatus}
                   live={live}
+                  info={bridge.info}
+                  recording={bridge.recording}
+                  lastRecording={bridge.lastRecording}
+                  bridgeError={bridge.bridgeError}
+                  onRecord={signedIn ? (sec, label) => void bridge.record(sec, label) : undefined}
                   ingestToken={ingestToken}
                   onIngestToken={
                     signedIn
