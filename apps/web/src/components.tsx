@@ -13,6 +13,7 @@ import {
   Download,
   Check,
   Copy,
+  Eye,
 } from 'lucide-react';
 import type { Twin } from '@little-brain/core';
 export function IconButton({
@@ -54,6 +55,8 @@ export function Composer({
   name,
   onCamera,
   cameraActive = false,
+  draft: controlledDraft,
+  onDraftChange,
 }: {
   onSend: (text: string) => Promise<boolean>;
   onVoice: () => void;
@@ -65,8 +68,12 @@ export function Composer({
   name: string;
   onCamera?: () => void;
   cameraActive?: boolean;
+  draft?: string;
+  onDraftChange?: (value: string) => void;
 }) {
-  const [draft, setDraft] = useState('');
+  const [localDraft, setLocalDraft] = useState('');
+  const draft = controlledDraft ?? localDraft;
+  const setDraft = onDraftChange ?? setLocalDraft;
   const input = useRef<HTMLTextAreaElement>(null);
   const submit = (e?: FormEvent) => {
     e?.preventDefault();
@@ -211,10 +218,6 @@ export function ChatPanel({
       >
         {twin.messages.length === 0 ? (
           <div className="chat-empty">
-            <span className="empty-orbit">
-              <MessageCircle size={24} />
-            </span>
-            <h3>What’s on your mind?</h3>
             <p>Talk it through with {twin.name}.</p>
           </div>
         ) : (
@@ -226,7 +229,7 @@ export function ChatPanel({
               >
                 <div className="message-meta">
                   <span>{message.role === 'user' ? 'You' : twin.name}</span>
-                  <time>
+                  <time title={new Date(message.createdAt).toLocaleString()}>
                     {new Date(message.createdAt).toLocaleTimeString([], {
                       hour: 'numeric',
                       minute: '2-digit',
@@ -240,9 +243,10 @@ export function ChatPanel({
                 <div className="message-footer">
                   <button
                     onClick={() => onFocus(message.id)}
-                    title="Let your brain look at this thought"
+                    title="Focus thought"
+                    aria-label={activeId === message.id ? 'Thought in focus' : 'Focus thought'}
                   >
-                    {activeId === message.id ? '◉ In focus' : '◎ Focus thought'}
+                    <Eye size={13} />
                   </button>
                   <span>
                     {message.status === 'failed'

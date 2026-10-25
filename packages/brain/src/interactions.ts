@@ -122,12 +122,8 @@ export function createPluginInteractions() {
       ctx.fillStyle = '#514b56';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      if (data.pluginId === 'notion') {
-        ctx.strokeStyle = '#514b56';
-        ctx.lineWidth = 9;
-        ctx.strokeRect(72, 56, 112, 112);
-        ctx.font = 'bold 110px Georgia';
-        ctx.fillText('N', 128, 118);
+      if (image) {
+        ctx.drawImage(image, 56, 42, 144, 144);
       } else {
         ctx.font = 'bold 95px system-ui';
         const symbol = data.pluginId.includes('file')
@@ -159,7 +155,20 @@ export function createPluginInteractions() {
       entry.image = undefined;
     }
     paint(entry, entry.loadedImage);
-    if (!entry.data.imageUrl?.startsWith('data:image/')) return;
+    const brand = (
+      {
+        notion: '/integrations/notion.svg',
+        google: '/integrations/google.png',
+        github: '/integrations/github.svg',
+      } as Record<string, string>
+    )[entry.data.pluginId];
+    const source =
+      entry.data.kind === 'icon' && brand
+        ? brand
+        : entry.data.imageUrl?.startsWith('data:image/')
+          ? entry.data.imageUrl
+          : undefined;
+    if (!source) return;
     const image = new Image();
     entry.image = image;
     image.onload = () => {
@@ -171,7 +180,7 @@ export function createPluginInteractions() {
     image.onerror = () => {
       if (!entry.disposed && generation === entry.imageGeneration) paint(entry);
     };
-    image.src = entry.data.imageUrl;
+    image.src = source;
   }
   function dispose(entry: Entry) {
     entry.disposed = true;

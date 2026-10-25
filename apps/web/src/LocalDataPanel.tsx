@@ -42,15 +42,6 @@ export default function LocalDataPanel({
   return (
     <section className="local-data-panel" aria-label="Local data">
       <h3>Local data</h3>
-      <p>
-        Your twins and conversations are saved on this device. Local files and backups are not
-        encrypted by this app. Device protection and browser storage policies still apply.
-      </p>
-      <p>
-        Live conversations send selected context to your configured server and OpenAI. HTTPS
-        encrypts network transport; keeping a local copy does not make those conversations offline
-        or end-to-end encrypted.
-      </p>
       {(storageError || error) && <p role="alert">{error || storageError}</p>}
       {message && <p role="status">{message}</p>}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
@@ -61,9 +52,7 @@ export default function LocalDataPanel({
                 JSON.stringify(exportLocalBackup(workspace, localStorage), null, 2),
                 `little-brain-${date()}.json`,
               );
-              setMessage(
-                'Backup download requested. Check that the file was saved; it contains every twin, conversation, activity entry, saved task, attention level and preference (excluding access tokens).',
-              );
+              setMessage('Backup download requested.');
             } catch {
               download(JSON.stringify(workspace, null, 2), `little-brain-workspace-${date()}.json`);
               setMessage(
@@ -95,7 +84,7 @@ export default function LocalDataPanel({
             }
           }}
         >
-          Request persistent storage
+          Keep data on this device
         </button>
       </div>
       <input

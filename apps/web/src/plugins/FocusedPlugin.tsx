@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { X, ExternalLink, Keyboard, Volume2, Mic, Camera, Plug, Send } from 'lucide-react';
+import { X, ExternalLink, Keyboard, Volume2, Mic, Camera, Send } from 'lucide-react';
 import type { PluginInteraction } from './interactions';
 import type { BrowserBridge, BrowserAction } from './browserAdapter';
+import { IntegrationIcon } from './IntegrationIcon';
 import { screenPoint } from './focusedCoordinates';
 export function FocusedPlugin({
   interaction,
@@ -82,7 +83,7 @@ export function FocusedPlugin({
     >
       <header>
         <span className="focused-plugin-title">
-          <Plug size={17} />
+          <IntegrationIcon id={interaction.pluginId} size={19} />
           <strong>{interaction.label}</strong>
           <small>{interaction.status === 'active' ? 'Live session' : interaction.status}</small>
         </span>
@@ -234,7 +235,7 @@ export function FocusedPlugin({
         </>
       ) : (
         <div className="focused-plugin-detail">
-          <Plug size={72} strokeWidth={1} />
+          <IntegrationIcon id={interaction.pluginId} size={72} />
           <h2>{interaction.label}</h2>
           <p>This object represents one {interaction.pluginId} interaction with your brain.</p>
           {onStop && interaction.status === 'active' && (

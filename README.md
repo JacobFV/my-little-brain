@@ -27,7 +27,7 @@ npm run typecheck        # all seven workspaces
 
 ## What it does
 
-- A soft, diffuse-glass workspace centered on the brain. Left navigation and right conversation use the same collapsible, resizable pane component, with a floating message bar in the center. Enter sends; Shift+Enter inserts a newline. Sending opens the conversation. `Ctrl/Cmd+\` toggles it; Escape closes it.
+- A soft, diffuse-glass workspace centered on the brain. Left navigation and right conversation use the same collapsible, resizable pane component, with a prompt in the open conversation pane and a floating prompt when that pane is minimized. Drafts follow the prompt between views. Enter sends; Shift+Enter inserts a newline. Sending opens the conversation. `Ctrl/Cmd+\` toggles it; Escape closes it.
 - 28 actual fsaverage/ENIGMA template meshes, including cerebellum, brainstem, white matter, ventral diencephalon and corpus callosum; **Inside** reveals the internal structures. Connected eyeballs, optic nerves, feathered brainstem endings and spinal vertebrae are stylized character features. See [anatomy and attribution](docs/anatomy.md). Eye orientation follows thoughts on a foreground 2D plane with a damped spring. Idle breathing, bobbing and blinking can be reduced or paused.
 - Drag the 3D view to orbit; arrow keys also orbit and Home faces forward. After four seconds without input, the camera returns smoothly over two seconds, including at low frame rates.
 - A little waking-up animation greets you on app start. Focus energy drains during idle time and replenishes through work or detected visual input. Low focus manifests a floating mote, butterfly or fly that attracts the eyes. This is a playful simulation, not measured cognition.
