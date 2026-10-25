@@ -271,13 +271,14 @@ def execute(task:TaskMessage):
         if task.step=="poll":
             result=solver.poll_ibm(state["provider_job_id"],solver.make_problem())
             if result["status"]=="submitted":
+                ref.update({"attempt":task.attempt+1,"updated_at":now().isoformat()})
                 enqueue(task.job_id,task.uid,"poll",delay=min(120,20*(task.attempt+1)),attempt=task.attempt+1)
                 return {"status":"pending"}
             summary=result["result"]
         elif state["kind"]=="agent":
-            message=run_agent(task.uid,state.get("command",""))
-            append_analysis(task.uid,"agent finding",message,task.job_id)
-            ref.update({"status":"completed","result":{"text":message},"updated_at":now().isoformat()})
+            outcome=run_agent(task.uid,state.get("command",""))
+            append_analysis(task.uid,"agent finding",outcome["summary"],task.job_id)
+            ref.update({"status":"completed","result":outcome,"updated_at":now().isoformat()})
             return {"status":"completed"}
         elif state["provider"]=="ibm_quantum":
             submission=solver.submit_ibm(solver.make_problem())
@@ -294,6 +295,10 @@ def execute(task:TaskMessage):
         append_analysis(task.uid,"experiment result",
                         f"{state['provider']}: best nonlinear residual {summary.get('objective'):.6f}. "
                         "Interpret as synthetic benchmark only.",task.job_id)
+        try:
+            schedule_agent_review(task.uid,task.job_id)
+        except Exception as review_exc:
+            append_analysis(task.uid,"review scheduling failure",str(review_exc),task.job_id)
         return {"status":"completed"}
     except Exception as exc:
         ref.update({"status":"failed","error":str(exc)[:1000],"updated_at":now().isoformat()})
