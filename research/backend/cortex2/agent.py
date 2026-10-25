@@ -28,7 +28,7 @@ from .store import artifacts, now, store
 log = logging.getLogger("cortex2.agent")
 
 REASONING = os.environ.get("AGENT_REASONING_EFFORT", "")
-MAX_STEPS = int(os.environ.get("AGENT_MAX_STEPS", "18"))
+MAX_STEPS = int(os.environ.get("AGENT_MAX_STEPS") or "18")
 from . import backends  # noqa: E402
 SYNC_PROVIDERS = set(backends.ids(mode="sync"))
 DEFAULT_SESSION = {"autopilot": False, "max_autonomous_jobs": 12, "autonomous_jobs_total": 0,

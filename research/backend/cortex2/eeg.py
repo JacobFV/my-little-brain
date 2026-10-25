@@ -14,7 +14,7 @@ import numpy as np
 
 from . import neural as nm
 
-DATA_DIR = Path(os.environ.get("CORTEX_DATASETS", Path(__file__).resolve().parents[2] / "data"))
+DATA_DIR = Path((os.environ.get("CORTEX_DATASETS") or Path(__file__).resolve().parents[2] / "data"))
 
 
 # Per-signal header fields: (name, width). Field k for signal i starts at 256 + ns*offset_k + width_k*i.

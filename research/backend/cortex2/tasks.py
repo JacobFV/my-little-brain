@@ -18,15 +18,15 @@ from .store import on_gcp
 log = logging.getLogger("cortex2.tasks")
 
 PROJECT = os.environ.get("GOOGLE_CLOUD_PROJECT", "")
-REGION = os.environ.get("REGION", os.environ.get("TASK_REGION", "us-central1"))
-QUEUE = os.environ.get("TASK_QUEUE", "cortex2-work")
+REGION = os.environ.get("REGION") or os.environ.get("TASK_REGION") or "us-central1"
+QUEUE = (os.environ.get("TASK_QUEUE") or "cortex2-work")
 WORKER_URL = os.environ.get("WORKER_URL", "").rstrip("/")
 TASK_SA = os.environ.get("TASK_SERVICE_ACCOUNT", "")
 
 # Aer and JAX recurse deeply; macOS gives secondary threads only 512 KB of stack (Linux: 8 MB).
 if sys.platform == "darwin":
     threading.stack_size(64 * 1024 * 1024)
-_pool = ThreadPoolExecutor(max_workers=int(os.environ.get("LOCAL_WORKERS", "4")), thread_name_prefix="cortex2")
+_pool = ThreadPoolExecutor(max_workers=int(os.environ.get("LOCAL_WORKERS") or "4"), thread_name_prefix="cortex2")
 _handler = None
 _client = None
 STEPS = {"execute", "poll"}

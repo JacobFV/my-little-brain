@@ -57,14 +57,14 @@ log = logging.getLogger("cortex2.api")
 CLIENT_ID = os.environ.get("GOOGLE_OAUTH_CLIENT_ID", "")
 DEV_AUTH = os.environ.get("DEV_AUTH") == "1" and not on_gcp()
 ALLOWED_EMAILS = {e.strip().lower() for e in os.environ.get("ALLOWED_EMAILS", "").split(",") if e.strip()}
-WEB_DIST = Path(os.environ.get("WEB_DIST", Path(__file__).resolve().parents[3] / "apps" / "web" / "dist"))
-VERSION = os.environ.get("CORTEX_VERSION", "dev")
-SERVICE_ROLE = os.environ.get("SERVICE_ROLE", "all")            # api | worker | all
-MAX_BODY_BYTES = int(os.environ.get("MAX_BODY_BYTES", str(6 * 1024 * 1024)))
+WEB_DIST = Path((os.environ.get("WEB_DIST") or Path(__file__).resolve().parents[3] / "apps" / "web" / "dist"))
+VERSION = (os.environ.get("CORTEX_VERSION") or "dev")
+SERVICE_ROLE = (os.environ.get("SERVICE_ROLE") or "all")            # api | worker | all
+MAX_BODY_BYTES = int(os.environ.get("MAX_BODY_BYTES") or str(6 * 1024 * 1024))
 # Self-service budget ceilings: users can lower their autonomous budgets, never raise past these.
-CAP_AUTONOMOUS_JOBS = int(os.environ.get("CAP_AUTONOMOUS_JOBS", "50"))
-CAP_QPU_JOBS = int(os.environ.get("CAP_QPU_JOBS", "4"))
-INGEST_MIN_INTERVAL = float(os.environ.get("INGEST_MIN_INTERVAL", "0.8"))   # Firestore: ~1 write/s/doc
+CAP_AUTONOMOUS_JOBS = int(os.environ.get("CAP_AUTONOMOUS_JOBS") or "50")
+CAP_QPU_JOBS = int(os.environ.get("CAP_QPU_JOBS") or "4")
+INGEST_MIN_INTERVAL = float(os.environ.get("INGEST_MIN_INTERVAL") or "0.8")   # Firestore: ~1 write/s/doc
 INGEST_TOKEN_HOURS = 12
 
 @asynccontextmanager

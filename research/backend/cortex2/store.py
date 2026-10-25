@@ -263,7 +263,7 @@ class Artifacts:
 
     def __init__(self):
         self.bucket_name = os.environ.get("ARTIFACT_BUCKET", "")
-        self.local = Path(os.environ.get("CORTEX_DATA_DIR", Path(__file__).resolve().parents[2] / ".data")) / "artifacts"
+        self.local = Path((os.environ.get("CORTEX_DATA_DIR") or Path(__file__).resolve().parents[2] / ".data")) / "artifacts"
         self._bucket = None
 
     @staticmethod
@@ -327,7 +327,7 @@ def store() -> Store:
         if on_gcp() or os.environ.get("CORTEX_STORE") == "firestore":
             _store = FirestoreStore()
         else:
-            root = Path(os.environ.get("CORTEX_DATA_DIR", Path(__file__).resolve().parents[2] / ".data"))
+            root = Path((os.environ.get("CORTEX_DATA_DIR") or Path(__file__).resolve().parents[2] / ".data"))
             _store = LocalStore(root / "store.json")
     return _store
 

@@ -22,7 +22,7 @@ import requests
 
 from . import neural as nm
 
-API = os.environ.get("IONQ_API_URL", "https://api.ionq.co/v0.4").rstrip("/")
+API = (os.environ.get("IONQ_API_URL") or "https://api.ionq.co/v0.4").rstrip("/")
 ROOT = API.rsplit("/v0.", 1)[0]
 DEFAULT_QPU = "qpu.forte-1"
 DEFAULT_NOISE = "forte-1"

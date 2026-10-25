@@ -23,7 +23,7 @@ GATE_BUDGET = 130
 MAX_QASM_CHARS = 60_000
 MAX_LOGICAL_OPS = 4_000
 DEFAULT_SHOTS = 1024
-OFFLINE_TARGET = os.environ.get("OFFLINE_TARGET", "fake_torino")
+OFFLINE_TARGET = (os.environ.get("OFFLINE_TARGET") or "fake_torino")
 
 
 @dataclass
