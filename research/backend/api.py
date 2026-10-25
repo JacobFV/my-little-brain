@@ -275,6 +275,7 @@ def execute(task:TaskMessage):
                 enqueue(task.job_id,task.uid,"poll",delay=min(120,20*(task.attempt+1)),attempt=task.attempt+1)
                 return {"status":"pending"}
             summary=result["result"]
+            summary["circuit"]=state.get("circuit")
         elif state["kind"]=="agent":
             outcome=run_agent(task.uid,state.get("command",""))
             append_analysis(task.uid,"agent finding",outcome["summary"],task.job_id)
@@ -284,6 +285,7 @@ def execute(task:TaskMessage):
             submission=solver.submit_ibm(solver.make_problem())
             ref.update({"status":"submitted","provider_job_id":submission["provider_job_id"],
                         "backend":submission["backend"],"gate_count":submission["transpiled_gate_count"],
+                        "circuit":submission["circuit"],
                         "updated_at":now().isoformat()})
             enqueue(task.job_id,task.uid,"poll",delay=25,attempt=1)
             return {"status":"submitted","provider_job_id":submission["provider_job_id"]}
