@@ -1,0 +1,28 @@
+
+> my-little-brain@0.1.0 dev:web
+> npm run dev --workspace=@little-brain/web
+
+
+> @little-brain/web@0.1.0 dev
+> vite --host 127.0.0.1
+
+3:29:06 PM [vite] (client) Re-optimizing dependencies because vite config has changed
+
+  VITE v7.3.6  ready in 382 ms
+
+  ➜  Local:   http://127.0.0.1:5173/
+3:38:09 PM [vite] (client) hmr update /src/research/ResearchLab.tsx, /src/research/AgentTimeline.tsx, /src/research/Analysis.tsx, /src/research/JobsPanel.tsx, /src/research/EEGPanel.tsx, /src/research/QuantumViz.tsx, /src/research/Histogram.tsx, /src/research/Landscape.tsx
+3:38:09 PM [vite] (client) hmr update /src/research/JobsPanel.tsx
+3:38:09 PM [vite] (client) hmr update /src/research/ResearchLab.tsx
+3:38:09 PM [vite] (client) hmr invalidate /src/research/AgentTimeline.tsx Could not Fast Refresh ("specDiff" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+3:38:09 PM [vite] (client) hmr update /src/research/ResearchLab.tsx, /src/research/Analysis.tsx
+3:38:09 PM [vite] (client) hmr invalidate /src/research/Analysis.tsx Could not Fast Refresh ("DEFAULT_RUN" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+3:38:09 PM [vite] (client) hmr update /src/research/ResearchLab.tsx
+3:38:09 PM [vite] (client) hmr invalidate /src/research/JobsPanel.tsx Could not Fast Refresh ("statusText" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+3:38:09 PM [vite] (client) hmr update /src/research/ResearchLab.tsx, /src/research/Analysis.tsx
+3:38:09 PM [vite] (client) hmr invalidate /src/research/EEGPanel.tsx Could not Fast Refresh ("averageBands" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+3:38:09 PM [vite] (client) hmr update /src/research/ResearchLab.tsx
+3:38:09 PM [vite] (client) hmr invalidate /src/research/QuantumViz.tsx Could not Fast Refresh ("marginals" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+3:38:09 PM [vite] (client) hmr update /src/research/ResearchLab.tsx, /src/research/Analysis.tsx
+3:38:09 PM [vite] (client) hmr invalidate /src/research/Analysis.tsx Could not Fast Refresh ("DEFAULT_RUN" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+3:38:09 PM [vite] (client) hmr update /src/research/ResearchLab.tsx

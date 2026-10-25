@@ -19,12 +19,17 @@ SKIP_BUILD=1 research/deploy/deploy.sh       # config / secrets only, reusing th
 | Cloud Scheduler `cortex2-heartbeat` | every 5 min: re-polls stale QPU jobs, fails stuck ones, wakes autopilot operators |
 | Firestore (native) | documents. Nested arrays are encoded transparently, documents are size-checked, and TTL is set on `expire_at` for `ingest_tokens`, `eeg_streams`, `quotas` |
 | GCS bucket | rendered figures, snapshots, OpenBCI recordings, offloaded oversized job fields. Uniform access, public access prevented |
-| Secret Manager | model, IBM and IonQ keys. A new version is added only when the value changes |
+| Secret Manager | model, IBM, IonQ and qBraid keys and the Google OAuth client secret. A new version is added only when the value changes |
 | service accounts | `cortex2-api` runs both services (Firestore, Tasks enqueue, secrets, bucket). `cortex2-tasks` signs task and scheduler requests |
 
 The default sizing fits the default 20-vCPU regional quota: worker 2 vCPU × 4 instances plus
 public 1 vCPU × 6 instances. Override it with `WORKER_CPU`, `WORKER_MEMORY`, `WORKER_MAX_INSTANCES`,
 `PUBLIC_CPU`, `PUBLIC_MEMORY`, `PUBLIC_MIN_INSTANCES` and `PUBLIC_MAX_INSTANCES`.
+
+## qBraid and OAuth secrets
+
+`QBRAID_API_KEY` and `GOOGLE_OAUTH_CLIENT_SECRET` (from `research/.env`) are pushed to Secret Manager when non-empty and
+mounted into both services. Optional plain env: `QBRAID_SIM_DEVICE`, `QBRAID_QPU_DEVICE` (qBraid device ids).
 
 ## Sign-in (one manual step)
 

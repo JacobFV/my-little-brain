@@ -60,7 +60,7 @@ done
 
 # ---- secrets: a new version is added only when the value changed; Cloud Run reads :latest
 SECRET_FLAGS=()
-for name in GEMINI_API_KEY GEMINI_API_KEY_B GEMINI_API_KEY_C GEMINI_API_KEY_D GEMINI_API_KEY_E OPENAI_API_KEY IBM_QUANTUM_TOKEN IONQ_API_KEY; do
+for name in GEMINI_API_KEY GEMINI_API_KEY_B GEMINI_API_KEY_C GEMINI_API_KEY_D GEMINI_API_KEY_E OPENAI_API_KEY IBM_QUANTUM_TOKEN IONQ_API_KEY QBRAID_API_KEY GOOGLE_OAUTH_CLIENT_SECRET; do
   val=${!name:-}
   if [[ -n "$val" ]]; then
     if ! $G secrets describe $name >/dev/null 2>&1; then
@@ -104,7 +104,7 @@ python3 - "$ENVFILE" <<'PY'
 import json, os, sys
 names = ["GOOGLE_CLOUD_PROJECT", "REGION", "TASK_QUEUE", "WORKER_URL", "TASK_SERVICE_ACCOUNT", "ARTIFACT_BUCKET",
          "GOOGLE_OAUTH_CLIENT_ID", "ALLOWED_EMAILS", "HARDWARE_EMAILS", "AGENT_PROVIDERS", "GEMINI_MODEL", "OPENAI_MODEL",
-         "AGENT_REASONING_EFFORT", "IBM_QUANTUM_INSTANCE", "IBM_BACKEND", "IONQ_QPU_BACKEND", "IONQ_NOISE_MODEL",
+         "AGENT_REASONING_EFFORT", "IBM_QUANTUM_INSTANCE", "IBM_BACKEND", "IONQ_QPU_BACKEND", "IONQ_NOISE_MODEL", "QBRAID_SIM_DEVICE", "QBRAID_QPU_DEVICE",
          "MAX_BODY_BYTES", "CAP_AUTONOMOUS_JOBS", "CAP_QPU_JOBS", "INGEST_MIN_INTERVAL", "LOG_LEVEL"]
 names += sorted(k for k in os.environ if k.startswith("LIMIT_"))
 env = {k: os.environ.get(k, "") for k in names}

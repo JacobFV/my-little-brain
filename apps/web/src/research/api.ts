@@ -9,10 +9,12 @@ export type ProviderId =
   | 'thrml'
   | 'ibm_quantum'
   | 'ionq_simulator'
-  | 'ionq_qpu';
+  | 'ionq_qpu'
+  | 'qbraid_simulator'
+  | 'qbraid_qpu';
 export type Approximation =
   'surrogate' | 'secant' | 'jacobian' | 'regression' | 'feature_regression' | 'trust_region';
-export const HARDWARE_PROVIDERS: ReadonlySet<string> = new Set(['ibm_quantum', 'ionq_qpu']);
+export const HARDWARE_PROVIDERS: ReadonlySet<string> = new Set(['ibm_quantum', 'ionq_qpu', 'qbraid_qpu']);
 export type JobStatus = 'queued' | 'running' | 'submitted' | 'completed' | 'failed' | 'cancelled';
 export type JobKind = 'sample' | 'agent_iteration' | 'agent_operator';
 
@@ -506,6 +508,8 @@ export const PROVIDER_LABEL: Record<string, string> = {
   ibm_quantum: 'IBM Quantum QPU',
   ionq_simulator: 'IonQ simulator (trapped-ion noise)',
   ionq_qpu: 'IonQ trapped-ion QPU',
+  qbraid_simulator: 'qBraid cloud simulator',
+  qbraid_qpu: 'qBraid · physical QPU (multi-vendor)',
   agent: 'Research agent',
 };
 
@@ -520,6 +524,9 @@ export function provenance(
   if (p === 'ionq_qpu')
     return `IonQ ${job.backend || 'QPU'} · ${job.status === 'completed' ? 'measured' : job.status}`;
   if (p === 'ionq_simulator') return `IonQ cloud simulator${job.backend ? ` · ${job.backend}` : ''} · simulated`;
+  if (p === 'qbraid_qpu')
+    return `qBraid ${job.backend || 'QPU'} · ${job.status === 'completed' ? 'measured' : job.status}`;
+  if (p === 'qbraid_simulator') return `qBraid cloud simulator${job.backend ? ` · ${job.backend}` : ''} · simulated`;
   if (p === 'aer_noisy') return 'Aer noisy simulator · simulated';
   if (p === 'aer_ideal') return 'Aer ideal simulator · simulated';
   if (p === 'thrml') return 'THRML (software) · simulated thermodynamic sampling';

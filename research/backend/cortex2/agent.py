@@ -211,6 +211,7 @@ SPEC_SCHEMA = {
         "optimization_level": {"type": "integer", "minimum": 0, "maximum": 3},
         "beta": {"type": "number", "description": "THRML inverse temperature (thrml provider only)"},
         "ionq_noise": {"type": "string", "enum": ["ideal", "aria-1", "forte-1"], "description": "IonQ simulator noise model (ionq_simulator only)"},
+        "qbraid_device": {"type": "string", "description": "qBraid device id (qbraid_simulator / qbraid_qpu only); see the backend catalog"},
     },
 }
 PROBLEM_PROPS = {
@@ -273,7 +274,9 @@ trust region tends to stall re-sampling already-simulated states; the best possi
 the validation budget is spent on not-yet-validated hypotheses first, the execution target — IBM superconducting
 heavy-hex (Aer noise model / QPU: non-neighbour couplings need SWAPs, so full QAOA ≈ 424 physical gates and must be
 pruned) versus IonQ trapped ions (ionq_simulator with the Aria/Forte noise model / ionq_qpu: all-to-all connectivity, every
-ZZ coupling is one two-qubit gate, so the *unpruned* problem fits the budget), QAOA depth (reps),
+ZZ coupling is one two-qubit gate, so the *unpruned* problem fits the budget) versus the qBraid gateway (qbraid_simulator /
+qbraid_qpu: one key reaching many vendors' devices — choose spec.qbraid_device, e.g. a noisy AWS DM1 or the IonQ
+simulator, or Rigetti/IQM/AQT/IonQ QPUs — useful to test whether a design is robust across hardware), QAOA depth (reps),
 angle choices, coupling pruning (prune_threshold / max_couplings) to fit the ~{qm.GATE_BUDGET}-gate *physical* budget after
 transpilation to IBM heavy-hex hardware, warm starts, transpiler optimisation level, and — when the structured spec cannot
 express your idea — your own OpenQASM 2.0 circuit (e.g. hardware-native coupling order, custom mixers, partial entanglers).

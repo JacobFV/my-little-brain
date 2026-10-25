@@ -1,0 +1,1 @@
+{"sessions": {"dev": {"autopilot": false, "max_autonomous_jobs": 12, "autonomous_jobs_total": 0, "allow_autonomous_qpu": false, "qpu_jobs_budget": 2, "qpu_jobs_total": 0, "operator_memory": "", "last_tick": null, "owner": "dev", "created_at": "2026-10-25T22:32:35.371869+00:00"}}}

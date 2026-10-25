@@ -311,7 +311,7 @@ export default function ResearchLab() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
-  const [confirmQpu, setConfirmQpu] = useState<'ibm_quantum' | 'ionq_qpu' | null>(null);
+  const [confirmQpu, setConfirmQpu] = useState<'ibm_quantum' | 'ionq_qpu' | 'qbraid_qpu' | null>(null);
   const [ingestToken, setIngestToken] = useState('');
   const [newOpen, setNewOpen] = useState(false);
   const [mood, setMood] = useState<ResearchMood>('idle');
@@ -632,6 +632,7 @@ export default function ResearchLab() {
   };
   const ibmProvider = config?.providers.find((p) => p.id === 'ibm_quantum');
   const ionqProvider = config?.providers.find((p) => p.id === 'ionq_qpu');
+  const qbraidProvider = config?.providers.find((p) => p.id === 'qbraid_qpu');
   const truth = exp?.target.truth_bitstring ?? null;
   const status = !signedIn
     ? 'signed out'
@@ -669,6 +670,13 @@ export default function ResearchLab() {
         <Atom size={13} /> Submit to IonQ
       </button>
       <button
+        disabled={!exp || busy || !qbraidProvider?.available}
+        title={qbraidProvider?.available ? (qbraidProvider.reason ?? undefined) : (qbraidProvider?.reason ?? 'qBraid not configured')}
+        onClick={() => setConfirmQpu('qbraid_qpu')}
+      >
+        <Atom size={13} /> Run on qBraid QPU
+      </button>
+      <button
         disabled={busy || !config?.agent_configured}
         title={
           config?.agent_configured
@@ -684,13 +692,15 @@ export default function ResearchLab() {
       </button>
     </div>
   );
-  const qpuName = confirmQpu === 'ionq_qpu' ? 'IonQ' : 'IBM';
+  const qpuName = confirmQpu === 'ionq_qpu' ? 'IonQ' : confirmQpu === 'qbraid_qpu' ? 'qBraid' : 'IBM';
   const ibmConfirm = confirmQpu && exp && (
     <div className="cx-confirm" role="dialog" aria-label={`Confirm ${qpuName} submission`}>
       <p>
         Submit this circuit ({run.approximation}, reps {run.reps}, ≤{run.maxCouplings ?? 28}{' '}
         couplings, {run.shots} shots) to real {qpuName} quantum hardware?{' '}
-        {confirmQpu === 'ionq_qpu'
+        {confirmQpu === 'qbraid_qpu'
+          ? `This bills qBraid credits and runs on the default device (${qbraidProvider?.reason ?? 'rigetti:rigetti:qpu:cepheus-1-108q'}); jobs may queue.`
+          : confirmQpu === 'ionq_qpu'
           ? 'Trapped ions are all-to-all connected, so no SWAPs are added. QPU time is billed to your IonQ account and jobs may queue.'
           : 'It uses QPU time from the open plan (10 min / 28 days) and may wait in a queue.'}
       </p>

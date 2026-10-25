@@ -7,8 +7,10 @@ export function ProviderIcon({ provider, kind }: { provider?: string | null; kin
   switch (provider) {
     case 'ibm_quantum':
     case 'ionq_qpu':
+    case 'qbraid_qpu':
       return <Atom size={14} />;
     case 'ionq_simulator':
+    case 'qbraid_simulator':
     case 'aer_ideal':
     case 'aer_noisy':
       return <Cpu size={14} />;

@@ -79,6 +79,12 @@ A design iteration is construct → compile → run → render → observe → c
    transactional budget. Autonomous QPU use needs an explicit opt-in.
    Cloud Scheduler wakes it every 5 minutes to babysit IBM queues and stuck jobs.
 
+### qBraid (multi-vendor gateway)
+
+`qbraid_simulator` runs synchronously on a qBraid cloud simulator; `qbraid_qpu` submits asynchronously to real hardware
+through qBraid and requires explicit user action (hardware allowlist and caps apply). The agent may choose the device
+via `spec.qbraid_device`. Env: `QBRAID_API_KEY`, optional `QBRAID_SIM_DEVICE` / `QBRAID_QPU_DEVICE`.
+
 ### Model providers
 
 `AGENT_PROVIDERS` is an ordered chain of `family:KEY_ENV[@model]` entries, for example:

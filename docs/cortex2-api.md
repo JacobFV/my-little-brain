@@ -10,7 +10,7 @@ missing credential returns 503 with a message naming the missing setting.
 
 ## Enumerations
 
-provider: `classical_exact | classical_anneal | random | aer_ideal | aer_noisy | thrml | ibm_quantum`
+provider: `classical_exact | classical_anneal | random | aer_ideal | aer_noisy | thrml | ibm_quantum | qbraid_simulator | qbraid_qpu`
 
 approximation: `secant | jacobian | regression | feature_regression | trust_region`
 

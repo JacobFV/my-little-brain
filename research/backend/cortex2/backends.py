@@ -16,7 +16,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, ClassVar
 
-from . import classical, ionq, quantum as qm
+from . import classical, ionq, qbraid_rt, quantum as qm
 
 
 @dataclass
@@ -226,6 +226,56 @@ class IonQQPU(_IonQ):
         ionq.cancel(provider_job_id)
 
 
+# ---------------------------------------------------------------- qBraid (multi-vendor gateway)
+
+class _QBraid(GateBackend):
+    simulator: ClassVar[bool]
+
+    def availability(self):
+        return qbraid_rt.availability(self.simulator)
+
+    def compile(self, qc, options):
+        # qBraid transpiles to each device natively; report the all-to-all logical cost (exact for trapped ions).
+        return ionq.to_qis(qc)[0::2]
+
+
+class QBraidSimulator(_QBraid):
+    id, label, kind, simulator = "qbraid_simulator", "qBraid cloud simulator (multi-vendor)", "quantum_simulator", True
+    caps = Capabilities("gate", connectivity="device-native (qBraid transpiles)", noise="per device (qir-sv ideal; aws dm1 / ionq sim noisy)",
+                        vendor="qBraid", cost="qBraid credits (qir-sv ~free)",
+                        notes="one key fans out to qBraid GPU/QIR simulators, AWS SV1/DM1 and the IonQ simulator; ~20 s per job",
+                        options={"qbraid_device": f"qBraid simulator id (default {qbraid_rt.DEFAULT_SIM}; e.g. ionq:ionq:sim:simulator, "
+                                                  "aws:aws:sim:sv1, aws:aws:sim:dm1, qbraid:qbraid:sim:gpu-sv)"})
+
+    def run(self, qc, shots, options):
+        device = qbraid_rt.resolve(options, simulator=True)
+        counts, meta = qbraid_rt.run_blocking(qc, shots, device)
+        isa, stats = self.compile(qc, options)
+        stats["backend"] = device
+        return counts, meta, stats, isa
+
+
+class QBraidQPU(_QBraid):
+    id, label, kind, simulator = "qbraid_qpu", "qBraid · physical QPU (Rigetti / IonQ / IQM / AQT via qBraid)", "quantum_hardware", False
+    caps = Capabilities("gate", mode="async", hardware=True, connectivity="device-native (qBraid transpiles)", noise="physical device",
+                        vendor="qBraid", cost="billed in qBraid credits per shot/task",
+                        options={"qbraid_device": f"qBraid QPU id (default {qbraid_rt.DEFAULT_QPU}; e.g. aws:ionq:qpu:forte-1, "
+                                                  "openquantum:iqm:qpu:garnet, openquantum:aqt:qpu:ibex-q1)"})
+
+    def submit(self, qc, shots, options, name):
+        device = qbraid_rt.resolve(options, simulator=False)
+        sub = qbraid_rt.submit(qc, shots, device)
+        isa, stats = self.compile(qc, options)
+        stats["backend"] = device
+        return {**sub, "transpiled": stats, "isa_circuit": qm.describe(isa)}
+
+    def poll(self, provider_job_id, shots):
+        return qbraid_rt.poll(provider_job_id, shots)
+
+    def cancel(self, provider_job_id):
+        qbraid_rt.cancel(provider_job_id)
+
+
 # ---------------------------------------------------------------- registry
 
 REGISTRY: dict[str, Backend] = {}
@@ -236,7 +286,7 @@ def register(backend: Backend) -> Backend:
     return backend
 
 
-for _b in (Exact(), RandomBaseline(), Anneal(), Thrml(), AerIdeal(), AerNoisy(), IBMRuntime(), IonQSimulator(), IonQQPU()):
+for _b in (Exact(), RandomBaseline(), Anneal(), Thrml(), AerIdeal(), AerNoisy(), IBMRuntime(), IonQSimulator(), IonQQPU(), QBraidSimulator(), QBraidQPU()):
     register(_b)
 
 
