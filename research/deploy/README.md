@@ -1,7 +1,7 @@
 # Deploying cortex² to Google Cloud
 
 `research/deploy/deploy.sh` is idempotent: every run reconciles infrastructure, secrets, both Cloud
-Run services and the scheduler with `research/.env`. Run it as a project owner:
+Run services and the scheduler with `.env`. Run it as a project owner:
 
 ```bash
 gcloud auth login && gcloud auth application-default login
@@ -28,14 +28,14 @@ public 1 vCPU × 6 instances. Override it with `WORKER_CPU`, `WORKER_MEMORY`, `W
 
 ## qBraid and OAuth secrets
 
-`QBRAID_API_KEY` and `GOOGLE_OAUTH_CLIENT_SECRET` (from `research/.env`) are pushed to Secret Manager when non-empty and
+`QBRAID_API_KEY` and `GOOGLE_OAUTH_CLIENT_SECRET` (from `.env`) are pushed to Secret Manager when non-empty and
 mounted into both services. Optional plain env: `QBRAID_SIM_DEVICE`, `QBRAID_QPU_DEVICE` (qBraid device ids).
 
 ## Sign-in (one manual step)
 
 1. In Console → APIs & Services → Credentials, choose **Create credentials → OAuth client ID → Web application**.
 2. Under **Authorized JavaScript origins**, add `https://cortex2-<project-number>.<region>.run.app` and `http://127.0.0.1:5173`.
-3. Set `GOOGLE_OAUTH_CLIENT_ID=…` in `research/.env` and run the script **with** a build. The ID is
+3. Set `GOOGLE_OAUTH_CLIENT_ID=…` in `.env` and run the script **with** a build. The ID is
    baked into the web bundle, so a `SKIP_BUILD` run refuses to proceed if it would be stale.
 
 ## Access control and cost protection

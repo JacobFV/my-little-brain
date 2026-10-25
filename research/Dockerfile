@@ -15,7 +15,7 @@ COPY tsconfig.base.json ./
 COPY packages packages
 COPY apps/web apps/web
 ARG VITE_GOOGLE_CLIENT_ID=""
-ENV VITE_CORTEX_ONLY=1 VITE_CORTEX_API="" VITE_GOOGLE_CLIENT_ID=$VITE_GOOGLE_CLIENT_ID
+ENV VITE_CORTEX_API="" VITE_GOOGLE_CLIENT_ID=$VITE_GOOGLE_CLIENT_ID
 RUN npm run build --workspace=@little-brain/web
 
 FROM python:3.12-slim

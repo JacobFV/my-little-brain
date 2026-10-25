@@ -769,6 +769,18 @@ def heartbeat() -> dict:
 
 # ---------------------------------------------------------------- EEG triage tools (spectrogram vision → quantum)
 
+def triage_command(dataset_id: str | None = None, recording_id: str | None = None, start: float | None = None,
+                   end: float | None = None, instruction: str | None = None) -> str:
+    """The operator command for an EEG triage (used by POST /v1/eeg/triage and the chat brain)."""
+    if not (dataset_id or recording_id):
+        raise ValueError("give dataset_id or recording_id")
+    src = f"dataset_id={dataset_id}" if dataset_id else f"recording_id={recording_id}"
+    window = f" window {start}–{end} s" if start is not None and end is not None else ""
+    return (f"EEG triage on {src}{window}: render the per-channel spectrograms, look at them, pick the 2–4 most informative "
+            "channels/windows, create one inverse experiment per pick, dispatch quantum searches on each, then compare the "
+            "hypothesis sets across channels. " + (instruction or ""))
+
+
 def triage_tool(uid: str, name: str, args: dict, actions: list) -> tuple[dict, bytes | None]:
     from . import eeg, render
 

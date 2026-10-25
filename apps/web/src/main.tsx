@@ -1,6 +1,5 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import App from './App';
 import ResearchLab from './research/ResearchLab';
 import '@fontsource/manrope/latin-400.css';
 import '@fontsource/manrope/latin-500.css';
@@ -30,11 +29,7 @@ class AppBoundary extends React.Component<{ children: React.ReactNode }, { faile
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <AppBoundary>
-      {import.meta.env.VITE_CORTEX_ONLY === '1' || location.pathname.startsWith('/lab') ? (
-        <ResearchLab />
-      ) : (
-        <App />
-      )}
+      <ResearchLab />
     </AppBoundary>
   </React.StrictMode>,
 );

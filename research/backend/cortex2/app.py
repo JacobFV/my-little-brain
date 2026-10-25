@@ -25,7 +25,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, Response
 from pydantic import BaseModel, Field
 
-from . import agent, eeg, inverse as inv, limits, llm, neural as nm, quantum as qm, runner, tasks
+from . import agent, chat, eeg, inverse as inv, limits, llm, neural as nm, quantum as qm, runner, tasks
 from .store import artifacts, now, on_gcp, store, utcnow
 
 
@@ -91,7 +91,7 @@ async def lifespan(_app):
 app = FastAPI(title="cortex² research service", version=VERSION, lifespan=lifespan)
 origins = [o for o in os.environ.get("CORS_ORIGINS", "").split(",") if o and o != "*"]
 if origins:
-    app.add_middleware(CORSMiddleware, allow_origins=origins, allow_methods=["GET", "POST"],
+    app.add_middleware(CORSMiddleware, allow_origins=origins, allow_methods=["GET", "POST", "DELETE"],
                        allow_headers=["Authorization", "Content-Type"])
 tasks.set_local_handler(runner.handle_task)
 
@@ -387,11 +387,7 @@ def eeg_triage(body: TriageRequest, user=Depends(current_user)):
         raise HTTPException(400, "give dataset_id or recording_id")
     if not agent.agent_configured():
         raise HTTPException(503, "no model provider configured")
-    src = f"dataset_id={body.dataset_id}" if body.dataset_id else f"recording_id={body.recording_id}"
-    window = f" window {body.start}–{body.end} s" if body.start is not None and body.end is not None else ""
-    text = (f"EEG triage on {src}{window}: render the per-channel spectrograms, look at them, pick the 2–4 most informative "
-            "channels/windows, create one inverse experiment per pick, dispatch quantum searches on each, then compare the "
-            "hypothesis sets across channels. " + (body.instruction or ""))
+    text = agent.triage_command(body.dataset_id, body.recording_id, body.start, body.end, body.instruction)
     item = runner.feed(user["uid"], "user", text)
     job = agent.schedule_operator(user["uid"], text, None, created_by="user")
     return {"item": item, "job": job}
@@ -455,6 +451,75 @@ def message(body: Message, user=Depends(current_user)):
 def get_feed(experiment_id: str | None = None, user=Depends(current_user)):
     eq = {"experiment_id": experiment_id} if experiment_id else {}
     return {"items": store().query("feed", user["uid"], order="time", limit=120, **eq)}
+
+
+# ---------------------------------------------------------------- My Little Brain (chat + profile docs)
+
+class LiveSnapshot(BaseModel):
+    source: str = Field(max_length=120)
+    channels: list[str] = Field(default_factory=list, max_length=32)
+    band_powers: dict | None = None
+    blinks: float | None = None
+    alpha_ratio: float | None = None
+
+
+class ChatContext(BaseModel):
+    experiment_id: str | None = Field(default=None, max_length=64)
+    live: LiveSnapshot | None = None
+
+
+class ChatRequest(BaseModel):
+    message: str = Field(min_length=1, max_length=8000)
+    thread_id: str | None = Field(default=None, max_length=64)
+    context: ChatContext | None = None
+
+
+@app.post("/v1/chat")
+def chat_post(body: ChatRequest, user=Depends(current_user)):
+    if not agent.agent_configured():
+        raise HTTPException(503, "no model provider configured: set GEMINI_API_KEY or AGENT_PROVIDERS")
+    ctx = body.context.model_dump(exclude_none=True) if body.context else {}
+    if len(json.dumps(ctx, default=str)) > 8000:
+        raise HTTPException(400, "context too large")
+    limits.consume(user["uid"], "chat_message")
+    return guard(chat.respond, user, body.message, body.thread_id, ctx)
+
+
+@app.get("/v1/chat")
+def chat_latest(user=Depends(current_user)):
+    return guard(chat.thread_view, user["uid"], chat.latest_thread(user["uid"]))
+
+
+@app.post("/v1/chat/new")
+def chat_new(user=Depends(current_user)):
+    return {"thread_id": chat.new_thread(user["uid"])}
+
+
+@app.get("/v1/chat/{thread_id}")
+def chat_thread(thread_id: str, user=Depends(current_user)):
+    return guard(chat.thread_view, user["uid"], thread_id)
+
+
+class ProfileDoc(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+    text: str = Field(min_length=1, max_length=chat.MAX_DOC_CHARS)
+
+
+@app.post("/v1/profile/docs")
+def profile_add(body: ProfileDoc, user=Depends(current_user)):
+    limits.consume(user["uid"], "profile_doc")
+    return chat.add_doc(user["uid"], body.name, body.text)
+
+
+@app.get("/v1/profile/docs")
+def profile_list(user=Depends(current_user)):
+    return chat.list_docs(user["uid"])
+
+
+@app.delete("/v1/profile/docs/{doc_id}")
+def profile_delete(doc_id: str, user=Depends(current_user)):
+    guard(chat.delete_doc, user["uid"], doc_id)
+    return {"ok": True}
 
 
 # ---------------------------------------------------------------- artifacts

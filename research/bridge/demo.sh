@@ -32,7 +32,7 @@ done
 echo "▸ research API on :8080 (logs: $LOGS/api.log)"
 (
   cd "$ROOT/research/backend"
-  set -a; [[ -f ../.env ]] && source ../.env; set +a
+  set -a; [[ -f ../../.env ]] && source ../../.env; set +a
   export DEV_AUTH=1 CORS_ORIGINS="http://127.0.0.1:5173,http://localhost:5173"
   exec "$PY" -m uvicorn api:app --host 127.0.0.1 --port 8080
 ) >"$LOGS/api.log" 2>&1 &

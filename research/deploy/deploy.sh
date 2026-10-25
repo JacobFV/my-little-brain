@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # cortex² → Google Cloud (Cloud Run ×2, Firestore, Cloud Tasks, Cloud Scheduler, Secret Manager, GCS).
-# Idempotent: safe to re-run after changing code or research/.env. See research/deploy/README.md.
+# Idempotent: safe to re-run after changing code or .env. See research/deploy/README.md.
 #   research/deploy/deploy.sh                build + deploy
 #   SKIP_BUILD=1 research/deploy/deploy.sh   redeploy config/secrets with the currently deployed image
 set -euo pipefail
 cd "$(dirname "$0")/../.."
-[[ -f research/.env ]] || { echo "research/.env missing (see research/deploy/README.md)"; exit 1; }
-set -a; source research/.env; set +a
+[[ -f .env ]] || { echo ".env missing (see research/deploy/README.md)"; exit 1; }
+set -a; source .env; set +a
 
-P=${GOOGLE_CLOUD_PROJECT:?set GOOGLE_CLOUD_PROJECT in research/.env}
+P=${GOOGLE_CLOUD_PROJECT:?set GOOGLE_CLOUD_PROJECT in .env}
 R=${REGION:-us-central1}
 G="gcloud --project $P --quiet"
 NUM=$($G projects describe "$P" --format='value(projectNumber)')
@@ -16,14 +16,13 @@ API_SA=cortex2-api@$P.iam.gserviceaccount.com
 TASK_SA=cortex2-tasks@$P.iam.gserviceaccount.com
 BUCKET=${ARTIFACT_BUCKET:-$P-cortex2-artifacts}
 QUEUE=${TASK_QUEUE:-cortex2-work}
-WORKER_URL=https://cortex2-worker-$NUM.$R.run.app
-PUBLIC_URL=https://cortex2-$NUM.$R.run.app
+SERVICE=${SERVICE_NAME:-my-little-brain}
+PUBLIC_URL=https://$SERVICE-$NUM.$R.run.app
+WORKER_URL=$PUBLIC_URL        # one service: Cloud Tasks call back into it (OIDC-verified /internal/*)
 VERSION=$(git rev-parse --short HEAD)$(git diff --quiet || echo -dirty)
 IMAGE=$R-docker.pkg.dev/$P/cortex2/cortex2:$VERSION-$(date +%s)
-# Sizing defaults fit the default 20-vCPU regional Cloud Run quota: worker 2×4 + public 1×6 = 14.
-WORKER_CPU=${WORKER_CPU:-2};  WORKER_MEMORY=${WORKER_MEMORY:-4Gi};  WORKER_MAX=${WORKER_MAX_INSTANCES:-4}
-PUBLIC_CPU=${PUBLIC_CPU:-1};  PUBLIC_MEMORY=${PUBLIC_MEMORY:-2Gi};  PUBLIC_MAX=${PUBLIC_MAX_INSTANCES:-6}
-PUBLIC_MIN=${PUBLIC_MIN_INSTANCES:-1}
+# One service sized to the default 20-vCPU regional Cloud Run quota: 4 vCPU × ≤4 instances.
+CPU=${CPU:-4};  MEMORY=${MEMORY:-8Gi};  MIN=${MIN_INSTANCES:-1};  MAX=${MAX_INSTANCES:-4}
 
 echo "▸ project $P ($NUM) region $R"
 $G services enable run.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com firestore.googleapis.com \
@@ -83,8 +82,8 @@ if [[ -z "${SKIP_BUILD:-}" ]]; then
   $G builds submit --config research/deploy/cloudbuild.yaml \
     --substitutions="_IMAGE=$IMAGE,_GOOGLE_CLIENT_ID=${GOOGLE_OAUTH_CLIENT_ID:-},_VERSION=$VERSION" .
 else
-  IMAGE=${IMAGE_OVERRIDE:-$($G run services describe cortex2 --region $R --format="value(spec.template.spec.containers[0].image)")}
-  deployed_client=$($G run services describe cortex2 --region $R --format=json 2>/dev/null | python3 -c '
+  IMAGE=${IMAGE_OVERRIDE:-$($G run services describe $SERVICE --region $R --format="value(spec.template.spec.containers[0].image)")}
+  deployed_client=$($G run services describe $SERVICE --region $R --format=json 2>/dev/null | python3 -c '
 import json, sys
 env = json.load(sys.stdin)["spec"]["template"]["spec"]["containers"][0].get("env", [])
 print(next((e.get("value", "") for e in env if e["name"] == "GOOGLE_OAUTH_CLIENT_ID"), ""))' || true)
@@ -109,39 +108,38 @@ names = ["GOOGLE_CLOUD_PROJECT", "REGION", "TASK_QUEUE", "WORKER_URL", "TASK_SER
 names += sorted(k for k in os.environ if k.startswith("LIMIT_"))
 env = {k: os.environ.get(k, "") for k in names}
 env["CORS_ORIGINS"] = ""            # same-origin in production
-for role in ("api", "worker"):
-    with open(f"{sys.argv[1]}.{role}", "w") as fh:
-        fh.write("\n".join(f"{k}: {json.dumps(v)}" for k, v in {**env, "SERVICE_ROLE": role}.items()) + "\n")
+with open(sys.argv[1], "w") as fh:
+    fh.write("\n".join(f"{k}: {json.dumps(v)}" for k, v in {**env, "SERVICE_ROLE": "all"}.items()) + "\n")
 PY
 
-echo "▸ deploying worker (${WORKER_CPU} vCPU × ≤${WORKER_MAX})"
-$G run deploy cortex2-worker --image "$IMAGE" --region $R --service-account $API_SA \
-  --no-allow-unauthenticated --cpu "$WORKER_CPU" --memory "$WORKER_MEMORY" --concurrency 4 --timeout 1800 \
-  --max-instances "$WORKER_MAX" --cpu-boost \
-  --env-vars-file "$ENVFILE.worker" ${SECRET_ARG[@]+"${SECRET_ARG[@]}"} >/dev/null
-$G run services add-iam-policy-binding cortex2-worker --region $R --member=serviceAccount:$TASK_SA --role=roles/run.invoker >/dev/null
+echo "▸ retiring the legacy two-service layout (frees CPU quota)"
+for old in cortex2-worker cortex2; do
+  $G run services describe $old --region $R >/dev/null 2>&1 && $G run services delete $old --region $R >/dev/null && echo "  deleted $old"
+done
+$G scheduler jobs describe cortex2-heartbeat --location $R >/dev/null 2>&1 && $G scheduler jobs delete cortex2-heartbeat --location $R >/dev/null
 
-echo "▸ deploying public service (${PUBLIC_CPU} vCPU × ${PUBLIC_MIN}–${PUBLIC_MAX})"
-$G run deploy cortex2 --image "$IMAGE" --region $R --service-account $API_SA \
-  --allow-unauthenticated --cpu "$PUBLIC_CPU" --memory "$PUBLIC_MEMORY" --concurrency 40 --timeout 300 \
-  --min-instances "$PUBLIC_MIN" --max-instances "$PUBLIC_MAX" --cpu-boost \
-  --env-vars-file "$ENVFILE.api" ${SECRET_ARG[@]+"${SECRET_ARG[@]}"} >/dev/null
+echo "▸ deploying $SERVICE (${CPU} vCPU × ${MIN}–${MAX})"
+$G run deploy $SERVICE --image "$IMAGE" --region $R --service-account $API_SA \
+  --allow-unauthenticated --cpu "$CPU" --memory "$MEMORY" --concurrency 8 --timeout 1800 \
+  --min-instances "$MIN" --max-instances "$MAX" --cpu-boost --no-cpu-throttling \
+  --env-vars-file "$ENVFILE" ${SECRET_ARG[@]+"${SECRET_ARG[@]}"} >/dev/null
+$G run services add-iam-policy-binding $SERVICE --region $R --member=serviceAccount:$TASK_SA --role=roles/run.invoker >/dev/null
 
 echo "▸ heartbeat schedule"
-if $G scheduler jobs describe cortex2-heartbeat --location $R >/dev/null 2>&1; then verb=update; else verb=create; fi
-$G scheduler jobs $verb http cortex2-heartbeat --location $R --schedule "*/5 * * * *" \
+if $G scheduler jobs describe $SERVICE-heartbeat --location $R >/dev/null 2>&1; then verb=update; else verb=create; fi
+$G scheduler jobs $verb http $SERVICE-heartbeat --location $R --schedule "*/5 * * * *" \
   --uri "$WORKER_URL/internal/heartbeat" --http-method POST --attempt-deadline 300s \
   --oidc-service-account-email $TASK_SA --oidc-token-audience "$WORKER_URL" >/dev/null
 
 echo
-echo "✓ cortex² deployed:  $PUBLIC_URL   (image $IMAGE)"
+echo "✓ My Little Brain deployed:  $PUBLIC_URL   (image $IMAGE)"
 if health=$(curl -fsS --retry 3 --retry-delay 5 "$PUBLIC_URL/health"); then echo "  health: $health"; else echo "! health check failed (service may still be starting)"; fi
 if [[ -z "${GOOGLE_OAUTH_CLIENT_ID:-}" ]]; then
   cat <<EOF
 ! Sign-in is disabled until GOOGLE_OAUTH_CLIENT_ID is set:
     Console → APIs & Services → Credentials → Create credentials → OAuth client ID → Web application
     Authorized JavaScript origins:  $PUBLIC_URL   and   http://127.0.0.1:5173
-    Put the client id in research/.env as GOOGLE_OAUTH_CLIENT_ID=… and re-run this script (a rebuild is required).
+    Put the client id in .env as GOOGLE_OAUTH_CLIENT_ID=… and re-run this script (a rebuild is required).
 EOF
 fi
 [[ -z "${ALLOWED_EMAILS:-}" ]] && echo "! ALLOWED_EMAILS is empty: any verified Google account can sign in (quotas still apply)."

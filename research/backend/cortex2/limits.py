@@ -28,6 +28,8 @@ DEFAULTS = {
     "ingest_token":     (86400, 30),
     "recording":        (86400, 60),
     "snapshot":         (60, 20),
+    "chat_message":     (3600, 60),      # brain chat turns (each runs up to ~8 model/tool steps)
+    "profile_doc":      (86400, 50),     # "about me" document uploads
 }
 
 

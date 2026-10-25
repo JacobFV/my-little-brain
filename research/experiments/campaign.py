@@ -6,7 +6,7 @@ starting from the same naive in-budget QAOA baseline, against a local store. The
 Only simulators/samplers are available to it (hardware submission is denied: the session does not
 allow autonomous QPU use).
 
-    set -a; source research/.env; set +a
+    set -a; source .env; set +a
     python research/experiments/campaign.py --preset alpha        # synthetic 10101011
     python research/experiments/campaign.py --preset theta        # synthetic 11111011
     python research/experiments/campaign.py --preset ictal        # CHB-MIT chb01_03 T7-P7 seizure segment
@@ -56,7 +56,7 @@ def main():
 
     tasks.set_local_handler(runner.handle_task)
     if not agent.agent_configured():
-        raise SystemExit("no model provider configured (source research/.env)")
+        raise SystemExit("no model provider configured (source .env)")
     uid = f"campaign-{a.preset}"
     preset = PRESETS[a.preset]
     exp = runner.create_experiment(uid, {k: v for k, v in preset.items()})

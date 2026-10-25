@@ -332,6 +332,51 @@ export type NewExperiment =
   | { source: 'recording'; dataset_id: string; channel: string; segment: string; title?: string }
   | { source: 'openbci'; recording_id: string; channel?: string; title?: string };
 
+export type ChatMood = 'neutral' | 'happy' | 'curious' | 'excited' | 'surprised' | 'sleepy';
+export interface ChatEvent {
+  tool: string;
+  summary: string;
+  experiment_id?: string;
+  job_id?: string;
+  /** Artifact path (load with CortexClient.artifact). */
+  image?: string;
+}
+export interface ChatFocus {
+  experiment_id?: string;
+  job_id?: string;
+}
+export interface LiveContext {
+  source: string;
+  channels: string[];
+  band_powers?: Record<string, number>;
+  blinks?: number;
+  alpha_ratio?: number;
+}
+export interface ChatContext {
+  experiment_id?: string;
+  live?: LiveContext;
+}
+export interface ChatReply {
+  thread_id: string;
+  reply: string;
+  mood: ChatMood;
+  events: ChatEvent[];
+  focus: ChatFocus | null;
+}
+export interface ChatMessage {
+  role: 'user' | 'brain';
+  text: string;
+  events?: ChatEvent[];
+  mood?: ChatMood;
+  created_at: string;
+}
+export interface ProfileDoc {
+  id: string;
+  name: string;
+  chars: number;
+  created_at: string;
+}
+
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -396,7 +441,7 @@ export class CortexClient {
       const wait = Number(response.headers.get('Retry-After'));
       throw new ApiError(
         429,
-        `Easy there — the lab is rate-limiting requests. Try again in ${
+        `Easy there — too many requests at once. Try again in ${
           Number.isFinite(wait) && wait > 0 ? `${Math.ceil(wait)} s` : 'a moment'
         }.`,
       );
@@ -441,6 +486,23 @@ export class CortexClient {
       text,
       experiment_id: experimentId || undefined,
     });
+  chat = (message: string, threadId?: string | null, context?: ChatContext) =>
+    this.post<ChatReply>('/v1/chat', {
+      message,
+      thread_id: threadId || undefined,
+      context,
+    });
+  chatHistory = () =>
+    this.get<{ thread_id: string | null; messages: ChatMessage[] }>('/v1/chat');
+  newChat = () => this.post<{ thread_id: string }>('/v1/chat/new');
+  profileDocs = async (): Promise<ProfileDoc[]> => {
+    const r = await this.get<ProfileDoc[] | { docs: ProfileDoc[] }>('/v1/profile/docs');
+    return Array.isArray(r) ? r : (r?.docs ?? []);
+  };
+  addProfileDoc = (name: string, text: string) =>
+    this.post<ProfileDoc>('/v1/profile/docs', { name, text });
+  deleteProfileDoc = (id: string) =>
+    this.request(`/v1/profile/docs/${encodeURIComponent(id)}`, { method: 'DELETE' });
   feed = (experimentId?: string | null) =>
     this.get<{ items: FeedItem[] }>(
       `/v1/feed${experimentId ? `?experiment_id=${encodeURIComponent(experimentId)}` : ''}`,

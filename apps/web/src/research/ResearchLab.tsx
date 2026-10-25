@@ -5,21 +5,23 @@ import {
   useRef,
   useState,
   type CSSProperties,
-  type FormEvent,
 } from 'react';
 import { BrainScene, type ResearchMood } from '@little-brain/brain';
 import {
-  ArrowUp,
   Atom,
   Brain,
+  ChevronDown,
   FlaskConical,
   Layers,
   LogOut,
   MessageCircle,
   PanelLeft,
   Plus,
+  SquarePen,
   Sparkles,
+  UserRound,
   Waves,
+  Wrench,
 } from 'lucide-react';
 import { IconButton } from '../components';
 import { WorkspacePane } from '../WorkspacePane';
@@ -31,6 +33,8 @@ import {
   type ExperimentDetail,
   type FeedItem,
   type Job,
+  type ChatContext,
+  type ChatFocus,
   type JobRequest,
   type NewExperiment,
   type Recording,
@@ -46,73 +50,15 @@ import {
   type RunSettings,
 } from './Analysis';
 import { AgentTimeline } from './AgentTimeline';
-import { EEGPanel, TraceStrip } from './EEGPanel';
+import { averageBands, EEGPanel, TraceStrip } from './EEGPanel';
+import { ChatComposer, ChatThread, useChat } from './Chat';
+import { ProfileDrawer } from './Profile';
 import { useAuth, useBridge, useCompact, usePoll } from './hooks';
 import { JobsPanel } from './JobsPanel';
-import { QuantumViz } from './QuantumViz';
 import { anchorsFromEEG, idleAnchors, rms } from './signal';
 import './lab.css';
 
 type Tab = 'experiment' | 'job' | 'agent' | 'feed';
-
-function LabComposer({
-  onSend,
-  disabled,
-  placeholder,
-  compact,
-}: {
-  onSend: (text: string) => Promise<boolean>;
-  disabled: boolean;
-  placeholder: string;
-  compact?: boolean;
-}) {
-  const [draft, setDraft] = useState('');
-  const [sending, setSending] = useState(false);
-  const submit = async (e?: FormEvent) => {
-    e?.preventDefault();
-    if (!draft.trim() || disabled || sending) return;
-    const text = draft;
-    setDraft('');
-    setSending(true);
-    const ok = await onSend(text);
-    setSending(false);
-    if (!ok) setDraft(text);
-  };
-  return (
-    <form className={`composer ${compact ? 'compact' : ''}`} onSubmit={submit}>
-      {!compact && (
-        <div className="composer-spark">
-          <Sparkles size={19} />
-        </div>
-      )}
-      <textarea
-        aria-label="Message the research agent"
-        placeholder={placeholder}
-        value={draft}
-        maxLength={4000}
-        rows={1}
-        disabled={disabled}
-        onChange={(e) => setDraft(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
-            e.preventDefault();
-            void submit();
-          }
-        }}
-      />
-      <div className="composer-actions">
-        <button
-          className="send-button"
-          type="submit"
-          aria-label="Send to agent"
-          disabled={!draft.trim() || disabled || sending}
-        >
-          <ArrowUp size={19} />
-        </button>
-      </div>
-    </form>
-  );
-}
 
 function NewExperimentForm({
   presets,
@@ -296,7 +242,10 @@ export default function ResearchLab() {
   const [tab, setTab] = useState<Tab>('experiment');
   const inside = true;
   const fibers = true;
-  const [showQuantum, setShowQuantum] = useState(true);
+  const [toolsOpen, setToolsOpen] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
+  const [eegOpen, setEegOpen] = useState(false);
+  const [chatMood, setChatMood] = useState<ResearchMood | null>(null);
   const [experiments, setExperiments] = useState<Experiment[]>([]);
   const [selectedExp, setSelectedExp] = useState<string | null>(null);
   const [detail, setDetail] = useState<ExperimentDetail | null>(null);
@@ -341,6 +290,8 @@ export default function ResearchLab() {
     const key = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         setConfirmQpu(null);
+        setToolsOpen(false);
+        setAboutOpen(false);
         if (compact) setRightOpen(false);
       }
       if ((event.metaKey || event.ctrlKey) && event.key === '\\') {
@@ -418,6 +369,50 @@ export default function ResearchLab() {
   }, [selectedJob, detail, jobs]);
   const anyActive = jobs.some(isActive);
   const exp = detail?.experiment ?? null;
+
+  const focus = useCallback(
+    (f: ChatFocus) => {
+      if (f.experiment_id) setSelectedExp(f.experiment_id);
+      if (f.job_id) {
+        setSelectedJobId(f.job_id);
+        setTab('job');
+      } else if (f.experiment_id) setTab('experiment');
+      setRightOpen(true);
+      if (compact) setLeftOpen(false);
+    },
+    [compact],
+  );
+  const chat = useChat(client, signedIn, {
+    onFocus: focus,
+    onMood: setChatMood,
+    onUnauthorized,
+  });
+  // A reply's mood shows for a while, then the brain returns to its ambient mood.
+  useEffect(() => {
+    if (!chatMood || chat.thinking) return;
+    const t = window.setTimeout(() => setChatMood(null), 9000);
+    return () => window.clearTimeout(t);
+  }, [chatMood, chat.thinking]);
+  const liveContext = (): ChatContext['live'] => {
+    if (live.source === 'none' || !live.frame) return undefined;
+    const bands = averageBands(live.frame, live.buffer);
+    return {
+      source: live.source === 'bridge' ? 'openbci_bridge' : 'cloud',
+      channels: live.frame.channel_names,
+      band_powers: bands
+        ? (Object.fromEntries(
+            Object.entries(bands).filter(([, v]) => typeof v === 'number'),
+          ) as Record<string, number>)
+        : undefined,
+      blinks: live.blinkCount,
+      alpha_ratio: live.frame.alpha_fraction,
+    };
+  };
+  const sendChat = (text: string) =>
+    void chat.send(text, {
+      experiment_id: selectedExp ?? undefined,
+      live: liveContext(),
+    });
 
   const alphaState = live.source === 'bridge' ? live.frame?.alpha_state : undefined;
   // Cute reactions, driven by real events.
@@ -517,11 +512,11 @@ export default function ResearchLab() {
       values: anchors.values,
       opacity: fibers ? 0.9 : 0,
       shellOpacity: inside ? 0.2 : 0.62,
-      mood,
+      mood: chatMood ?? mood,
       blinkSignal: live.blinkCount,
       gaze: null,
     }),
-    [anchors, fibers, inside, mood, live.blinkCount],
+    [anchors, fibers, inside, mood, chatMood, live.blinkCount],
   );
 
   const createExperiment = async (body: NewExperiment) => {
@@ -610,18 +605,6 @@ export default function ResearchLab() {
         await runJob(toJobRequest({ ...run, provider }, exp.baseline));
     setTab('experiment');
   };
-  const sendMessage = async (text: string) => {
-    try {
-      const { item, job } = await client.message(text, exp?.id);
-      setFeed((f) => [item, ...f]);
-      setJobs((j) => [job, ...j]);
-      setTab('feed');
-      return true;
-    } catch (e) {
-      fail(e);
-      return false;
-    }
-  };
   const updateSession = async (patch: Partial<Session>) => {
     setSession((s) => (s ? { ...s, ...patch } : s));
     try {
@@ -643,7 +626,15 @@ export default function ResearchLab() {
         : 'ready';
 
   const quick = (
-    <div className="cx-chips" role="toolbar" aria-label="Quick actions">
+    <div
+      className="cx-tools-menu"
+      role="menu"
+      aria-label="Research tools"
+      onClick={() => setToolsOpen(false)}
+    >
+      <small className="cx-tools-head">
+        {exp ? `On: ${exp.title}` : 'Select an experiment in the left pane'}
+      </small>
       <button disabled={!exp || busy} onClick={() => void iterate()}>
         <Sparkles size={13} /> Run iteration
       </button>
@@ -721,21 +712,6 @@ export default function ResearchLab() {
       </div>
     </div>
   );
-  const composer = (c?: boolean) => (
-    <LabComposer
-      compact={c}
-      disabled={!signedIn}
-      placeholder={
-        signedIn
-          ? exp
-            ? 'Ask the agent to investigate, run, or babysit…'
-            : 'Ask the research agent…'
-          : 'Sign in to talk to the agent'
-      }
-      onSend={sendMessage}
-    />
-  );
-
   return (
     <div
       className="app simple-app cx-lab"
@@ -755,7 +731,7 @@ export default function ResearchLab() {
               <Brain size={21} />
             </span>
             <span>
-              cortex² <small className="cx-tagline">the quantum brain detective</small>
+              My Little Brain <small className="cx-tagline">your brain, studying itself</small>
             </span>
           </div>
           <div className="focused-brain">
@@ -766,13 +742,30 @@ export default function ResearchLab() {
             </span>
           </div>
           <div className="simple-header-actions">
-            <IconButton
-              label={showQuantum ? 'Hide quantum view' : 'Show quantum view'}
-              active={showQuantum}
-              onClick={() => setShowQuantum((v) => !v)}
-            >
-              <Atom size={17} />
-            </IconButton>
+            {signedIn && (
+              <>
+                <IconButton label="New conversation" onClick={() => void chat.reset()}>
+                  <SquarePen size={17} />
+                </IconButton>
+                <IconButton
+                  label="About me"
+                  active={aboutOpen}
+                  onClick={() => setAboutOpen((o) => !o)}
+                >
+                  <UserRound size={17} />
+                </IconButton>
+                <div className="cx-tools-wrap">
+                  <IconButton
+                    label="Research tools"
+                    active={toolsOpen}
+                    onClick={() => setToolsOpen((o) => !o)}
+                  >
+                    <Wrench size={17} />
+                  </IconButton>
+                  {toolsOpen && quick}
+                </div>
+              </>
+            )}
             <button
               className={`chat-toggle ${rightOpen ? 'active' : ''}`}
               aria-label={rightOpen ? 'Close analysis' : 'Open analysis'}
@@ -921,6 +914,29 @@ export default function ResearchLab() {
                     )}
                   </section>
                 )}
+                <section className="cx-section cx-eeg-fold">
+                  <button
+                    className="cx-fold-head"
+                    aria-expanded={eegOpen}
+                    onClick={() => setEegOpen((o) => !o)}
+                  >
+                    <span
+                      className={`status-dot ${live.source !== 'none' ? 'live' : ''}`}
+                    />
+                    <strong>EEG</strong>
+                    <small>
+                      {live.source === 'bridge'
+                        ? 'OpenBCI streaming'
+                        : live.source === 'cloud'
+                          ? 'cloud stream'
+                          : bridgeStatus === 'open'
+                            ? 'bridge connected'
+                            : 'not streaming'}
+                    </small>
+                    <ChevronDown size={14} className={eegOpen ? 'open' : ''} />
+                  </button>
+                </section>
+                {eegOpen && (
                 <EEGPanel
                   bridge={bridgeStatus}
                   live={live}
@@ -940,6 +956,7 @@ export default function ResearchLab() {
                       : undefined
                   }
                 />
+                )}
                 <JobsPanel
                   jobs={jobs}
                   selectedId={selectedJobId}
@@ -971,9 +988,9 @@ export default function ResearchLab() {
                 />
               </div>
               <div className="pane-bottom">
-                <a href="/" className="cx-bottom-link">
-                  <Brain size={15} /> My Little Brain companion
-                </a>
+                <button className="cx-bottom-link" onClick={() => setAboutOpen(true)} disabled={!signedIn}>
+                  <UserRound size={15} /> About me
+                </button>
               </div>
             </WorkspacePane>
           )}
@@ -1008,14 +1025,28 @@ export default function ResearchLab() {
               </div>
               {live.frame && <TraceStrip live={live} />}
             </div>
-            {showQuantum && signedIn && (
-              <QuantumViz
-                job={stageJob}
-                budget={config?.gate_budget ?? 130}
-                truth={truth}
-                onClose={() => setShowQuantum(false)}
+            <div className="cx-chat-dock">
+              <ChatThread
+                messages={chat.messages}
+                thinking={chat.thinking}
+                client={client}
+                signedIn={signedIn}
+                onFocus={focus}
+                onStarter={sendChat}
               />
-            )}
+              <ChatComposer
+                disabled={!signedIn || chat.thinking}
+                placeholder={
+                  signedIn
+                    ? chat.thinking
+                      ? 'Thinking…'
+                      : 'Talk to your brain…'
+                    : 'Sign in to talk to your brain'
+                }
+                onSend={sendChat}
+              />
+            </div>
+            {ibmConfirm}
             {(error || notice) && (
               <div
                 className={`connection-feedback cx-toast ${error ? 'error' : ''}`}
@@ -1025,7 +1056,13 @@ export default function ResearchLab() {
                 <button onClick={() => (setError(''), setNotice(''))}>Dismiss</button>
               </div>
             )}
-            {!rightOpen && <div className="floating-compose">{composer()}</div>}
+            {aboutOpen && signedIn && (
+              <ProfileDrawer
+                client={client}
+                onClose={() => setAboutOpen(false)}
+                onUnauthorized={onUnauthorized}
+              />
+            )}
           </section>
           {rightOpen && (
             <WorkspacePane
@@ -1067,12 +1104,12 @@ export default function ResearchLab() {
                 <div className="cx-right-scroll">
                   {!signedIn ? (
                     <div className="cx-empty">
-                      <h3>Welcome to cortex²</h3>
+                      <h3>Welcome to My Little Brain</h3>
                       <p>
-                        We work backwards from an EEG recording to the brain-model parameters that
-                        could have produced it, using AI-designed quantum circuits on IBM hardware,
-                        Extropic&apos;s THRML sampler and classical baselines. Sign in in the left
-                        pane to begin.
+                        Your brain tries to understand itself: it reads your EEG and the notes you
+                        share, then works backwards to brain-model parameters with AI-designed
+                        quantum circuits, THRML sampling and classical baselines. Sign in in the
+                        left pane to begin.
                       </p>
                     </div>
                   ) : tab === 'experiment' ? (
@@ -1101,13 +1138,6 @@ export default function ResearchLab() {
                     <FeedTab items={feed} client={client} />
                   )}
                 </div>
-                {signedIn && (
-                  <div className="chat-compose cx-compose">
-                    {ibmConfirm}
-                    {quick}
-                    {composer(true)}
-                  </div>
-                )}
               </div>
             </WorkspacePane>
           )}
