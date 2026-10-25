@@ -1,0 +1,85 @@
+"""Per-user rate limits and quotas (cost-abuse protection), backed by the store.
+
+Each action has a fixed window and a maximum; counters live in the `quotas` collection keyed
+`<uid>:<action>:<window-start>` and are incremented transactionally, so limits hold across
+Cloud Run instances. Every limit is overridable with an env var `LIMIT_<ACTION>` (an integer;
+0 disables the action, a negative value removes the limit).
+
+Physical-QPU submissions additionally honour `HARDWARE_EMAILS` (comma-separated allowlist;
+empty = any signed-in user, still capped by LIMIT_HARDWARE_JOB).
+"""
+from __future__ import annotations
+
+import os
+import time
+from dataclasses import dataclass
+from datetime import datetime, timezone
+
+from .store import now, store
+
+DEFAULTS = {
+    #  action           (window seconds, max)
+    "job":              (3600, 120),     # sampling jobs created by the user
+    "hardware_job":     (86400, 4),      # physical QPU submissions (IBM / IonQ)
+    "agent_iteration":  (86400, 40),     # agent design iterations (model calls)
+    "agent_message":    (3600, 60),      # operator messages (model calls)
+    "preview":          (60, 30),        # synchronous circuit compiles (CPU heavy)
+    "experiment":       (86400, 200),
+    "ingest_token":     (86400, 30),
+    "recording":        (86400, 60),
+    "snapshot":         (60, 20),
+}
+
+
+class RateLimited(Exception):
+    def __init__(self, action: str, limit: int, window: int, retry_after: int):
+        self.action, self.limit, self.window, self.retry_after = action, limit, window, retry_after
+        human = f"{window // 3600} h" if window >= 3600 else f"{window // 60} min" if window >= 60 else f"{window} s"
+        super().__init__(f"rate limit: at most {limit} {action.replace('_', ' ')}s per {human}; retry in {retry_after} s")
+
+
+@dataclass
+class Limit:
+    window: int
+    maximum: int
+
+
+def limit_for(action: str) -> Limit:
+    window, maximum = DEFAULTS[action]
+    raw = os.environ.get(f"LIMIT_{action.upper()}")
+    if raw not in (None, ""):
+        maximum = int(raw)
+    return Limit(window, maximum)
+
+
+def consume(uid: str, action: str, amount: int = 1) -> int:
+    """Count one use of `action` by `uid`; raises RateLimited if over the limit. Returns uses so far."""
+    lim = limit_for(action)
+    if lim.maximum < 0:
+        return 0
+    t = int(time.time())
+    start = t - t % lim.window
+    key = f"{uid}:{action}:{start}"
+    retry = start + lim.window - t
+    if lim.maximum == 0:
+        raise RateLimited(action, 0, lim.window, retry)
+    result = {"n": 0}
+
+    def fn(cur):
+        used = int((cur or {}).get("count", 0))
+        if used + amount > lim.maximum:
+            return None
+        result["n"] = used + amount
+        return {"owner": uid, "action": action, "count": used + amount, "window_start": start,
+                "updated_at": now(),
+                # Firestore TTL policy on `expire_at` (a timestamp) garbage-collects old windows
+                "expire_at": datetime.fromtimestamp(start + 2 * lim.window, tz=timezone.utc)}
+
+    if store().transact("quotas", key, fn) is None:
+        raise RateLimited(action, lim.maximum, lim.window, retry)
+    return result["n"]
+
+
+def hardware_allowed(email: str | None) -> bool:
+    allow = {e.strip().lower() for e in os.environ.get("HARDWARE_EMAILS", "").split(",") if e.strip()}
+    return not allow or (email or "").lower() in allow
