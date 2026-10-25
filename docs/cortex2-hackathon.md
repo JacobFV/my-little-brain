@@ -121,13 +121,58 @@ research/.venv/bin/python research/bridge/openbci.py --board cyton --serial-port
 ```
 Locally, the store is `research/.data/store.json`, and tasks run on in-process threads.
 
-**OpenBCI checklist.** Confirm the board (Cyton, Cyton+Daisy or Ganglion) and the serial port with
-`ls /dev/cu.usbserial*`. Close the OpenBCI GUI, because only one program can hold the port. Mains is
-60 Hz in the US (`--mains 50` elsewhere). Use `--channels` if your electrode order differs from
-`Fp1,Fp2,C3,C4,P7,P8,O1,O2`. Eyes-closed alpha appears on O1/O2 within a few seconds, and blinks show on Fp1/Fp2.
-To use a recording for inverse modelling, start the bridge with `--cloud`, set `CORTEX_API` and
-`CORTEX_INGEST_TOKEN` (a device token from the lab sidebar), and use `--record 30 --label "eyes closed"`,
-or trigger the recording from the lab UI.
+### OpenBCI headset
+
+**One command** starts the API (dev sign-in), the web app and the bridge:
+```bash
+research/bridge/demo.sh                 # no hardware: replays a realistic Cyton recording with blinks + eyes-closed alpha
+research/bridge/demo.sh cyton           # real Cyton, serial port auto-detected (/dev/cu.usbserial-*)
+research/bridge/demo.sh cyton --channels Fp1,Fp2,C3,C4,P7,P8,O1,O2 --mains 60
+```
+Open http://127.0.0.1:5173/lab and choose **Continue as dev**. Logs go to `research/.data/logs/`.
+
+**Pre-flight (run 10 minutes before presenting):**
+```bash
+research/.venv/bin/python research/bridge/preflight.py --board cyton
+```
+It checks:
+- python packages and the free WebSocket port;
+- the dongle port and the achieved sample rate;
+- every channel's quality (ok / flat / railed / noisy, plus 60 Hz pickup), with a fix hint for each;
+- that Fp1/Fp2 (blinks) and O1/O2 (alpha) are present;
+- the local API, and the cloud API and device token when `CORTEX_API` and `CORTEX_INGEST_TOKEN` are set.
+
+It exits non-zero if anything required fails.
+
+**Checklist:**
+1. Identify the board: Cyton (8 ch), Cyton+Daisy (16 ch) or Ganglion (4 ch).
+2. Close the OpenBCI GUI, because only one program can hold the dongle.
+3. Set the dongle switch to GPIO_6 and the board switch to PC.
+4. Clip the ear reference (SRB) and bias. Railed channels almost always mean a missing reference/bias or an electrode
+   that isn't touching skin.
+5. Use `--channels` if your electrode order differs from `Fp1,Fp2,C3,C4,P7,P8,O1,O2`. Mains is 60 Hz in the US, so
+   use `--mains 50` elsewhere.
+6. Ganglion: use `--board ganglion` with the BLED112 dongle, or `--board ganglion-native` with the laptop's Bluetooth.
+   For native, grant Bluetooth permission to the terminal.
+
+**What the lab shows:**
+- **Blinks** fire on Fp1/Fp2 when a 1–45 Hz-filtered deflection exceeds 40 µV and 5× the robust noise, with a 0.45 s
+  refractory period.
+- **Eyes closed** fires when smoothed O1/O2 alpha (8–13 Hz) rises to at least 2× its adaptive eyes-open baseline and at
+  least 35 % of 1–45 Hz power, with hysteresis. It needs about 2 s to settle and about 2 s of data on start-up.
+- On realistic synthetic recordings, including half-strength alpha and 100 µV blinks, both detectors score ≥ 99 %
+  (`research/bridge/test_bridge.py`). These are visualisation-grade estimates, not clinical EEG.
+
+**The bridge is robust to:**
+- an unplugged dongle, a powered-off board or a stalled stream: it reconnects with backoff and shows an actionable message;
+- Ctrl+C: graceful stop on the first press, force quit on the second.
+
+**Recordings:**
+- Use `--record 30 --label "eyes closed"`, or the record button in the lab, which sends `{"type":"record"}` over the
+  WebSocket and receives progress messages.
+- Every recording is saved locally under `research/bridge/recordings/`.
+- It is also uploaded for inverse modelling when the bridge runs with `--cloud`, `CORTEX_API` and
+  `CORTEX_INGEST_TOKEN` (a device token from the lab sidebar).
 
 ## Deploy (GCP)
 
