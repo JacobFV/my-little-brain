@@ -132,6 +132,57 @@ class Thrml(IsingBackend):
         return counts, meta, thermo.boltzmann_reference(ising, beta)
 
 
+def _thrml_id_token(url: str) -> str | None:
+    """ID token for the private sampler: metadata server on GCP, else gcloud user token, else none."""
+    try:
+        import google.auth.transport.requests
+        import google.oauth2.id_token
+
+        return google.oauth2.id_token.fetch_id_token(google.auth.transport.requests.Request(), url)
+    except Exception:
+        pass
+    import subprocess
+
+    try:
+        out = subprocess.run(["gcloud", "auth", "print-identity-token"], capture_output=True, text=True, timeout=30)
+        return out.stdout.strip() or None if out.returncode == 0 else None
+    except (OSError, subprocess.SubprocessError):
+        return None
+
+
+class ThrmlRemote(IsingBackend):
+    id, label, kind = "thrml_remote", "Extropic THRML · Cloud Run sampler service", "thermodynamic_simulator"
+    caps = Capabilities("ising", connectivity="dense Ising (all pairs)", vendor="Extropic",
+                        notes="Extropic THRML on a dedicated Google Cloud Run service (CPU; L4 GPU pending quota); "
+                              "simulation, not TSU hardware",
+                        options={"beta": "inverse temperature (default 3.0)"})
+
+    def availability(self):
+        import os
+
+        return (True, None) if os.environ.get("THRML_SERVICE_URL") else (False, "THRML_SERVICE_URL not set")
+
+    def sample(self, ising, qubo, shots, options):
+        import os
+
+        import requests
+
+        from . import thermo
+
+        url = os.environ["THRML_SERVICE_URL"].rstrip("/")
+        beta = float(options.get("beta", 3.0))
+        body = {**ising.to_json(), "shots": int(shots), "beta": beta}
+        if "seed" in options:
+            body["seed"] = int(options["seed"])
+        token = _thrml_id_token(url)
+        headers = {"Authorization": f"Bearer {token}"} if token else {}
+        resp = requests.post(f"{url}/sample", json=body, headers=headers, timeout=600)
+        resp.raise_for_status()
+        data = resp.json()
+        meta = {**data.get("meta", {}), "service_url": url}
+        return data["counts"], meta, thermo.boltzmann_reference(ising, beta)
+
+
 # ---------------------------------------------------------------- IBM (Qiskit)
 
 class AerIdeal(GateBackend):
@@ -286,7 +337,7 @@ def register(backend: Backend) -> Backend:
     return backend
 
 
-for _b in (Exact(), RandomBaseline(), Anneal(), Thrml(), AerIdeal(), AerNoisy(), IBMRuntime(), IonQSimulator(), IonQQPU(), QBraidSimulator(), QBraidQPU()):
+for _b in (Exact(), RandomBaseline(), Anneal(), Thrml(), ThrmlRemote(), AerIdeal(), AerNoisy(), IBMRuntime(), IonQSimulator(), IonQQPU(), QBraidSimulator(), QBraidQPU()):
     register(_b)
 
 

@@ -12,6 +12,30 @@ simplified model, not diagnoses.
 **Live:** https://my-little-brain-563778990179.us-central1.run.app (sign in with Google)
 https://engram-0-thermodynamic-brain-decode.vercel.app/thermo_spi.html 
 
+<p align="center">
+  <a href="https://youtu.be/c7H80NzR3Tg"><img src="https://img.youtube.com/vi/c7H80NzR3Tg/maxresdefault.jpg" alt="Watch the My Little Brain demo video on YouTube" width="100%"></a>
+  <br><sub>▶ <a href="https://youtu.be/c7H80NzR3Tg">Watch the 2-minute demo</a></sub>
+</p>
+
+<p align="center">
+  <img src="media/deck-slide-1.png" alt="My Little Brain — the real 3D brain in a soft color field" width="100%">
+</p>
+<p align="center">
+  <img src="media/deck-slide-2.png" alt="It knows you — the app: chat with your brain, live EEG, quantum circuits, results" width="49%">
+  <img src="media/deck-slide-3.png" alt="It studies itself — the brain dispatches to IonQ, IBM, qBraid, Extropic; 48/256 simulations, 42-gate circuit, 52 vs 454 gates, τ 16→55 ms" width="49%">
+</p>
+<p align="center">
+  <img src="media/deck-slide-4.png" alt="EEG → quantum state — EEG → 10 band powers → 4 brain parameters × 2 bits = 8 qubits = 256-dimensional Hilbert space; the EEG mismatch becomes an Ising energy and QAOA amplifies the best-fitting brains" width="100%">
+</p>
+<p align="center">
+  <img src="media/deck-slide-5.png" alt="Amplify, don't scan — classical sequential search over 256 brains vs Grover amplitude amplification in 12 rounds" width="100%">
+</p>
+<p align="center">
+  <img src="media/deck-slide-6.png" alt="Behind the scenes — OpenBCI in Chrome, app, Gemini 4 Argon agent on Cloud Run, QAOA on IonQ/IBM/qBraid, Extropic THRML, forward simulations" width="49%">
+  <img src="media/deck-slide-7.png" alt="The team — Jacob Valdez, Hanah Rahman, Rohit Korrapolu" width="49%">
+</p>
+<p align="center"><sub>Pitch deck: <a href="media/deck.html">media/deck.html</a> (live, animated) · <a href="media/my-little-brain-deck.pdf">PDF</a></sub></p>
+
 [What's inside](#whats-inside) · [How it works](#how-it-works) · [The math](#the-math) · [Results](#results) ·
 [Claims](#what-we-claim-and-what-we-dont) · [Run it](#run-it) · [Deploy](#deploy-gcp) · [API](docs/cortex2-api.md)
 

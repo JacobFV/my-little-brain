@@ -1,0 +1,371 @@
+{
+ "source": "Gayathri et al., Sci Rep 16:16863 (2026), doi:10.1038/s41598-026-47627-y",
+ "render_dpi": 150,
+ "page_size_px": [
+  1240,
+  1630
+ ],
+ "coords": "pixels on media/paper/pages/page-NN.png, origin top-left, [x0,y0,x1,y1]",
+ "highlights": [
+  {
+   "page": 1,
+   "image": "pages/page-01.png",
+   "text": "a quantum-inspired deep learning framework implemented on classical hardware",
+   "why": "Their 'quantum' is quantum-inspired math on classical hardware",
+   "bbox_px": [
+    325,
+    870,
+    1119,
+    915
+   ],
+   "line_boxes_px": [
+    [
+     613,
+     870,
+     1119,
+     892
+    ],
+    [
+     325,
+     893,
+     472,
+     915
+    ]
+   ]
+  },
+  {
+   "page": 1,
+   "image": "pages/page-01.png",
+   "text": "macro-F1 improvements of up to 5.2%",
+   "why": "Headline result: a classification-accuracy gain",
+   "bbox_px": [
+    543,
+    1099,
+    852,
+    1121
+   ],
+   "line_boxes_px": [
+    [
+     543,
+     1099,
+     852,
+     1121
+    ]
+   ]
+  },
+  {
+   "page": 1,
+   "image": "pages/page-01.png",
+   "text": "the proposed framework does not rely on quantum hardware",
+   "why": "Explicitly no quantum device in the loop",
+   "bbox_px": [
+    652,
+    1213,
+    1143,
+    1236
+   ],
+   "line_boxes_px": [
+    [
+     652,
+     1213,
+     1143,
+     1236
+    ]
+   ]
+  },
+  {
+   "page": 2,
+   "image": "pages/page-02.png",
+   "text": "mostly black-box models with limited interpretability",
+   "why": "Problem they target: black-box EEG deep learning",
+   "bbox_px": [
+    325,
+    392,
+    1159,
+    438
+   ],
+   "line_boxes_px": [
+    [
+     1099,
+     392,
+     1159,
+     417
+    ],
+    [
+     325,
+     413,
+     681,
+     438
+    ]
+   ]
+  },
+  {
+   "page": 3,
+   "image": "pages/page-03.png",
+   "text": "a looped neuro-AI stack",
+   "why": "They envision closed-loop neuro-AI as a future direction",
+   "bbox_px": [
+    325,
+    1329,
+    1159,
+    1376
+   ],
+   "line_boxes_px": [
+    [
+     1088,
+     1329,
+     1159,
+     1355
+    ],
+    [
+     325,
+     1350,
+     437,
+     1376
+    ]
+   ]
+  },
+  {
+   "page": 8,
+   "image": "pages/page-08.png",
+   "text": "We used three publicly available EEG datasets",
+   "why": "Offline evaluation on public datasets",
+   "bbox_px": [
+    325,
+    579,
+    683,
+    605
+   ],
+   "line_boxes_px": [
+    [
+     325,
+     579,
+     683,
+     605
+    ]
+   ]
+  },
+  {
+   "page": 10,
+   "image": "pages/page-10.png",
+   "text": "deterministic simulations of quantum feature mappings",
+   "why": "Quantum feature maps are simulated, not sampled",
+   "bbox_px": [
+    325,
+    1138,
+    760,
+    1164
+   ],
+   "line_boxes_px": [
+    [
+     325,
+     1138,
+     429,
+     1164
+    ],
+    [
+     433,
+     1138,
+     524,
+     1164
+    ],
+    [
+     528,
+     1138,
+     547,
+     1164
+    ],
+    [
+     551,
+     1138,
+     623,
+     1164
+    ],
+    [
+     627,
+     1138,
+     683,
+     1164
+    ],
+    [
+     687,
+     1138,
+     760,
+     1164
+    ]
+   ]
+  },
+  {
+   "page": 21,
+   "image": "pages/page-21.png",
+   "text": "0.975 / 0.971 / 0.994",
+   "why": "CHB-MIT Acc / F1 / AUROC for QuantumNeuroXAI (Table 4)",
+   "bbox_px": [
+    728,
+    353,
+    844,
+    373
+   ],
+   "line_boxes_px": [
+    [
+     728,
+     353,
+     844,
+     373
+    ]
+   ]
+  },
+  {
+   "page": 29,
+   "image": "pages/page-29.png",
+   "text": "acceptable for offline training",
+   "why": "Training is an offline batch process",
+   "bbox_px": [
+    745,
+    1436,
+    971,
+    1461
+   ],
+   "line_boxes_px": [
+    [
+     745,
+     1436,
+     971,
+     1461
+    ]
+   ]
+  },
+  {
+   "page": 34,
+   "image": "pages/page-34.png",
+   "text": "selective or on-demand explanation approaches might be more desirable for real-time clinical deployment",
+   "why": "Their own limitation: real-time explanation cost",
+   "bbox_px": [
+    325,
+    1018,
+    1159,
+    1064
+   ],
+   "line_boxes_px": [
+    [
+     1092,
+     1018,
+     1159,
+     1043
+    ],
+    [
+     325,
+     1039,
+     1064,
+     1064
+    ]
+   ]
+  },
+  {
+   "page": 36,
+   "image": "pages/page-36.png",
+   "text": "do not necessarily reflect the variability encountered in day-to-day clinical practice",
+   "why": "Limitation: controlled datasets, not everyday EEG",
+   "bbox_px": [
+    325,
+    1187,
+    1159,
+    1233
+   ],
+   "line_boxes_px": [
+    [
+     773,
+     1187,
+     1159,
+     1212
+    ],
+    [
+     325,
+     1208,
+     549,
+     1233
+    ]
+   ]
+  },
+  {
+   "page": 36,
+   "image": "pages/page-36.png",
+   "text": "Their heavy reliance on hyperparameter tuning limits their use in an out-of-the-box fashion",
+   "why": "Limitation: needs expert tuning per task",
+   "bbox_px": [
+    325,
+    1354,
+    1159,
+    1400
+   ],
+   "line_boxes_px": [
+    [
+     709,
+     1354,
+     1159,
+     1379
+    ],
+    [
+     325,
+     1374,
+     564,
+     1400
+    ]
+   ]
+  },
+  {
+   "page": 37,
+   "image": "pages/page-37.png",
+   "text": "leveraging technological developments in high-quality quantum hardware in the near future",
+   "why": "Future work they name: real quantum hardware",
+   "bbox_px": [
+    325,
+    416,
+    1159,
+    462
+   ],
+   "line_boxes_px": [
+    [
+     1077,
+     416,
+     1159,
+     441
+    ],
+    [
+     325,
+     437,
+     927,
+     462
+    ]
+   ]
+  },
+  {
+   "page": 37,
+   "image": "pages/page-37.png",
+   "text": "adaptive or self-supervised learning schemes",
+   "why": "Future work: adapt to inter-subject variability",
+   "bbox_px": [
+    549,
+    375,
+    890,
+    400
+   ],
+   "line_boxes_px": [
+    [
+     549,
+     375,
+     890,
+     400
+    ]
+   ]
+  }
+ ],
+ "our_innovation_punchlines": [
+  "Real quantum hardware, not quantum-inspired simulation",
+  "From classifying EEG to inferring brain mechanisms",
+  "Your own EEG, live in the browser",
+  "An agent that designs its own circuits",
+  "Every quantum answer checked by forward simulation",
+  "Seizure windows: synaptic time constant 16 → 30–55 ms"
+ ]
+}

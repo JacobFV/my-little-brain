@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>My Little Brain</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@500;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@500;700&family=JetBrains+Mono:wght@400;500&display=swap">
 <style>
   /* Judges deck. Open in Chrome · ← → / space / click · F = fullscreen. */
   * { box-sizing:border-box; margin:0; padding:0; }
@@ -47,9 +47,8 @@
   <!-- 1 · the brain -->
   <section class="slide on">
     <video class="masked" src="brain/real-brain.webm" poster="brain/real-brain.png" autoplay loop muted playsinline
-           style="left:610px;width:700px"></video>
-    <div class="word" style="left:150px">My Little</div>
-    <div class="word" style="left:1450px">Brain</div>
+           style="left:530px;top:-40px;width:860px;height:900px"></video>
+    <div class="word" style="left:0;right:0;top:760px;text-align:center">My Little Brain</div>
   </section>
 
   <!-- 2 · it knows you -->
@@ -69,7 +68,7 @@
     </style>
     <div class="word" style="left:150px;top:110px">It knows you</div>
     <div class="small" style="left:154px;top:222px">your notes · your live EEG · your questions</div>
-    <div class="appvid"><img src="app-shots/02-reasoning.png" alt=""><img src="app-shots/03-experiment.png" alt=""><img src="app-shots/05-agent.png" alt=""></div>
+    <div class="appvid"><img src="app-shots/v2-02-reply.png" alt=""><img src="app-shots/v2-03-circuit.png" alt=""><img src="app-shots/v2-05-landscape.png" alt=""></div>
     <div class="ann" style="left:112px;top:320px">it watches your live EEG</div>
     <div class="lead h" style="left:382px;top:340px;width:234px"></div>
     <div class="ann" style="left:112px;top:560px">you chat with your brain</div>
@@ -87,7 +86,7 @@
            style="left:130px;top:280px;width:600px;height:600px"></video>
     <div class="word" style="left:150px;top:96px">It studies itself</div>
     <div id="qlogos"></div>
-    <div style="position:absolute;left:1270px;top:250px;width:600px">
+    <div style="position:absolute;left:1270px;top:190px;width:600px">
       <div class="met"><b>48 / 256</b><span>simulations to recover a hidden brain state</span></div>
       <div class="met"><b>42 gates</b><span>a circuit Gemini wrote itself (from 106)</span></div>
       <div class="met"><b>52 vs 454</b><span>gates on IonQ vs IBM, same problem</span></div>
@@ -99,8 +98,133 @@
       .ql { position:absolute; width:230px; transform:translateY(-50%); }
       .ql img { display:block; height:40px; max-width:170px; object-fit:contain; object-position:left center; }
       .ql div { margin-top:8px; font-size:17px; font-weight:500; opacity:.85; white-space:nowrap; }
+      .qasm { position:absolute; left:1250px; top:792px; width:600px; padding:14px 22px 16px; border-radius:18px;
+              background:rgba(20,22,31,.28); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); }
+      .qasm pre { margin:0; columns:2; column-gap:28px; font:400 18px/1.34 'JetBrains Mono', ui-monospace, monospace; color:rgba(255,255,255,.9); }
+      .qasm .cap { margin-bottom:10px; font-size:15px; font-weight:500; opacity:.78; white-space:nowrap; }
     </style>
+    <div class="qasm">
+      <div class="cap">OpenQASM written by Gemini 4 Argon · Qiskit Aer, IBM Torino noise · job f8fdb905…</div>
+<pre>OPENQASM 2.0;
+…
+qreg q[8];
+creg meas[8];
+ry(1.7) q[7];
+x q[6];
+x q[5];
+x q[2];
+ry(2.5) q[1];
+cx q[7],q[6];
+cx q[6],q[4];
+cx q[7],q[3];
+ry(-0.55) q[3];
+…</pre>
+    </div>
     <div class="small" style="left:0;right:0;top:auto;bottom:30px;text-align:center;font-size:20px;opacity:.7">model hypotheses, not diagnoses · no quantum-advantage claim</div>
+  </section>
+
+  <!-- 3b · EEG → quantum state -->
+  <section class="slide">
+    <img src="app-shots/landscape-grid.png" alt="The app's hypothesis landscape: all 256 brain hypotheses as a 16×16 grid, colored by how well each explains the EEG; outlined cells are the best fits" style="position:absolute;left:1150px;top:250px;width:620px;height:596px;object-fit:contain;border-radius:28px;background:#f6f7f2;padding:22px">
+    <div class="small" style="left:1150px;top:868px;width:620px;text-align:center;font-size:22px">all 256 brains, scored against your EEG (from the app)</div>
+    <div class="word" style="left:150px;top:96px">EEG → quantum state</div>
+    <style>
+      .hs { position:absolute; left:150px; width:940px; } .hs b { display:block; font-size:48px; font-weight:700; letter-spacing:-.02em; line-height:1.1; }
+      .hs span { display:block; margin-top:10px; font-size:26px; font-weight:500; opacity:.9; line-height:1.4; }
+      .hs i { font-style:normal; font-family:'JetBrains Mono', monospace; font-size:24px; }
+    </style>
+    <div class="hs" style="top:270px"><b>2,000 voltages a second → 10 numbers</b><span>8 channels × 250 Hz, condensed into band powers</span></div>
+    <div class="hs" style="top:440px"><b>8 qubits hold all 256 possible brains</b><span>4 model dials × 2 qubits · a 2<sup>8</sup>-dim Hilbert space <i>|ψ⟩ = Σ α<sub>i</sub> |i⟩</i></span></div>
+    <div class="hs" style="top:610px"><b>Your EEG decides which brains get louder</b><span>the mismatch becomes the circuit’s energy; QAOA amplifies the best fits</span></div>
+    <div class="hs" style="top:780px"><b>Measure → re-simulate → verify</b></div>
+    <div class="small" style="left:0;right:0;top:auto;bottom:30px;text-align:center;font-size:20px;opacity:.75">we encode hypotheses, not raw EEG · each extra bit per dial multiplies the space · no quantum-advantage claim at 256</div>
+  </section>
+
+  <!-- 3c · amplify, don't scan -->
+  <section class="slide">
+    <div class="word" style="left:150px;top:96px">Amplify, don’t scan</div>
+    <canvas id="amp" width="1620" height="560" style="position:absolute;left:150px;top:330px;width:1620px;height:560px"></canvas>
+    <style>
+      .amp-h { position:absolute; top:250px; font-size:40px; font-weight:700; letter-spacing:-.02em; }
+      .amp-n { position:absolute; top:900px; font-size:30px; font-weight:500; opacity:.92; }
+    </style>
+    <div class="amp-h" style="left:150px">Classical · check one brain at a time</div>
+    <div class="amp-h" style="left:1010px">Quantum · make the right one louder</div>
+    <div class="amp-n" id="amp-l" style="left:150px">checked 0 / 256 · O(N)</div>
+    <div class="amp-n" id="amp-r" style="left:1010px">round 0 / 12 · O(√N)</div>
+    <div class="small" style="left:0;right:0;top:auto;bottom:30px;text-align:center;font-size:20px;opacity:.75">Grover amplitude amplification, exact for N = 256 · our QAOA uses the same interference heuristically — no speed-up claimed at 256</div>
+  </section>
+
+  <!-- 4 · behind the scenes -->
+  <section class="slide">
+    <div class="word" style="left:150px;top:96px">Behind the scenes</div>
+    <style>
+      .bt { position:absolute; }
+      .bt-cap { position:absolute; text-align:center; font-size:19px; font-weight:500; opacity:.92; text-shadow:0 1px 14px rgba(70,30,90,.35); line-height:1.35; white-space:nowrap; }
+      .bt-cap b { display:block; font-size:28px; font-weight:700; letter-spacing:-.02em; opacity:1; }
+      .bt-k { position:absolute; font-size:15px; font-weight:500; letter-spacing:3px; text-transform:uppercase; opacity:.8; white-space:nowrap; }
+      .bt-shot { position:absolute; left:560px; top:372px; width:560px; height:315px; border-radius:22px; object-fit:cover;
+                 box-shadow:0 30px 70px rgba(60,20,80,.28), 0 6px 18px rgba(60,20,80,.18); }
+      .bt-gcp { position:absolute; width:96px; text-align:center; font-size:14px; font-weight:500; opacity:.92; white-space:nowrap; }
+      .bt-gcp span { display:flex; width:56px; height:56px; margin:0 auto 8px; border-radius:50%; background:#fff; align-items:center; justify-content:center;
+                     box-shadow:0 8px 22px rgba(60,20,80,.18); }
+      .bt-gcp img { width:32px; height:32px; }
+      .bt-q { position:absolute; left:1640px; transform:translateY(-50%); }
+      .bt-q img { display:block; height:34px; max-width:150px; object-fit:contain; object-position:left center; }
+      .bt-q div { margin-top:6px; font-size:15px; font-weight:500; opacity:.8; white-space:nowrap; }
+    </style>
+    <svg width="1920" height="1080" style="position:absolute;inset:0" fill="none" stroke="rgba(255,255,255,.75)" stroke-width="2">
+      <path d="M445 530 C 490 530, 505 530, 548 530"/>
+      <path d="M1132 530 C 1180 530, 1190 470, 1250 470"/>
+      <path d="M1320 612 C 1320 640, 1320 660, 1320 690" stroke-dasharray="6 8"/>
+      <path d="M1395 470 C 1500 470, 1520 330, 1625 330"/>
+      <path d="M1395 470 C 1500 470, 1520 420, 1625 420"/>
+      <path d="M1395 470 C 1500 470, 1520 510, 1625 510"/>
+      <path d="M1395 470 C 1500 470, 1520 600, 1625 600"/>
+      <path d="M1395 470 C 1500 470, 1520 690, 1625 690"/>
+      <path d="M1660 735 C 1660 760, 1660 770, 1660 795" stroke-dasharray="6 8"/>
+    </svg>
+
+    <img class="bt" src="infra/openbci-helmet.png" alt="" style="left:95px;top:350px;width:350px;filter:drop-shadow(0 24px 40px rgba(60,20,80,.25))">
+    <div class="bt-cap" style="left:75px;width:400px;top:705px"><b>OpenBCI Ultracortex</b>Web Serial · Chrome</div>
+
+    <img class="bt-shot" src="app-shots/v2-01-brain.png" alt="">
+    <div class="bt-cap" style="left:560px;width:560px;top:705px"><b>The app</b>chat · 3D brain · experiments</div>
+
+    <img class="bt" src="logos/google-gemini-white.svg" alt="" style="left:1260px;top:405px;width:120px;filter:drop-shadow(0 0 24px rgba(255,255,255,.55))">
+    <div class="bt-cap" style="left:1170px;width:300px;top:535px"><b>Gemini 4 Argon</b>agent · Cloud Run</div>
+
+    <div class="bt-k" style="left:1320px;top:700px;transform:translateX(-50%)">Google Cloud</div>
+    <div class="bt-gcp" style="left:1128px;top:735px"><span><img src="infra/gcp/cloud_run.svg" alt=""></span>Cloud Run</div>
+    <div class="bt-gcp" style="left:1224px;top:735px"><span><img src="infra/gcp/firestore.svg" alt=""></span>Firestore</div>
+    <div class="bt-gcp" style="left:1320px;top:735px"><span><img src="infra/gcp/cloud_storage.svg" alt=""></span>Storage</div>
+    <div class="bt-gcp" style="left:1416px;top:735px"><span><img src="infra/gcp/cloud_tasks.svg" alt=""></span>Cloud Tasks</div>
+    <div class="bt-gcp" style="left:1176px;top:840px"><span><img src="infra/gcp/secret_manager.svg" alt=""></span>Secrets</div>
+    <div class="bt-gcp" style="left:1272px;top:840px"><span><img src="infra/gcp/artifact_registry.svg" alt=""></span>Registry</div>
+    <div class="bt-gcp" style="left:1368px;top:840px"><span><img src="infra/gcp/identity_platform.svg" alt=""></span>Sign-In</div>
+
+    <div class="bt-cap" style="left:1612px;top:262px;text-align:left;font-size:18px">QAOA · thermodynamic sampling</div>
+    <div class="bt-q" style="top:330px"><img src="logos/ionq-white.svg" alt=""></div>
+    <div class="bt-q" style="top:420px"><img src="logos/ibm-white.svg" alt=""></div>
+    <div class="bt-q" style="top:510px"><img src="logos/qbraid-white.png" alt=""></div>
+    <div class="bt-q" style="top:600px;display:flex;align-items:center;gap:12px"><img src="infra/qiskit-white.svg" alt="" style="height:34px"><div style="margin:0;font-size:22px;opacity:1;font-weight:700">Qiskit Aer</div></div>
+    <div class="bt-q" style="top:690px;display:flex;align-items:center;gap:12px"><img src="logos/extropic-white.png" alt="" style="height:38px"><div style="margin:0;font-size:22px;opacity:1;font-weight:700">Extropic THRML</div></div>
+    <div class="bt-cap" style="left:1640px;top:805px;text-align:left;font-size:18px">validated by forward simulation</div>
+
+    <div class="small" style="left:0;right:0;top:auto;bottom:30px;text-align:center;font-size:20px;opacity:.75">4 brain parameters × 2 bits = 8 qubits = 256 hypotheses · nonlinear loss → QUBO surrogate → exact Ising map</div>
+  </section>
+
+  <!-- 5 · team -->
+  <section class="slide">
+    <div class="word" style="left:150px;top:96px">The team</div>
+    <div id="team" style="position:absolute;left:150px;right:150px;top:330px;display:flex;justify-content:space-around"></div>
+    <style>
+      .member { width:440px; text-align:center; }
+      .member .ph { width:280px; height:280px; margin:0 auto; border-radius:50%; background:rgba(255,255,255,.28) center/cover no-repeat;
+                    box-shadow:0 20px 60px rgba(60,40,120,.18); display:flex; align-items:center; justify-content:center; font-size:72px; font-weight:700; }
+      .member b { display:block; margin-top:34px; font-size:40px; font-weight:700; letter-spacing:-.02em; }
+      .member span { display:block; margin-top:10px; font-size:24px; font-weight:500; opacity:.9; line-height:1.4; }
+    </style>
   </section>
 </div>
 <div class="pager" id="pager"></div>
@@ -109,7 +233,18 @@
 const stage = document.getElementById('stage'), field = document.getElementById('field');
 const slides = [...document.querySelectorAll('.slide')];
 let cur = 0, t0 = 0;
-const frames = ['translate(0,0) scale(1)', 'translate(-120px,40px) scale(1.08) rotate(-4deg)', 'translate(80px,-60px) scale(1.12) rotate(5deg)'];
+const frames = ['translate(0,0) scale(1)', 'translate(-120px,40px) scale(1.08) rotate(-4deg)', 'translate(80px,-60px) scale(1.12) rotate(5deg)',
+                'translate(-100px,-30px) scale(1.06) rotate(-3deg)', 'translate(70px,-50px) scale(1.09) rotate(4deg)',
+                'translate(-60px,-80px) scale(1.1) rotate(-6deg)', 'translate(40px,60px) scale(1.05) rotate(3deg)'];
+// Team: fill in names / roles; photos go in media/team/ (square crops look best).
+const TEAM = [
+  { name: 'Jacob Valdez', role: 'Member of Technical Staff, Stealth Startup<br>jvboid.dev', photo: 'team/jacob-valdez.jpg' },
+  { name: 'Hanah Rahman', role: 'Student Researcher, Berkeley Lab<br>quantum applications · quantum ML', photo: 'team/hanah-rahman.jpg' },
+  { name: 'Rohit Korrapolu', role: 'Applied AI researcher<br>i14labs', photo: 'team/rohit-korrapolu.jpg' },
+];
+document.getElementById('team').innerHTML = TEAM.map((m) => `<div class="member">
+  <div class="ph" style="${m.photo ? `background-image:url('${m.photo}')` : ''}">${m.photo ? '' : (m.name.replace(/[^A-Za-z ]/g, '').split(' ').map((w) => w[0]).join('') || '·')}</div>
+  <b>${m.name}</b><span>${m.role}</span></div>`).join('');
 function fit() { const s = Math.min(innerWidth / 1920, innerHeight / 1080); stage.style.transform = `scale(${s}) translate(-50%,-50%)`; }
 function go(i) {
   cur = Math.max(0, Math.min(slides.length - 1, i));
@@ -166,8 +301,36 @@ function drawCollapse(t) {
     }
   });
 }
+// classical sequential search vs Grover amplitude amplification over N = 256 (exact amplitudes)
+const amp = document.getElementById('amp').getContext('2d');
+const N = 256, TARGET = 137, ROUNDS = 12, TH = Math.asin(1 / Math.sqrt(N));
+function drawAmp(t) {
+  const s = (t - t0) / 1000;
+  amp.clearRect(0, 0, 1620, 560);
+  // left: 16×16 grid ticked in order
+  const checked = Math.min(N, Math.floor(Math.max(0, s - 0.5) * 22));
+  for (let i = 0; i < N; i++) {
+    const x = (i % 16) * 46, y = Math.floor(i / 16) * 34;
+    const hit = i === TARGET && checked > TARGET;
+    amp.fillStyle = hit ? '#ffffff' : i < checked ? 'rgba(255,255,255,.55)' : 'rgba(255,255,255,.16)';
+    amp.beginPath(); amp.roundRect(x, y, 38, 26, 6); amp.fill();
+    if (i === TARGET && !hit) { amp.strokeStyle = 'rgba(255,255,255,.9)'; amp.lineWidth = 2; amp.stroke(); }
+  }
+  // right: probability amplitudes after k Grover rounds
+  const k = Math.min(ROUNDS, Math.floor(Math.max(0, s - 0.5) / 0.55));
+  const a = Math.sin((2 * k + 1) * TH), b = Math.cos((2 * k + 1) * TH) / Math.sqrt(N - 1);
+  for (let i = 0; i < N; i++) {
+    const h = Math.max(3, Math.abs(i === TARGET ? a : b) * 520);
+    const w = i === TARGET ? 14 : 2.2, x0 = 860 + i * 2.9 - (i === TARGET ? 6 : 0);
+    amp.fillStyle = i === TARGET ? '#ffffff' : 'rgba(255,255,255,.4)';
+    amp.fillRect(x0, 540 - Math.min(520, h), w, Math.min(520, h));
+  }
+  document.getElementById('amp-l').textContent = `checked ${checked} / 256 · O(N)`;
+  document.getElementById('amp-r').textContent = `round ${k} / 12 · P(right) = ${(a * a * 100).toFixed(0)}% · O(√N)`;
+}
 function frame(t) {
   if (cur === 2) drawCollapse(t);
+  if (cur === 4) drawAmp(t);
   requestAnimationFrame(frame);
 }
 fit(); go(0); requestAnimationFrame(frame);
