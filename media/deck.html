@@ -123,6 +123,23 @@ ry(-0.55) q[3];
     <div class="small" style="left:0;right:0;top:auto;bottom:30px;text-align:center;font-size:20px;opacity:.7">model hypotheses, not diagnoses · no quantum-advantage claim</div>
   </section>
 
+  <!-- 3b · EEG → quantum state -->
+  <section class="slide">
+    <img class="masked" src="viz/out/hypercube-crop.png" alt="" style="left:1060px;top:170px;width:760px;height:760px;object-fit:cover">
+    <div class="word" style="left:150px;top:96px">EEG → quantum state</div>
+    <style>
+      .hs { position:absolute; left:150px; width:1000px; } .hs b { display:block; font-size:46px; font-weight:700; letter-spacing:-.02em; line-height:1.1; }
+      .hs span { display:block; margin-top:8px; font-size:26px; font-weight:500; opacity:.9; line-height:1.35; }
+      .hs i { font-style:normal; font-family:'JetBrains Mono', monospace; font-size:24px; }
+    </style>
+    <div class="hs" style="top:270px"><b>Your EEG → 10 numbers</b><span>relative power in 10 frequency bands, per channel</span></div>
+    <div class="hs" style="top:410px"><b>4 brain parameters × 2 bits = 8 qubits</b><span>drive · inhibition · excitation · synaptic time constant</span></div>
+    <div class="hs" style="top:550px"><b>8 qubits = a 256-dimensional Hilbert space</b><span>every basis state is one possible brain: <i>|ψ⟩ = Σ α<sub>b</sub> |b⟩</i></span></div>
+    <div class="hs" style="top:690px"><b>Your EEG shapes the circuit</b><span>‖f(θ) − y‖² → Ising energy → QAOA amplifies the best-fitting brains</span></div>
+    <div class="hs" style="top:830px"><b>Measure → simulate → verify</b><span>top samples are re-simulated; nothing is trusted unverified</span></div>
+    <div class="small" style="left:0;right:0;top:auto;bottom:30px;text-align:center;font-size:20px;opacity:.75">+1 bit per parameter → 12 qubits, 4,096 brains · each qubit doubles the space · today’s 256 are classically enumerable</div>
+  </section>
+
   <!-- 4 · behind the scenes -->
   <section class="slide">
     <div class="word" style="left:150px;top:96px">Behind the scenes</div>
@@ -202,6 +219,7 @@ const stage = document.getElementById('stage'), field = document.getElementById(
 const slides = [...document.querySelectorAll('.slide')];
 let cur = 0, t0 = 0;
 const frames = ['translate(0,0) scale(1)', 'translate(-120px,40px) scale(1.08) rotate(-4deg)', 'translate(80px,-60px) scale(1.12) rotate(5deg)',
+                'translate(-100px,-30px) scale(1.06) rotate(-3deg)',
                 'translate(-60px,-80px) scale(1.1) rotate(-6deg)', 'translate(40px,60px) scale(1.05) rotate(3deg)'];
 // Team: fill in names / roles; photos go in media/team/ (square crops look best).
 const TEAM = [
