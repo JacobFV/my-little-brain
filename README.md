@@ -11,6 +11,15 @@ simplified model, not diagnoses.
 
 **Live:** https://my-little-brain-563778990179.us-central1.run.app (sign in with Google)
 
+<p align="center">
+  <img src="media/deck-slide-1.png" alt="My Little Brain — the real 3D brain in a soft color field" width="100%">
+</p>
+<p align="center">
+  <img src="media/deck-slide-2.png" alt="It knows you — the app: chat with your brain, live EEG, quantum circuits, results" width="49%">
+  <img src="media/deck-slide-3.png" alt="It studies itself — the brain dispatches to IonQ, IBM, qBraid, Extropic; 48/256 simulations, 42-gate circuit, 52 vs 454 gates, τ 16→55 ms" width="49%">
+</p>
+<p align="center"><sub>Pitch deck: <a href="media/deck.html">media/deck.html</a> (live, animated) · <a href="media/my-little-brain-deck.pdf">PDF</a></sub></p>
+
 [What's inside](#whats-inside) · [How it works](#how-it-works) · [The math](#the-math) · [Results](#results) ·
 [Claims](#what-we-claim-and-what-we-dont) · [Run it](#run-it) · [Deploy](#deploy-gcp) · [API](docs/cortex2-api.md)
 
