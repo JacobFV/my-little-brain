@@ -105,23 +105,59 @@
   <!-- 4 · behind the scenes -->
   <section class="slide">
     <div class="word" style="left:150px;top:96px">Behind the scenes</div>
-    <svg width="1920" height="1080" style="position:absolute;inset:0" fill="none" stroke="rgba(255,255,255,.75)" stroke-width="2">
-      <path d="M430 520 C 500 520, 520 520, 590 520"/><path d="M890 520 C 950 520, 960 520, 1020 520"/>
-      <path d="M1330 470 C 1400 400, 1420 340, 1480 330"/><path d="M1330 520 C 1400 520, 1420 520, 1480 520"/><path d="M1330 570 C 1400 640, 1420 700, 1480 710"/>
-      <path d="M1175 610 C 1175 680, 1175 700, 1175 760" stroke-dasharray="6 8"/>
-    </svg>
     <style>
-      .node { position:absolute; width:300px; } .node b { display:block; font-size:38px; font-weight:700; letter-spacing:-.02em; line-height:1.05; }
-      .node span { display:block; margin-top:10px; font-size:22px; font-weight:500; opacity:.88; line-height:1.35; }
-      .node i { display:block; font-style:normal; font-size:16px; letter-spacing:3px; text-transform:uppercase; opacity:.75; margin-bottom:10px; }
+      .bt { position:absolute; }
+      .bt-cap { position:absolute; text-align:center; font-size:19px; font-weight:500; opacity:.92; text-shadow:0 1px 14px rgba(70,30,90,.35); line-height:1.35; white-space:nowrap; }
+      .bt-cap b { display:block; font-size:28px; font-weight:700; letter-spacing:-.02em; opacity:1; }
+      .bt-k { position:absolute; font-size:15px; font-weight:500; letter-spacing:3px; text-transform:uppercase; opacity:.8; white-space:nowrap; }
+      .bt-shot { position:absolute; left:560px; top:372px; width:560px; height:315px; border-radius:22px; object-fit:cover;
+                 box-shadow:0 30px 70px rgba(60,20,80,.28), 0 6px 18px rgba(60,20,80,.18); }
+      .bt-gcp { position:absolute; width:96px; text-align:center; font-size:14px; font-weight:500; opacity:.92; white-space:nowrap; }
+      .bt-gcp span { display:flex; width:56px; height:56px; margin:0 auto 8px; border-radius:50%; background:#fff; align-items:center; justify-content:center;
+                     box-shadow:0 8px 22px rgba(60,20,80,.18); }
+      .bt-gcp img { width:32px; height:32px; }
+      .bt-q { position:absolute; left:1640px; transform:translateY(-50%); }
+      .bt-q img { display:block; height:34px; max-width:150px; object-fit:contain; object-position:left center; }
+      .bt-q div { margin-top:6px; font-size:15px; font-weight:500; opacity:.8; white-space:nowrap; }
     </style>
-    <div class="node" style="left:150px;top:430px"><i>you</i><b>OpenBCI headset</b><span>Cyton · 8 ch · 250 Hz<br>read in Chrome via Web Serial<br>+ your About-me notes</span></div>
-    <div class="node" style="left:610px;top:430px"><i>the app</i><b>Chat + 3D brain</b><span>React · three.js<br>real fsaverage anatomy<br>eyes · blinks · moods</span></div>
-    <div class="node" style="left:1040px;top:410px;width:320px"><i>Google Cloud Run</i><b>Gemini 4 Argon agent</b><span>chat · spectrogram vision<br>designs + revises circuits<br>FastAPI · one service</span></div>
-    <div class="node" style="left:1040px;top:790px;width:440px"><span style="margin:0">Cloud Tasks · Firestore · Cloud Storage<br>Secret Manager · Google Sign-In</span></div>
-    <div class="node" style="left:1500px;top:280px"><i>gate model</i><b>QAOA</b><span>IonQ · IBM Quantum<br>qBraid · Qiskit Aer</span></div>
-    <div class="node" style="left:1500px;top:470px"><i>thermodynamic</i><b>Extropic THRML</b><span>block-Gibbs on the Ising</span></div>
-    <div class="node" style="left:1500px;top:660px"><i>check</i><b>Forward sims</b><span>Wilson–Cowan · top-K<br>validated, never trusted</span></div>
+    <svg width="1920" height="1080" style="position:absolute;inset:0" fill="none" stroke="rgba(255,255,255,.75)" stroke-width="2">
+      <path d="M445 530 C 490 530, 505 530, 548 530"/>
+      <path d="M1132 530 C 1180 530, 1190 470, 1250 470"/>
+      <path d="M1320 612 C 1320 640, 1320 660, 1320 690" stroke-dasharray="6 8"/>
+      <path d="M1395 470 C 1500 470, 1520 330, 1625 330"/>
+      <path d="M1395 470 C 1500 470, 1520 420, 1625 420"/>
+      <path d="M1395 470 C 1500 470, 1520 510, 1625 510"/>
+      <path d="M1395 470 C 1500 470, 1520 600, 1625 600"/>
+      <path d="M1395 470 C 1500 470, 1520 690, 1625 690"/>
+      <path d="M1660 735 C 1660 760, 1660 770, 1660 795" stroke-dasharray="6 8"/>
+    </svg>
+
+    <img class="bt" src="infra/openbci-helmet.png" alt="" style="left:95px;top:350px;width:350px;filter:drop-shadow(0 24px 40px rgba(60,20,80,.25))">
+    <div class="bt-cap" style="left:75px;width:400px;top:705px"><b>OpenBCI Ultracortex</b>Web Serial · Chrome</div>
+
+    <img class="bt-shot" src="app-shots/v2-01-brain.png" alt="">
+    <div class="bt-cap" style="left:560px;width:560px;top:705px"><b>The app</b>chat · 3D brain · experiments</div>
+
+    <img class="bt" src="logos/google-gemini-white.svg" alt="" style="left:1260px;top:405px;width:120px;filter:drop-shadow(0 0 24px rgba(255,255,255,.55))">
+    <div class="bt-cap" style="left:1170px;width:300px;top:535px"><b>Gemini 4 Argon</b>agent · Cloud Run</div>
+
+    <div class="bt-k" style="left:1320px;top:700px;transform:translateX(-50%)">Google Cloud</div>
+    <div class="bt-gcp" style="left:1128px;top:735px"><span><img src="infra/gcp/cloud_run.svg" alt=""></span>Cloud Run</div>
+    <div class="bt-gcp" style="left:1224px;top:735px"><span><img src="infra/gcp/firestore.svg" alt=""></span>Firestore</div>
+    <div class="bt-gcp" style="left:1320px;top:735px"><span><img src="infra/gcp/cloud_storage.svg" alt=""></span>Storage</div>
+    <div class="bt-gcp" style="left:1416px;top:735px"><span><img src="infra/gcp/cloud_tasks.svg" alt=""></span>Cloud Tasks</div>
+    <div class="bt-gcp" style="left:1176px;top:840px"><span><img src="infra/gcp/secret_manager.svg" alt=""></span>Secrets</div>
+    <div class="bt-gcp" style="left:1272px;top:840px"><span><img src="infra/gcp/artifact_registry.svg" alt=""></span>Registry</div>
+    <div class="bt-gcp" style="left:1368px;top:840px"><span><img src="infra/gcp/identity_platform.svg" alt=""></span>Sign-In</div>
+
+    <div class="bt-cap" style="left:1612px;top:262px;text-align:left;font-size:18px">QAOA · thermodynamic sampling</div>
+    <div class="bt-q" style="top:330px"><img src="logos/ionq-white.svg" alt=""></div>
+    <div class="bt-q" style="top:420px"><img src="logos/ibm-white.svg" alt=""></div>
+    <div class="bt-q" style="top:510px"><img src="logos/qbraid-white.png" alt=""></div>
+    <div class="bt-q" style="top:600px;display:flex;align-items:center;gap:12px"><img src="infra/qiskit-white.svg" alt="" style="height:34px"><div style="margin:0;font-size:22px;opacity:1;font-weight:700">Qiskit Aer</div></div>
+    <div class="bt-q" style="top:690px;display:flex;align-items:center;gap:12px"><img src="logos/extropic-white.png" alt="" style="height:38px"><div style="margin:0;font-size:22px;opacity:1;font-weight:700">Extropic THRML</div></div>
+    <div class="bt-cap" style="left:1640px;top:805px;text-align:left;font-size:18px">validated by forward simulation</div>
+
     <div class="small" style="left:0;right:0;top:auto;bottom:30px;text-align:center;font-size:20px;opacity:.75">4 brain parameters × 2 bits = 8 qubits = 256 hypotheses · nonlinear loss → QUBO surrogate → exact Ising map</div>
   </section>
 
