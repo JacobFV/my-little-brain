@@ -131,11 +131,11 @@
     <div class="word" style="left:150px;top:96px">The team</div>
     <div id="team" style="position:absolute;left:150px;right:150px;top:330px;display:flex;justify-content:space-around"></div>
     <style>
-      .member { width:300px; text-align:center; }
-      .member .ph { width:240px; height:240px; margin:0 auto; border-radius:50%; background:rgba(255,255,255,.28) center/cover no-repeat;
+      .member { width:440px; text-align:center; }
+      .member .ph { width:280px; height:280px; margin:0 auto; border-radius:50%; background:rgba(255,255,255,.28) center/cover no-repeat;
                     box-shadow:0 20px 60px rgba(60,40,120,.18); display:flex; align-items:center; justify-content:center; font-size:72px; font-weight:700; }
       .member b { display:block; margin-top:34px; font-size:40px; font-weight:700; letter-spacing:-.02em; }
-      .member span { display:block; margin-top:8px; font-size:24px; font-weight:500; opacity:.88; }
+      .member span { display:block; margin-top:10px; font-size:24px; font-weight:500; opacity:.9; line-height:1.4; }
     </style>
   </section>
 </div>
@@ -149,10 +149,9 @@ const frames = ['translate(0,0) scale(1)', 'translate(-120px,40px) scale(1.08) r
                 'translate(-60px,-80px) scale(1.1) rotate(-6deg)', 'translate(40px,60px) scale(1.05) rotate(3deg)'];
 // Team: fill in names / roles; photos go in media/team/ (square crops look best).
 const TEAM = [
-  { name: '[Name]', role: '[role]', photo: '' },
-  { name: '[Name]', role: '[role]', photo: '' },
-  { name: '[Name]', role: '[role]', photo: '' },
-  { name: '[Name]', role: '[role]', photo: '' },
+  { name: 'Jacob Valdez', role: 'AI + robotics engineer<br>SuperCognition Labs · CommandAGI', photo: 'team/jacob-valdez.jpg' },
+  { name: 'Hanah Rahman', role: 'Student Researcher, Berkeley Lab<br>quantum applications · quantum ML', photo: 'team/hanah-rahman.jpg' },
+  { name: 'Rohit Korrapolu', role: 'Applied AI researcher<br>i14labs', photo: 'team/rohit-korrapolu.jpg' },
 ];
 document.getElementById('team').innerHTML = TEAM.map((m) => `<div class="member">
   <div class="ph" style="${m.photo ? `background-image:url('${m.photo}')` : ''}">${m.photo ? '' : (m.name.replace(/[^A-Za-z ]/g, '').split(' ').map((w) => w[0]).join('') || '·')}</div>

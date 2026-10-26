@@ -18,6 +18,10 @@ simplified model, not diagnoses.
   <img src="media/deck-slide-2.png" alt="It knows you — the app: chat with your brain, live EEG, quantum circuits, results" width="49%">
   <img src="media/deck-slide-3.png" alt="It studies itself — the brain dispatches to IonQ, IBM, qBraid, Extropic; 48/256 simulations, 42-gate circuit, 52 vs 454 gates, τ 16→55 ms" width="49%">
 </p>
+<p align="center">
+  <img src="media/deck-slide-4.png" alt="Behind the scenes — OpenBCI in Chrome, app, Gemini 4 Argon agent on Cloud Run, QAOA on IonQ/IBM/qBraid, Extropic THRML, forward simulations" width="49%">
+  <img src="media/deck-slide-5.png" alt="The team — Jacob Valdez, Hanah Rahman, Rohit Korrapolu" width="49%">
+</p>
 <p align="center"><sub>Pitch deck: <a href="media/deck.html">media/deck.html</a> (live, animated) · <a href="media/my-little-brain-deck.pdf">PDF</a></sub></p>
 
 [What's inside](#whats-inside) · [How it works](#how-it-works) · [The math](#the-math) · [Results](#results) ·
