@@ -31,3 +31,4 @@ media/*.mp4
 !media/my-little-brain-45s.mp4
 media/fal/**/*.mp4
 media/fal/*.mp4
+media/viz/out/*.mp4

@@ -21,6 +21,12 @@ rng = np.random.default_rng(7)
 SAGE = (226, 235, 218); SAGE2 = (137, 151, 125); CYAN = (62, 240, 255); MAG = (255, 79, 216)
 DARK = (10, 14, 12); INK = (24, 34, 28); PINK = (217, 145, 168)
 
+# Avenir lacks some glyphs: substitute them everywhere text is drawn/measured
+_SUB = str.maketrans({"→": "»", "τ": "tau ", "✓": "", "⁸": "^8"})
+_t0, _l0 = ImageDraw.ImageDraw.text, ImageDraw.ImageDraw.textlength
+ImageDraw.ImageDraw.text = lambda self, xy, text, *a, **k: _t0(self, xy, text.translate(_SUB), *a, **k)
+ImageDraw.ImageDraw.textlength = lambda self, text, *a, **k: _l0(self, text.translate(_SUB), *a, **k)
+
 def font(sz, face="heavy"):
     f = {"heavy": ("/System/Library/Fonts/Avenir Next.ttc", 8),
          "bold": ("/System/Library/Fonts/Avenir Next.ttc", 0),

@@ -1,0 +1,79 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=1920,height=1080">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.179.1/build/three.module.js"}}</script>
+<style>
+  html,body{margin:0;width:1920px;height:1080px;overflow:hidden;background:#cfdcfb;font-family:'Inter Tight',system-ui,sans-serif;color:#14161f}
+  #bg{position:absolute;inset:0;overflow:hidden;background:radial-gradient(120% 90% at 30% 10%,#ffffff 0%,#eef2fe 35%,#cfdcfb 80%)}
+  .blob{position:absolute;border-radius:50%;filter:blur(120px)}
+  #veil{position:absolute;inset:0;background:radial-gradient(70% 60% at 50% 45%,rgba(255,255,255,.55),rgba(255,255,255,0) 70%)}
+  #c{position:absolute;inset:0;width:1920px;height:1080px}
+  #labels{position:absolute;inset:0;pointer-events:none}
+  .lab{position:absolute;left:0;top:0;white-space:nowrap;will-change:transform}
+  .cap{position:absolute;left:96px;bottom:84px;font-weight:500;font-size:26px;letter-spacing:.02em;color:#14161f;opacity:.78}
+  .cap b{font-weight:700}
+  .kick{display:block;font-size:15px;letter-spacing:.24em;text-transform:uppercase;opacity:.55;margin-bottom:10px;font-weight:600}
+</style>
+</head><body>
+<div id="bg"></div><div id="veil" style="background:radial-gradient(55% 65% at 66% 48%,rgba(255,255,255,.6),rgba(255,255,255,0) 70%)"></div><canvas id="c"></canvas><div id="labels"></div>
+<script type="module">
+import { THREE, initStage, makeBlobs, loadBrain, createFibers, bandPower, ready, ease, smooth, glowPoints, PAL } from './common.js';
+const { renderer, scene, camera } = initStage({ fov: 28 });
+camera.setViewOffset(1920, 1080, -300, 0, 1920, 1080);
+const blobs = makeBlobs(0.32);
+scene.add(new THREE.HemisphereLight(0xffffff, 0xb9c4f0, 2.4));
+const dl = new THREE.DirectionalLight(0xffffff, 1.6); dl.position.set(-3, 5, 6); scene.add(dl);
+const brain = await loadBrain();
+scene.add(brain);
+const fib = createFibers({ perConnection: 2 });
+scene.add(fib.root);
+const C = new THREE.Vector3(0, 0.28, 0);
+// orbit rings + qubits
+const COLS = [PAL.red, PAL.gold, PAL.violet, PAL.orange, PAL.blue, PAL.red, PAL.violet, PAL.blue];
+const RINGS = [
+  { r: 1.6, tilt: new THREE.Euler(1.25, 0, 0.35), col: '#b07de0', speed: 0.42 },
+  { r: 1.8, tilt: new THREE.Euler(1.75, 0.2, -0.55), col: '#ff6a1a', speed: -0.33 },
+  { r: 2.0, tilt: new THREE.Euler(1.45, -0.4, 1.1), col: '#6fa8ff', speed: 0.26 },
+];
+const ringObjs = RINGS.map((R) => {
+  const g = new THREE.Group(); g.position.copy(C); g.rotation.copy(R.tilt); scene.add(g);
+  const m = new THREE.Mesh(new THREE.TorusGeometry(R.r, 0.006, 8, 256), new THREE.MeshBasicMaterial({ color: R.col, transparent: true, opacity: 0.55, depthWrite: false }));
+  g.add(m); return g;
+});
+const Q = Array.from({ length: 8 }, (_, i) => ({ ring: i % 3, phase: (i * 2.39996) % (Math.PI * 2), col: COLS[i] }));
+const qMeshes = Q.map((q) => {
+  const m = new THREE.Mesh(new THREE.SphereGeometry(0.075, 32, 20), new THREE.MeshPhysicalMaterial({ color: q.col, roughness: 0.15, clearcoat: 1, emissive: q.col, emissiveIntensity: 0.25 }));
+  scene.add(m); return m;
+});
+const TRAIL = 22;
+const trails = glowPoints(8 * TRAIL + 8, { scale: 8, core: 0.6 }); scene.add(trails);
+const v = new THREE.Vector3();
+const DUR = 10;
+const qpos = (q, t) => {
+  const R = RINGS[q.ring], a = q.phase + t * R.speed * 2;
+  v.set(Math.cos(a) * R.r, Math.sin(a) * R.r, 0);
+  return ringObjs[q.ring].localToWorld(v.clone());
+};
+function render(t) {
+  blobs(t);
+  const a = THREE.MathUtils.degToRad(-35 + 50 * (t / DUR));
+  const r = 8.4, el = 0.2 + 0.05 * Math.sin(t * 0.4);
+  camera.position.set(Math.sin(a) * Math.cos(el) * r, C.y + Math.sin(el) * r, Math.cos(a) * Math.cos(el) * r);
+  camera.lookAt(C);
+  ringObjs.forEach((g) => g.updateMatrixWorld());
+  fib.update(t, bandPower(t), 1);
+  Q.forEach((q, i) => {
+    const p = qpos(q, t);
+    qMeshes[i].position.copy(p);
+    trails.set(8 * TRAIL + i, p, q.col, 120 + 20 * Math.sin(t * 3 + i), 0.55);
+    for (let k = 0; k < TRAIL; k++) {
+      const pk = qpos(q, t - (k + 1) * 0.035);
+      trails.set(i * TRAIL + k, pk, q.col, 42 * (1 - k / TRAIL), 0.5 * (1 - k / TRAIL));
+    }
+  });
+  trails.commit();
+  renderer.render(scene, camera);
+}
+ready(render, DUR);
+</script></body></html>

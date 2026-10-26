@@ -1,0 +1,211 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=1920,height=1080">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.179.1/build/three.module.js"}}</script>
+<style>
+  html,body{margin:0;width:1920px;height:1080px;overflow:hidden;background:#cfdcfb;font-family:'Inter Tight',system-ui,sans-serif;color:#14161f}
+  #bg{position:absolute;inset:0;overflow:hidden;background:radial-gradient(120% 90% at 30% 10%,#ffffff 0%,#eef2fe 35%,#cfdcfb 80%)}
+  .blob{position:absolute;border-radius:50%;filter:blur(120px)}
+  #veil{position:absolute;inset:0;background:radial-gradient(70% 60% at 50% 45%,rgba(255,255,255,.55),rgba(255,255,255,0) 70%)}
+  #c{position:absolute;inset:0;width:1920px;height:1080px}
+  #labels{position:absolute;inset:0;pointer-events:none}
+  .lab{position:absolute;left:0;top:0;white-space:nowrap;will-change:transform}
+  .cap{position:absolute;left:96px;bottom:84px;font-weight:500;font-size:26px;letter-spacing:.02em;color:#14161f;opacity:.78}
+  .cap b{font-weight:700}
+  .kick{display:block;font-size:15px;letter-spacing:.24em;text-transform:uppercase;opacity:.55;margin-bottom:10px;font-weight:600}
+</style>
+<style>
+ .bs{font-family:'JetBrains Mono',monospace;font-size:10px;color:#14161f}
+ .ql{font-family:'JetBrains Mono',monospace;font-size:14px;color:#14161f;font-weight:500}
+ #dec{white-space:pre;position:absolute;left:0;right:0;bottom:120px;text-align:center;font-weight:700;font-size:64px;letter-spacing:.01em;color:#14161f;opacity:0}
+ #dec .m{font-family:'JetBrains Mono',monospace;font-weight:500}
+ #bitsl{position:absolute;left:0;right:0;bottom:205px;text-align:center;font-family:'JetBrains Mono',monospace;font-size:26px;letter-spacing:.3em;color:#14161f;opacity:0}
+ .lay{position:absolute;right:96px;top:84px;text-align:right;font-weight:600;font-size:22px;color:#14161f;opacity:.75}
+ .lay small{display:block;font-size:14px;letter-spacing:.24em;text-transform:uppercase;opacity:.6;margin-bottom:8px}
+ .dots{margin-top:12px;display:flex;gap:8px;justify-content:flex-end}
+ .dots i{width:26px;height:5px;border-radius:3px;background:#14161f;opacity:.15;display:block}
+ .cap{top:84px;bottom:auto}
+</style>
+</head><body>
+<div id="bg"></div><div id="veil"></div><canvas id="c"></canvas><div id="labels"></div>
+<div class="lay" id="lay"><small id="layk">QAOA · p = 5</small><span id="layt"></span><div class="dots" id="dots"></div></div>
+<div class="cap" id="cap"><span class="kick" id="kick">Quantum search</span><span id="capt"></span></div>
+<div id="bitsl"></div><div id="dec"></div>
+<script type="module">
+import { THREE, initStage, makeBlobs, labelLayer, ready, ease, smooth, lerp, clamp01, glowPoints, heat, PAL, hypercube, projector, bits } from './common.js';
+const { renderer, scene, camera } = initStage({ fov: 30 });
+const blobs = makeBlobs(0.3);
+scene.add(new THREE.HemisphereLight(0xffffff, 0xb9c4f0, 2.2));
+const dl = new THREE.DirectionalLight(0xffffff, 1.3); dl.position.set(-3, 5, 6); scene.add(dl);
+const L = labelLayer();
+const DUR = 12;
+// ---------------- QAOA (statevector, 8 qubits). q0 = leftmost bit.
+const D = 256;
+const vals = (x) => [0, 1, 2, 3].map((k) => 2 * ((x >> (7 - 2 * k)) & 1) + ((x >> (6 - 2 * k)) & 1));
+const Craw = Array.from({ length: D }, (_, x) => {
+  const v = vals(x), w = [1, 0.8, 0.7, 0.9];
+  let c = v.reduce((s, vk, k) => s + w[k] * (vk - 2) ** 2, 0);
+  if (v[0] === 1 && v[1] === 3) c -= 2.2;
+  if (v[2] === 3 && v[3] === 1) c -= 1.6;
+  if (v.every((u) => u === 2)) c -= 1.0;
+  return c;
+});
+const cmin = Math.min(...Craw), cmax = Math.max(...Craw);
+const C = Craw.map((c) => (c - cmin) / (cmax - cmin));
+const BEST = C.indexOf(0);
+const G = [0.5882, -0.4096, 4.823, 1.4067, 1.1925], B = [0.8667, 1.5666, -0.7682, -0.2876, 0.0351];
+const P = 5, T0 = 0.9, LAYER = 1.55;
+function stateAt(t) {
+  const re = new Float64Array(D).fill(1 / 16), im = new Float64Array(D);
+  const u = (t - T0) / LAYER; // layers progress
+  for (let k = 0; k < P; k++) {
+    const fc = clamp01((u - k) * 2), fm = clamp01((u - k) * 2 - 1);
+    if (fc <= 0) break;
+    const gc = ease(fc) * G[k] * 8;
+    for (let x = 0; x < D; x++) { const a = -gc * C[x], c = Math.cos(a), s = Math.sin(a); const r = re[x], i = im[x]; re[x] = r * c - i * s; im[x] = r * s + i * c; }
+    if (fm <= 0) break;
+    const b = ease(fm) * B[k], cb = Math.cos(b), sb = Math.sin(b);
+    for (let q = 0; q < 8; q++) {
+      const m = 1 << (7 - q);
+      for (let x = 0; x < D; x++) if (!(x & m)) {
+        const y = x | m; const xr = re[x], xi = im[x], yr = re[y], yi = im[y];
+        // exp(-i b X): x' = cb x - i sb y ; y' = cb y - i sb x
+        re[x] = cb * xr + sb * yi; im[x] = cb * xi - sb * yr;
+        re[y] = cb * yr + sb * xi; im[y] = cb * yi - sb * xr;
+      }
+    }
+  }
+  return { re, im, layer: Math.min(P - 1, Math.floor(Math.max(0, u))), phase: (u - Math.floor(u)) < 0.5 ? 'cost' : 'mix', u };
+}
+function bloch(re, im, q) {
+  const m = 1 << (7 - q); let z = 0, rr = 0, ri = 0;
+  for (let x = 0; x < D; x++) {
+    const p = re[x] * re[x] + im[x] * im[x];
+    z += (x & m) ? -p : p;
+    if (!(x & m)) { const y = x | m; rr += re[x] * re[y] + im[x] * im[y]; ri += re[x] * im[y] - im[x] * re[y]; }
+  }
+  // rho01 = sum a_x conj(a_y) -> X = 2 Re, Y = -2 Im ; we computed conj(a_x) a_y => rho10
+  return new THREE.Vector3(2 * rr, 2 * ri, z);
+}
+// ---------------- hypercube
+const HC = hypercube();
+const cubeC = new THREE.Vector3(0, 0.55, 0);
+const nodes = glowPoints(256, { scale: 8, core: 0.9 }); scene.add(nodes);
+const eGeo = new THREE.BufferGeometry();
+eGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(HC.edges.length * 6), 3));
+eGeo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(HC.edges.length * 8), 4));
+const edges = new THREE.LineSegments(eGeo, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false }));
+edges.frustumCulled = false; scene.add(edges);
+const blab = Array.from({ length: 256 }, (_, x) => L.add(bits(x), 'lab bs'));
+const burst = glowPoints(3, { scale: 8, core: 0 }); scene.add(burst);
+const ringMat = new THREE.MeshBasicMaterial({ color: 0xff3b2f, transparent: true, depthWrite: false, side: THREE.DoubleSide });
+const ring = new THREE.Mesh(new THREE.RingGeometry(0.96, 1, 128), ringMat); scene.add(ring);
+const ring2 = new THREE.Mesh(new THREE.RingGeometry(0.97, 1, 128), ringMat.clone()); ring2.material.color.set('#ffcf6b'); scene.add(ring2);
+// ---------------- Bloch spheres
+const PCOL = [PAL.red, PAL.gold, PAL.violet, PAL.blue];
+const blochs = Array.from({ length: 8 }, (_, q) => {
+  const g = new THREE.Group(); g.position.set((q - 3.5) * 0.92, -2.55, 0); scene.add(g);
+  const inner = new THREE.Group(); g.add(inner);
+  const R = 0.3;
+  const sph = new THREE.Mesh(new THREE.SphereGeometry(R, 40, 24), new THREE.MeshPhysicalMaterial({ color: 0xffffff, transparent: true, opacity: 0.28, roughness: 0.1, clearcoat: 1, depthWrite: false }));
+  const lm = new THREE.LineBasicMaterial({ color: 0x14161f, transparent: true, opacity: 0.35 });
+  const circ = (rot) => { const pts = []; for (let i = 0; i <= 64; i++) { const a = i / 64 * Math.PI * 2; pts.push(new THREE.Vector3(Math.cos(a) * R, 0, Math.sin(a) * R)); } const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), lm); l.rotation.set(...rot); return l; };
+  inner.add(sph, circ([0, 0, 0]), circ([Math.PI / 2, 0, 0]), circ([0, 0, Math.PI / 2]));
+  const axis = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, -R * 1.15, 0), new THREE.Vector3(0, R * 1.15, 0)]), lm); inner.add(axis);
+  const am = new THREE.MeshPhysicalMaterial({ color: PCOL[q >> 1], roughness: 0.3, clearcoat: 1 });
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 1, 12), am);
+  const tip = new THREE.Mesh(new THREE.SphereGeometry(0.035, 20, 12), am);
+  inner.add(shaft, tip);
+  return { g, inner, shaft, tip, R };
+});
+const qlab = blochs.map((_, q) => L.add('q' + q, 'lab ql'));
+
+const dots = document.getElementById('dots'); for (let k = 0; k < P; k++) dots.appendChild(document.createElement('i'));
+const capt = document.getElementById('capt'), cap = document.getElementById('cap'), layt = document.getElementById('layt'), lay = document.getElementById('lay');
+const dec = document.getElementById('dec'), bitsl = document.getElementById('bitsl');
+const TARGET = 'P=2.5  c₂=16  c₁=14  τ=30ms';
+const GLYPH = '01#%&*+=<>/\\|PcτΣΨ';
+const tmpC = new THREE.Color(), v = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0);
+const phaseCol = (ph, out) => { const u = ((ph / (2 * Math.PI)) % 1 + 1) % 1; const stops = [PAL.blue, PAL.violet, PAL.red, PAL.gold, PAL.blue]; const s = u * 4, i = Math.floor(s); return out.copy(stops[i]).lerp(stops[i + 1], s - i); };
+
+function render(t) {
+  blobs(t);
+  const st = stateAt(t);
+  const prob = Array.from({ length: D }, (_, x) => st.re[x] ** 2 + st.im[x] ** 2);
+  const pop = smooth(9.4, 10.0, t), fin = smooth(9.4, 10.6, t);
+  // camera
+  const proj = projector(t, 0.43);
+  const rotM = new THREE.Matrix4().makeRotationFromEuler(new THREE.Euler(0.28 * Math.sin(t * 0.3), 0.4 * Math.sin(t * 0.23), t * 0.08));
+  const Pp = HC.nodes.map((n) => proj(n, new THREE.Vector3()).applyMatrix4(rotM).add(cubeC));
+  const focus = Pp[BEST];
+  const look = new THREE.Vector3(0, 0.1, 0).lerp(focus, fin * 0.55);
+  camera.position.set(look.x + 0.8 * Math.sin(t * 0.21), look.y + 0.25, lerp(12.6, 10.2, ease((t - 9.4) / 2.6)));
+  camera.lookAt(look);
+  camera.updateMatrixWorld();
+  const intro = smooth(0, 0.7, t);
+  for (let x = 0; x < D; x++) {
+    const p = prob[x], a = Math.sqrt(p);
+    const ph = Math.atan2(st.im[x], st.re[x]);
+    phaseCol(ph, tmpC);
+    let size = 22 + 170 * a, alpha = (0.3 + 0.7 * clamp01(p * 40)) * intro;
+    if (x === BEST) { size *= 1 + pop * 0.7 + 0.08 * Math.sin(t * 9) * pop; tmpC.lerp(PAL.red, pop); }
+    else alpha *= 1 - 0.75 * pop;
+    nodes.set(x, Pp[x], tmpC, size, alpha);
+    L.place(blab[x], Pp[x], camera, (x === BEST ? 0.3 + 0.6 * pop : 0.2 * (1 - pop)) * intro, 0, -12 - (x === BEST ? 10 * pop : 0));
+  }
+  nodes.commit();
+  const pa = eGeo.attributes.position.array, ca = eGeo.attributes.color.array;
+  HC.edges.forEach(([a, b, d], k) => {
+    pa.set([Pp[a].x, Pp[a].y, Pp[a].z, Pp[b].x, Pp[b].y, Pp[b].z], k * 6);
+    const c = PCOL[d >> 1], w = Math.sqrt(prob[a] * prob[b]) * 256;
+    const al = (0.08 + 0.35 * clamp01(w / 6)) * intro * (1 - 0.7 * pop);
+    ca.set([c.r, c.g, c.b, al, c.r, c.g, c.b, al], k * 8);
+  });
+  eGeo.attributes.position.needsUpdate = true; eGeo.attributes.color.needsUpdate = true;
+  // burst rings on best node
+  const r1 = clamp01((t - 9.6) / 1.1), r2 = clamp01((t - 9.85) / 1.3);
+  ring.position.copy(focus); ring.lookAt(camera.position); ring.scale.setScalar(0.05 + 1.3 * ease(r1)); ringMat.opacity = r1 > 0 ? (1 - r1) * 0.9 : 0;
+  ring2.position.copy(focus); ring2.lookAt(camera.position); ring2.scale.setScalar(0.05 + 1.8 * ease(r2)); ring2.material.opacity = r2 > 0 ? (1 - r2) * 0.8 : 0;
+  burst.set(0, focus, PAL.gold, 340 * pop * (1 - 0.4 * smooth(10.2, 11.5, t)), 0.45 * pop);
+  burst.set(1, focus, PAL.red, 170 * pop, 0.5 * pop);
+  burst.commit();
+  // Bloch spheres
+  const bf = 1 - smooth(9.2, 9.8, t);
+  blochs.forEach((b, q) => {
+    const r = bloch(st.re, st.im, q);
+    const dir = new THREE.Vector3(r.x, r.z, -r.y); const len = dir.length();
+    b.g.scale.setScalar(Math.max(1e-3, bf * intro));
+    b.g.visible = bf > 0.01;
+    b.inner.rotation.y = t * 0.6 + q * 0.4;
+    b.inner.rotation.x = 0.35;
+    const L1 = Math.max(len, 1e-3) * b.R;
+    b.shaft.scale.set(1, L1, 1);
+    b.shaft.quaternion.setFromUnitVectors(up, dir.clone().normalize());
+    b.shaft.position.copy(dir).multiplyScalar(b.R / 2);
+    b.tip.position.copy(dir).multiplyScalar(b.R);
+    L.place(qlab[q], v.copy(b.g.position).add(new THREE.Vector3(0, -0.5, 0)), camera, 0.65 * bf * intro);
+  });
+  // HUD
+  const k = st.layer, pre = t < T0, done = st.u >= P;
+  layt.textContent = pre ? 'uniform superposition' : done ? 'measure' : (st.phase === 'cost' ? `layer ${k + 1} · cost phase γ${'₁₂₃₄₅'[k]}` : `layer ${k + 1} · mixer β${'₁₂₃₄₅'[k]}`);
+  [...dots.children].forEach((d, i) => (d.style.opacity = i < k || done ? 0.75 : i === k && !pre ? 0.45 : 0.15));
+  lay.style.opacity = 0.75 * intro * (1 - pop);
+  capt.textContent = 'amplitude interference over 2⁸ candidate models';
+  cap.style.opacity = 0.8 * intro * (1 - pop);
+  // decode
+  const da = smooth(9.9, 10.3, t);
+  bitsl.style.opacity = da * 0.75; bitsl.textContent = bits(BEST);
+  const rs = clamp01((t - 10.2) / 1.0);
+  const nres = Math.floor(rs * TARGET.length);
+  let s = '';
+  for (let i = 0; i < TARGET.length; i++) {
+    const ch = TARGET[i];
+    s += i < nres || ch === ' ' ? ch : GLYPH[(Math.floor(t * 24) * 7 + i * 13) % GLYPH.length];
+  }
+  dec.textContent = s; dec.style.opacity = da;
+  dec.style.transform = `translateY(${(1 - da) * 18}px) scale(${1 + 0.04 * (1 - smooth(11, 11.6, t))})`;
+  renderer.render(scene, camera);
+}
+ready(render, DUR);
+</script></body></html>

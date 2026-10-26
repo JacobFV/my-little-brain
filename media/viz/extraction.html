@@ -1,0 +1,193 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=1920,height=1080">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.179.1/build/three.module.js"}}</script>
+<style>
+  html,body{margin:0;width:1920px;height:1080px;overflow:hidden;background:#cfdcfb;font-family:'Inter Tight',system-ui,sans-serif;color:#14161f}
+  #bg{position:absolute;inset:0;overflow:hidden;background:radial-gradient(120% 90% at 30% 10%,#ffffff 0%,#eef2fe 35%,#cfdcfb 80%)}
+  .blob{position:absolute;border-radius:50%;filter:blur(120px)}
+  #veil{position:absolute;inset:0;background:radial-gradient(70% 60% at 50% 45%,rgba(255,255,255,.55),rgba(255,255,255,0) 70%)}
+  #c{position:absolute;inset:0;width:1920px;height:1080px}
+  #labels{position:absolute;inset:0;pointer-events:none}
+  .lab{position:absolute;left:0;top:0;white-space:nowrap;will-change:transform}
+  .cap{position:absolute;left:96px;bottom:84px;font-weight:500;font-size:26px;letter-spacing:.02em;color:#14161f;opacity:.78}
+  .cap b{font-weight:700}
+  .kick{display:block;font-size:15px;letter-spacing:.24em;text-transform:uppercase;opacity:.55;margin-bottom:10px;font-weight:600}
+</style>
+<style>
+ .cap{transition:none}
+ .pl{font-weight:700;font-size:34px;color:#14161f}
+ .ql{font-family:'JetBrains Mono',monospace;font-size:15px;color:#14161f;font-weight:500}
+ .bs{font-family:'JetBrains Mono',monospace;font-size:10px;color:#14161f}
+</style>
+</head><body>
+<div id="bg"></div><div id="veil"></div><canvas id="c"></canvas><div id="labels"></div>
+<div class="cap" id="cap"><span class="kick" id="kick"></span><span id="capt"></span></div>
+<script type="module">
+import { THREE, initStage, makeBlobs, loadBrain, createFibers, bandPower, spectra, labelLayer, ready, ease, smooth, lerp, clamp01,
+  glowPoints, heat, PAL, hypercube, projector, bits, seeded, glassMaterial } from './common.js';
+const { renderer, scene, camera } = initStage({ fov: 30 });
+const blobs = makeBlobs(0.3);
+scene.add(new THREE.HemisphereLight(0xffffff, 0xb9c4f0, 2.2));
+const dl = new THREE.DirectionalLight(0xffffff, 1.4); dl.position.set(-3, 5, 6); scene.add(dl);
+const L = labelLayer();
+const DUR = 12;
+
+// --- brain
+const bg = new THREE.Group(); bg.position.set(-4.3, -0.35, 0); bg.rotation.y = 0.75; scene.add(bg);
+const brain = await loadBrain({ nuclei: false }); bg.add(brain);
+const fib = createFibers({ perConnection: 1 }); bg.add(fib.root);
+
+// --- spectra bars -> vector -> params (one instanced mesh of 190 cells)
+const NCH = 19, NB = 10, N = NCH * NB;
+const cells = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshLambertMaterial({ color: 0xffffff }), N);
+cells.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(N * 3), 3);
+cells.frustumCulled = false; scene.add(cells);
+const grid = new THREE.Group(); grid.position.set(-1.05, 0, 0); grid.rotation.set(0.55, -0.55, 0); scene.add(grid);
+const gridPos = (c, b) => new THREE.Vector3((b - 4.5) * 0.17, -0.9, (c - 9) * 0.17);
+const stripX = 1.25, stripH = 4.6;
+const stripPos = (i) => new THREE.Vector3(stripX, stripH / 2 - (i + 0.5) * stripH / N, 0);
+const PCOL = [PAL.red, PAL.gold, PAL.violet, PAL.blue];
+const PNAME = ['P', 'c₂', 'c₁', 'τ'];
+const orbPos = [0, 1, 2, 3].map((k) => new THREE.Vector3(2.95, 1.65 - k * 1.1, 0));
+const orbs = orbPos.map((p, k) => {
+  const g = new THREE.Group(); g.position.copy(p); scene.add(g);
+  const m = new THREE.Mesh(new THREE.SphereGeometry(0.3, 48, 32), new THREE.MeshPhysicalMaterial({ color: PCOL[k], roughness: 0.25, clearcoat: 1, transparent: true }));
+  g.add(m); g.userData.m = m; return g;
+});
+const orbGlow = glowPoints(4, { scale: 8, core: 0 }); scene.add(orbGlow);
+const plab = PNAME.map((n) => L.add(n, 'lab pl'));
+// qubits
+const qPos = Array.from({ length: 8 }, (_, q) => new THREE.Vector3(4.55, 2.1 - q * 0.6, 0));
+const qubits = qPos.map((p, q) => {
+  const g = new THREE.Group(); scene.add(g);
+  const s = new THREE.Mesh(new THREE.SphereGeometry(0.11, 32, 20), new THREE.MeshPhysicalMaterial({ color: PCOL[q >> 1], roughness: 0.2, clearcoat: 1, transparent: true }));
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.008, 8, 96), new THREE.MeshBasicMaterial({ color: 0x14161f, transparent: true }));
+  ring.rotation.x = 1.2; g.add(s, ring); g.userData = { s, ring }; return g;
+});
+const qlab = qPos.map((_, q) => L.add('q' + q, 'lab ql'));
+// hypercube
+const HC = hypercube();
+const cubeC = new THREE.Vector3(8.6, 0, 0);
+const nodes = glowPoints(256, { scale: 8, core: 0.9 }); scene.add(nodes);
+const eGeo = new THREE.BufferGeometry();
+eGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(HC.edges.length * 6), 3));
+eGeo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(HC.edges.length * 8), 4));
+const edges = new THREE.LineSegments(eGeo, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false }));
+edges.frustumCulled = false; scene.add(edges);
+const blab = Array.from({ length: 256 }, (_, x) => L.add(bits(x), 'lab bs'));
+// particles electrode -> bar
+const parts = glowPoints(N, { scale: 8, core: 0.6 }); scene.add(parts);
+const rnd = seeded(5); const delay = Array.from({ length: N }, () => rnd());
+
+const cap = document.getElementById('cap'), kick = document.getElementById('kick'), capt = document.getElementById('capt');
+const STAGES = [[0, 'Signal', '19 channels · live EEG'], [1.2, 'Spectra', '19 channels × 10 band powers'], [3.2, 'Features', '190-dim feature vector'],
+  [4.9, 'Parameters', 'P · c₂ · c₁ · τ'], [6.4, 'Encoding', '4 parameters → 8 qubits'], [7.8, 'Search space', '2⁸ = 256 candidate models']];
+
+const tmpC = new THREE.Color(), m4 = new THREE.Matrix4(), q4 = new THREE.Quaternion(), v = new THREE.Vector3(), v2 = new THREE.Vector3(), sc = new THREE.Vector3();
+function render(t) {
+  blobs(t);
+  // camera pan
+  const cx = lerp(lerp(-1.6, 2.2, ease((t - 2.6) / 3.4)), 8.0, ease((t - 6.6) / 2.8));
+  const cz = lerp(13.5, 12.2, ease((t - 6.6) / 2.8));
+  camera.position.set(cx + 0.6 * Math.sin(t * 0.3), 0.6 + 0.3 * Math.sin(t * 0.25), cz);
+  camera.lookAt(cx, 0, 0);
+  camera.updateMatrixWorld();
+  // brain
+  const I = bandPower(t), S = spectra(t);
+  bg.rotation.y = 0.75 + t * 0.05;
+  const bf = 1 - smooth(5.5, 7.5, t);
+  brain.fade(bf); fib.update(t, I, bf);
+  bg.updateMatrixWorld();
+  // stage weights
+  const gw = (i) => { const c = (i / NB) | 0; return clamp01((t - 1.0 - delay[i] * 0.9 - c * 0.04) / 0.9); }; // arrive
+  for (let i = 0; i < N; i++) {
+    const c = (i / NB) | 0, b = i % NB, val = S[c][b];
+    // particle flight
+    const pf = clamp01((t - 0.6 - delay[i] * 0.9 - c * 0.04) / 0.9);
+    const gp = grid.localToWorld(gridPos(c, b).add(new THREE.Vector3(0, 0, 0)));
+    if (pf > 0 && pf < 1) {
+      const sp = bg.localToWorld(fib.scalp[c].clone());
+      const e = ease(pf);
+      v.copy(sp).lerp(gp, e); v.y += Math.sin(Math.PI * e) * (0.6 + delay[i] * 0.6);
+      parts.set(i, v, heat(0.4 + val * 0.6, tmpC), 22, Math.sin(Math.PI * pf));
+    } else parts.set(i, v.set(0, 0, -99), null, 0, 0);
+    // cell morph
+    const k1 = ease((t - 3.0 - (i / N) * 0.9) / 0.8);             // grid -> strip
+    const k2 = ease((t - 4.7 - (1 - i / N) * 0.6) / 0.9);         // strip -> orb
+    const grow = ease(gw(i));
+    const hgt = 0.04 + val * 1.25;
+    const pg = gp.clone().add(new THREE.Vector3(0, 0, 0));
+    // bars stand on their row: offset by half height along grid up axis
+    const up = new THREE.Vector3(0, 1, 0).applyQuaternion(grid.quaternion);
+    pg.addScaledVector(up, hgt * 0.5 * grow);
+    const ps = stripPos(i);
+    const po = orbPos[Math.min(3, (i * 4 / N) | 0)];
+    v.copy(pg).lerp(ps, k1).lerp(po, k2);
+    const sx = lerp(lerp(0.12, 0.34, k1), 0.02, k2), sy = lerp(lerp(Math.max(hgt * grow, 0.001), stripH / N * 0.8, k1), 0.02, k2), sz = lerp(0.12, 0.05, k1);
+    q4.copy(grid.quaternion).slerp(new THREE.Quaternion(), k1);
+    m4.compose(v, q4, sc.set(sx, Math.max(sy, 1e-4), sz));
+    cells.setMatrixAt(i, m4);
+    heat(0.15 + val * 0.85, tmpC);
+    if (k2 > 0) tmpC.lerp(PCOL[Math.min(3, (i * 4 / N) | 0)], k2);
+    cells.setColorAt(i, tmpC);
+  }
+  cells.visible = t < 6.0;
+  cells.instanceMatrix.needsUpdate = true; cells.instanceColor.needsUpdate = true;
+  parts.commit();
+  // orbs
+  orbs.forEach((g, k) => {
+    const a = ease((t - 5.0 - k * 0.08) / 0.8), split = ease((t - 6.3) / 0.9);
+    const pulse = 1 + 0.05 * Math.sin(t * 4 + k);
+    g.scale.setScalar(Math.max(1e-3, a * pulse * (1 - split)));
+    g.visible = a > 0 && split < 1;
+    orbGlow.set(k, g.position, PCOL[k], 160 * a * (1 - split), 0.5 * a * (1 - split));
+    L.place(plab[k], v.copy(g.position).add(v2.set(-0.62, 0, 0)), camera, a * (1 - split));
+  });
+  orbGlow.commit();
+  // qubits
+  qubits.forEach((g, q) => {
+    const a = ease((t - 6.3 - q * 0.03) / 0.9);
+    const out = smooth(7.6 + q * 0.28, 8.4 + q * 0.28, t);
+    g.position.copy(orbPos[q >> 1]).lerp(qPos[q], a);
+    g.scale.setScalar(Math.max(1e-3, a * (1 - out) + (out > 0 ? 0.0 : 0)));
+    g.visible = a > 0 && out < 1;
+    g.userData.ring.rotation.z = t * (1.2 + q * 0.15);
+    g.userData.ring.rotation.x = 1.2 + 0.3 * Math.sin(t * 2 + q);
+    L.place(qlab[q], v.copy(g.position).add(v2.set(0.42, 0, 0)), camera, a * (1 - out) * 0.75);
+  });
+  // hypercube: unfold dimension by dimension
+  const proj = projector(t, 0.44);
+  const rotM = new THREE.Matrix4().makeRotationFromEuler(new THREE.Euler(0.3 * Math.sin(t * 0.35), 0.45 * Math.sin(t * 0.27), t * 0.12));
+  const cd = Array.from({ length: 8 }, (_, d) => ease((t - 7.6 - d * 0.28) / 0.55));
+  const any = cd[0];
+  const P = HC.nodes.map((n) => { proj(n.map((x, d) => (x + 1) * 0.5 * cd[d] * 2 - cd[d]), v); return v.clone().applyMatrix4(rotM).add(cubeC); });
+  const nUnf = cd.filter((c) => c > 0.5).length;
+  for (let x = 0; x < 256; x++) {
+    const hue = (x * 0.618) % 1;
+    heat(0.2 + 0.8 * ((x * 37) % 256) / 256, tmpC);
+    nodes.set(x, P[x], tmpC, 34 + 10 * Math.sin(t * 3 + x), any * 0.9);
+    const lo = smooth(10.0, 11.0, t) * 0.3;
+    L.place(blab[x], P[x], camera, lo, 0, -11);
+  }
+  // nodes collapsed together at start: hide duplicates by alpha
+  nodes.commit();
+  const pa = eGeo.attributes.position.array, ca = eGeo.attributes.color.array;
+  HC.edges.forEach(([a, b, d], k) => {
+    pa.set([P[a].x, P[a].y, P[a].z, P[b].x, P[b].y, P[b].z], k * 6);
+    const c = PCOL[d >> 1], al = 0.28 * cd[d];
+    ca.set([c.r, c.g, c.b, al, c.r, c.g, c.b, al], k * 8);
+  });
+  eGeo.attributes.position.needsUpdate = true; eGeo.attributes.color.needsUpdate = true;
+  edges.material.vertexColors = true;
+  // captions
+  let s = 0; STAGES.forEach((st, i) => { if (t >= st[0]) s = i; });
+  const next = STAGES[s + 1]?.[0] ?? 99;
+  kick.textContent = STAGES[s][1];
+  capt.textContent = s === 5 ? `2${'⁰¹²³⁴⁵⁶⁷⁸'[nUnf]} = ${1 << nUnf} candidate models` : STAGES[s][2];
+  cap.style.opacity = 0.8 * Math.min(smooth(STAGES[s][0], STAGES[s][0] + 0.3, t), 1 - smooth(next - 0.25, next, t)) + (s === 0 ? 0.8 * (1 - smooth(-1, 0, t)) : 0);
+  renderer.render(scene, camera);
+}
+ready(render, DUR);
+</script></body></html>

@@ -1,0 +1,51 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=1920,height=1080">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.179.1/build/three.module.js"}}</script>
+<style>
+  html,body{margin:0;width:1920px;height:1080px;overflow:hidden;background:#cfdcfb;font-family:'Inter Tight',system-ui,sans-serif;color:#14161f}
+  #bg{position:absolute;inset:0;overflow:hidden;background:radial-gradient(120% 90% at 30% 10%,#ffffff 0%,#eef2fe 35%,#cfdcfb 80%)}
+  .blob{position:absolute;border-radius:50%;filter:blur(120px)}
+  #veil{position:absolute;inset:0;background:radial-gradient(70% 60% at 50% 45%,rgba(255,255,255,.55),rgba(255,255,255,0) 70%)}
+  #c{position:absolute;inset:0;width:1920px;height:1080px}
+  #labels{position:absolute;inset:0;pointer-events:none}
+  .lab{position:absolute;left:0;top:0;white-space:nowrap;will-change:transform}
+  .cap{position:absolute;left:96px;bottom:84px;font-weight:500;font-size:26px;letter-spacing:.02em;color:#14161f;opacity:.78}
+  .cap b{font-weight:700}
+  .kick{display:block;font-size:15px;letter-spacing:.24em;text-transform:uppercase;opacity:.55;margin-bottom:10px;font-weight:600}
+</style>
+<style>.el{font-size:14px;font-weight:600;letter-spacing:.06em;color:#14161f}</style>
+</head><body>
+<div id="bg"></div><div id="veil"></div><canvas id="c"></canvas><div id="labels"></div>
+<div class="cap"><span class="kick">Tractometry</span>19 scalp electrodes&nbsp;·&nbsp;band power&nbsp;→&nbsp;<b>white-matter activation</b></div>
+<script type="module">
+import { THREE, initStage, makeBlobs, loadBrain, createFibers, bandPower, labelLayer, ANCHORS, ready, ease } from './common.js';
+const { renderer, scene, camera } = initStage({ fov: 28 });
+const blobs = makeBlobs(0.3);
+const brain = await loadBrain();
+scene.add(brain);
+const fib = createFibers({ perConnection: 2 });
+scene.add(fib.root);
+const L = labelLayer();
+const labs = ANCHORS.map((n) => L.add(n, 'lab el'));
+const target = new THREE.Vector3(0, 0.28, 0);
+const DUR = 10;
+function render(t) {
+  blobs(t);
+  const a = THREE.MathUtils.degToRad(28 + 75 * (t / DUR));
+  const el = 0.28 + 0.1 * Math.sin(t * 0.5);
+  const r = 6.4 - 0.5 * ease(t / DUR);
+  camera.position.set(Math.sin(a) * Math.cos(el) * r, target.y + Math.sin(el) * r, Math.cos(a) * Math.cos(el) * r);
+  camera.lookAt(target);
+  const I = bandPower(t);
+  fib.update(t, I, Math.min(1, t / 0.6 + 0.35));
+  const camDir = camera.position.clone().sub(target).normalize();
+  fib.scalp.forEach((p, i) => {
+    const facing = p.clone().sub(target).normalize().dot(camDir);
+    L.place(labs[i], p, camera, 0.18 + 0.5 * Math.max(0, facing) * (0.4 + 0.6 * I[i]), 0, -26);
+  });
+  renderer.render(scene, camera);
+}
+ready(render, DUR);
+</script></body></html>
