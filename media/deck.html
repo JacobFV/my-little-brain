@@ -102,6 +102,42 @@
     </style>
     <div class="small" style="left:0;right:0;top:auto;bottom:30px;text-align:center;font-size:20px;opacity:.7">model hypotheses, not diagnoses · no quantum-advantage claim</div>
   </section>
+
+  <!-- 4 · behind the scenes -->
+  <section class="slide">
+    <div class="word" style="left:150px;top:96px">Behind the scenes</div>
+    <svg width="1920" height="1080" style="position:absolute;inset:0" fill="none" stroke="rgba(255,255,255,.75)" stroke-width="2">
+      <path d="M430 520 C 500 520, 520 520, 590 520"/><path d="M890 520 C 950 520, 960 520, 1020 520"/>
+      <path d="M1330 470 C 1400 400, 1420 340, 1480 330"/><path d="M1330 520 C 1400 520, 1420 520, 1480 520"/><path d="M1330 570 C 1400 640, 1420 700, 1480 710"/>
+      <path d="M1175 610 C 1175 680, 1175 700, 1175 760" stroke-dasharray="6 8"/>
+    </svg>
+    <style>
+      .node { position:absolute; width:300px; } .node b { display:block; font-size:38px; font-weight:700; letter-spacing:-.02em; line-height:1.05; }
+      .node span { display:block; margin-top:10px; font-size:22px; font-weight:500; opacity:.88; line-height:1.35; }
+      .node i { display:block; font-style:normal; font-size:16px; letter-spacing:3px; text-transform:uppercase; opacity:.75; margin-bottom:10px; }
+    </style>
+    <div class="node" style="left:150px;top:430px"><i>you</i><b>OpenBCI headset</b><span>Cyton · 8 ch · 250 Hz<br>read in Chrome via Web Serial<br>+ your About-me notes</span></div>
+    <div class="node" style="left:610px;top:430px"><i>the app</i><b>Chat + 3D brain</b><span>React · three.js<br>real fsaverage anatomy<br>eyes · blinks · moods</span></div>
+    <div class="node" style="left:1040px;top:410px;width:320px"><i>Google Cloud Run</i><b>Gemini 4 Argon agent</b><span>chat · spectrogram vision<br>designs + revises circuits<br>FastAPI · one service</span></div>
+    <div class="node" style="left:1040px;top:790px;width:440px"><span style="margin:0">Cloud Tasks · Firestore · Cloud Storage<br>Secret Manager · Google Sign-In</span></div>
+    <div class="node" style="left:1500px;top:280px"><i>gate model</i><b>QAOA</b><span>IonQ · IBM Quantum<br>qBraid · Qiskit Aer</span></div>
+    <div class="node" style="left:1500px;top:470px"><i>thermodynamic</i><b>Extropic THRML</b><span>block-Gibbs on the Ising</span></div>
+    <div class="node" style="left:1500px;top:660px"><i>check</i><b>Forward sims</b><span>Wilson–Cowan · top-K<br>validated, never trusted</span></div>
+    <div class="small" style="left:0;right:0;top:auto;bottom:30px;text-align:center;font-size:20px;opacity:.75">4 brain parameters × 2 bits = 8 qubits = 256 hypotheses · nonlinear loss → QUBO surrogate → exact Ising map</div>
+  </section>
+
+  <!-- 5 · team -->
+  <section class="slide">
+    <div class="word" style="left:150px;top:96px">The team</div>
+    <div id="team" style="position:absolute;left:150px;right:150px;top:330px;display:flex;justify-content:space-around"></div>
+    <style>
+      .member { width:300px; text-align:center; }
+      .member .ph { width:240px; height:240px; margin:0 auto; border-radius:50%; background:rgba(255,255,255,.28) center/cover no-repeat;
+                    box-shadow:0 20px 60px rgba(60,40,120,.18); display:flex; align-items:center; justify-content:center; font-size:72px; font-weight:700; }
+      .member b { display:block; margin-top:34px; font-size:40px; font-weight:700; letter-spacing:-.02em; }
+      .member span { display:block; margin-top:8px; font-size:24px; font-weight:500; opacity:.88; }
+    </style>
+  </section>
 </div>
 <div class="pager" id="pager"></div>
 
@@ -109,7 +145,18 @@
 const stage = document.getElementById('stage'), field = document.getElementById('field');
 const slides = [...document.querySelectorAll('.slide')];
 let cur = 0, t0 = 0;
-const frames = ['translate(0,0) scale(1)', 'translate(-120px,40px) scale(1.08) rotate(-4deg)', 'translate(80px,-60px) scale(1.12) rotate(5deg)'];
+const frames = ['translate(0,0) scale(1)', 'translate(-120px,40px) scale(1.08) rotate(-4deg)', 'translate(80px,-60px) scale(1.12) rotate(5deg)',
+                'translate(-60px,-80px) scale(1.1) rotate(-6deg)', 'translate(40px,60px) scale(1.05) rotate(3deg)'];
+// Team: fill in names / roles; photos go in media/team/ (square crops look best).
+const TEAM = [
+  { name: '[Name]', role: '[role]', photo: '' },
+  { name: '[Name]', role: '[role]', photo: '' },
+  { name: '[Name]', role: '[role]', photo: '' },
+  { name: '[Name]', role: '[role]', photo: '' },
+];
+document.getElementById('team').innerHTML = TEAM.map((m) => `<div class="member">
+  <div class="ph" style="${m.photo ? `background-image:url('${m.photo}')` : ''}">${m.photo ? '' : (m.name.replace(/[^A-Za-z ]/g, '').split(' ').map((w) => w[0]).join('') || '·')}</div>
+  <b>${m.name}</b><span>${m.role}</span></div>`).join('');
 function fit() { const s = Math.min(innerWidth / 1920, innerHeight / 1080); stage.style.transform = `scale(${s}) translate(-50%,-50%)`; }
 function go(i) {
   cur = Math.max(0, Math.min(slides.length - 1, i));
