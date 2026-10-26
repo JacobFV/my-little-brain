@@ -125,19 +125,18 @@ ry(-0.55) q[3];
 
   <!-- 3b · EEG → quantum state -->
   <section class="slide">
-    <img class="masked" src="viz/out/hypercube-crop.png" alt="" style="left:1060px;top:170px;width:760px;height:760px;object-fit:cover">
+    <img class="masked" src="viz/out/hypercube-crop.png" alt="" style="left:1120px;top:250px;width:680px;height:680px;object-fit:cover">
     <div class="word" style="left:150px;top:96px">EEG → quantum state</div>
     <style>
-      .hs { position:absolute; left:150px; width:1000px; } .hs b { display:block; font-size:46px; font-weight:700; letter-spacing:-.02em; line-height:1.1; }
-      .hs span { display:block; margin-top:8px; font-size:26px; font-weight:500; opacity:.9; line-height:1.35; }
-      .hs i { font-style:normal; font-family:'JetBrains Mono', monospace; font-size:24px; }
+      .hs { position:absolute; left:150px; width:960px; } .hs b { display:block; font-size:50px; font-weight:700; letter-spacing:-.02em; line-height:1.1; }
+      .hs span { display:block; margin-top:10px; font-size:27px; font-weight:500; opacity:.9; line-height:1.4; }
+      .hs i { font-style:normal; font-family:'JetBrains Mono', monospace; font-size:25px; }
     </style>
-    <div class="hs" style="top:270px"><b>Your EEG → 10 numbers</b><span>relative power in 10 frequency bands, per channel</span></div>
-    <div class="hs" style="top:410px"><b>4 brain parameters × 2 bits = 8 qubits</b><span>drive · inhibition · excitation · synaptic time constant</span></div>
-    <div class="hs" style="top:550px"><b>8 qubits = a 256-dimensional Hilbert space</b><span>every basis state is one possible brain: <i>|ψ⟩ = Σ α<sub>b</sub> |b⟩</i></span></div>
-    <div class="hs" style="top:690px"><b>Your EEG shapes the circuit</b><span>‖f(θ) − y‖² → Ising energy → QAOA amplifies the best-fitting brains</span></div>
-    <div class="hs" style="top:830px"><b>Measure → simulate → verify</b><span>top samples are re-simulated; nothing is trusted unverified</span></div>
-    <div class="small" style="left:0;right:0;top:auto;bottom:30px;text-align:center;font-size:20px;opacity:.75">+1 bit per parameter → 12 qubits, 4,096 brains · each qubit doubles the space · today’s 256 are classically enumerable</div>
+    <div class="hs" style="top:290px"><b>8 qubits = 2<sup>8</sup> = 256 dimensions</b><span>a Hilbert space: <i>|ψ⟩ = Σ α<sub>i</sub> |i⟩</i>, one amplitude per basis state</span></div>
+    <div class="hs" style="top:470px"><b>Each basis state is one possible brain</b><span>4 model dials (drive · inhibition · excitation · τ) × 2 qubits each</span></div>
+    <div class="hs" style="top:650px"><b>Your EEG decides which brains get louder</b><span>the mismatch with your EEG becomes the circuit’s energy; QAOA amplifies the brains that explain you</span></div>
+    <div class="hs" style="top:830px"><b>Measure → re-simulate → verify</b></div>
+    <div class="small" style="left:0;right:0;top:auto;bottom:30px;text-align:center;font-size:20px;opacity:.75">we encode hypotheses, not raw EEG amplitudes · each extra qubit doubles the space · no quantum-advantage claim at 256</div>
   </section>
 
   <!-- 4 · behind the scenes -->
