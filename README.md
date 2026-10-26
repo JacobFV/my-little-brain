@@ -10,6 +10,7 @@ thermodynamic sampler, and classical baselines. That research engine is **cortex
 simplified model, not diagnoses.
 
 **Live:** https://my-little-brain-563778990179.us-central1.run.app (sign in with Google)
+https://engram-0-thermodynamic-brain-decode.vercel.app/thermo_spi.html 
 
 [What's inside](#whats-inside) · [How it works](#how-it-works) · [The math](#the-math) · [Results](#results) ·
 [Claims](#what-we-claim-and-what-we-dont) · [Run it](#run-it) · [Deploy](#deploy-gcp) · [API](docs/cortex2-api.md)
