@@ -1,0 +1,6 @@
+fastapi>=0.116,<1
+uvicorn>=0.35,<1
+pydantic>=2.8,<3
+numpy>=2.2,<3
+jax[cpu]>=0.6,<1
+thrml>=0.1.4,<0.2

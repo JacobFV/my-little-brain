@@ -67,3 +67,35 @@ def test_registry_reports_hardware_and_modes():
     assert set(backends.ids(mode="async")) == {"ibm_quantum", "ionq_qpu", "qbraid_qpu"}
     assert "ionq_simulator" in backends.ids(paradigm="gate", mode="sync")
     assert np.isfinite(len(backends.agent_brief()))
+
+
+def test_thrml_remote_posts_ising_and_returns_reference(monkeypatch):
+    import requests
+
+    ising = inv.Ising(np.linspace(-1, 1, 8), np.triu(np.full((8, 8), 0.25), 1), 0.5)
+    remote = backends.get("thrml_remote")
+    monkeypatch.delenv("THRML_SERVICE_URL", raising=False)
+    assert not remote.availability()[0]
+    monkeypatch.setenv("THRML_SERVICE_URL", "https://thrml.example/")
+    assert remote.availability() == (True, None)
+    monkeypatch.setattr(backends, "_thrml_id_token", lambda url: "tok")
+    seen = {}
+
+    class _Resp:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"counts": {"00000000": 3, "11111111": 1}, "meta": {"backend": "thrml-jax-cpu", "n_chains": 16}}
+
+    def fake_post(url, json, headers, timeout):
+        seen.update(url=url, body=json, headers=headers)
+        return _Resp()
+
+    monkeypatch.setattr(requests, "post", fake_post)
+    counts, meta, ref = remote.sample(ising, None, 4, {"beta": 2.0, "seed": 7})
+    assert seen["url"] == "https://thrml.example/sample" and seen["headers"] == {"Authorization": "Bearer tok"}
+    assert seen["body"]["h"] == ising.h.tolist() and seen["body"]["J"] == ising.J.tolist()
+    assert seen["body"]["shots"] == 4 and seen["body"]["beta"] == 2.0 and seen["body"]["seed"] == 7
+    assert counts == {"00000000": 3, "11111111": 1} and meta["backend"] == "thrml-jax-cpu"
+    assert len(ref) == 256 and abs(sum(ref.values()) - 1) < 1e-9
