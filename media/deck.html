@@ -125,18 +125,19 @@ ry(-0.55) q[3];
 
   <!-- 3b · EEG → quantum state -->
   <section class="slide">
-    <img class="masked" src="viz/out/hypercube-crop.png" alt="" style="left:1120px;top:250px;width:680px;height:680px;object-fit:cover">
+    <img src="app-shots/landscape-grid.png" alt="The app's hypothesis landscape: all 256 brain hypotheses as a 16×16 grid, colored by how well each explains the EEG; outlined cells are the best fits" style="position:absolute;left:1150px;top:250px;width:620px;height:596px;object-fit:contain;border-radius:28px;background:#f6f7f2;padding:22px">
+    <div class="small" style="left:1150px;top:868px;width:620px;text-align:center;font-size:22px">all 256 brains, scored against your EEG (from the app)</div>
     <div class="word" style="left:150px;top:96px">EEG → quantum state</div>
     <style>
-      .hs { position:absolute; left:150px; width:960px; } .hs b { display:block; font-size:50px; font-weight:700; letter-spacing:-.02em; line-height:1.1; }
-      .hs span { display:block; margin-top:10px; font-size:27px; font-weight:500; opacity:.9; line-height:1.4; }
-      .hs i { font-style:normal; font-family:'JetBrains Mono', monospace; font-size:25px; }
+      .hs { position:absolute; left:150px; width:940px; } .hs b { display:block; font-size:48px; font-weight:700; letter-spacing:-.02em; line-height:1.1; }
+      .hs span { display:block; margin-top:10px; font-size:26px; font-weight:500; opacity:.9; line-height:1.4; }
+      .hs i { font-style:normal; font-family:'JetBrains Mono', monospace; font-size:24px; }
     </style>
-    <div class="hs" style="top:290px"><b>8 qubits = 2<sup>8</sup> = 256 dimensions</b><span>a Hilbert space: <i>|ψ⟩ = Σ α<sub>i</sub> |i⟩</i>, one amplitude per basis state</span></div>
-    <div class="hs" style="top:470px"><b>Each basis state is one possible brain</b><span>4 model dials (drive · inhibition · excitation · τ) × 2 qubits each</span></div>
-    <div class="hs" style="top:650px"><b>Your EEG decides which brains get louder</b><span>the mismatch with your EEG becomes the circuit’s energy; QAOA amplifies the brains that explain you</span></div>
-    <div class="hs" style="top:830px"><b>Measure → re-simulate → verify</b></div>
-    <div class="small" style="left:0;right:0;top:auto;bottom:30px;text-align:center;font-size:20px;opacity:.75">we encode hypotheses, not raw EEG amplitudes · each extra qubit doubles the space · no quantum-advantage claim at 256</div>
+    <div class="hs" style="top:270px"><b>2,000 voltages a second → 10 numbers</b><span>8 channels × 250 Hz, condensed into band powers</span></div>
+    <div class="hs" style="top:440px"><b>8 qubits hold all 256 possible brains</b><span>4 model dials × 2 qubits · a 2<sup>8</sup>-dim Hilbert space <i>|ψ⟩ = Σ α<sub>i</sub> |i⟩</i></span></div>
+    <div class="hs" style="top:610px"><b>Your EEG decides which brains get louder</b><span>the mismatch becomes the circuit’s energy; QAOA amplifies the best fits</span></div>
+    <div class="hs" style="top:780px"><b>Measure → re-simulate → verify</b></div>
+    <div class="small" style="left:0;right:0;top:auto;bottom:30px;text-align:center;font-size:20px;opacity:.75">we encode hypotheses, not raw EEG · each extra bit per dial multiplies the space · no quantum-advantage claim at 256</div>
   </section>
 
   <!-- 4 · behind the scenes -->
