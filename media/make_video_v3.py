@@ -5,7 +5,7 @@ Uses the deck look (blurred warm color field, white Inter Tight type), real app 
 recordings with annotation pills, photoreal b-roll bursts (fal/Kling clips and CC photos),
 three.js explainer renders (media/viz/out), a QuantumNeuroXAI paper segment with
 highlighter swipes, and a CC credits card. The music is the full "1984 / Mechanical Heart"
-track, cut by one 32-beat splice and faded at the end.
+track, used continuously from the start with a fade-out at the end.
 
     research/.venv/bin/python media/make_video_v3.py               # full render
     research/.venv/bin/python media/make_video_v3.py --stills 5 20  # preview frames -> media/stills/v3_*.png
@@ -20,6 +20,7 @@ from PIL import Image, ImageDraw, ImageFilter, ImageFont
 HERE = os.path.dirname(os.path.abspath(__file__)); REPO = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
 import make_video as mv  # reuse: real brain frames, EEG + gate-creation animations
+mv.caption = lambda *a, **k: None  # no small labels in the reused animations
 
 W, H, FPS, SR = 1920, 1080, 30, 44100
 B3 = os.path.join(mv.BUILD, "v3"); os.makedirs(B3, exist_ok=True)
@@ -51,7 +52,7 @@ def IT(size, weight="Bold"):
         f = ImageFont.truetype(FONT_PATH, size); f.set_variation_by_name(weight); _fc[k] = f
     return _fc[k]
 
-def draw_tight(d, xy, text, f, fill=WHITE, track=-0.03, shadow=True):
+def draw_tight(d, xy, text, f, fill=WHITE, track=-0.03, shadow=False):
     """Draw with tight tracking like the deck (letter-spacing ~ -.035em). Returns width."""
     x, y = xy; sp = track * f.size
     if shadow:
@@ -101,12 +102,9 @@ def _beats():
     _, b = librosa.beat.beat_track(y=y, sr=sr, units="time", start_bpm=108)
     np.save(cache, b); return b
 OB = _beats(); BEAT = float(np.median(np.diff(OB)))
-SPLICE_A = float(OB[np.argmin(np.abs(OB - 95.0))])          # end of the energetic section we keep
-SPLICE_B = float(OB[np.argmin(np.abs(OB - 95.0)) + 32])     # 32 beats later (inside the breakdown)
-CUT = SPLICE_B - SPLICE_A
-BEATS = np.concatenate([OB[OB < SPLICE_A], OB[OB >= SPLICE_B] - CUT])  # beat grid in video time
+BEATS = OB  # continuous song, no splice
 def snap(t): return float(BEATS[np.argmin(np.abs(BEATS - t))])
-DUR = round(snap(122.0), 3)  # end on a beat, about 2:00
+DUR = round(snap(127.0), 3)  # end on a beat
 NF = int(round(DUR * FPS)); DUR = NF / FPS
 
 # ------------------------------------------------------------------ media sources (decoded to JPEG once)
@@ -165,11 +163,10 @@ def _fit(im):
 def ease(x): x = min(max(x, 0.0), 1.0); return 1 - (1 - x) ** 3
 
 def title_block(im, tl, title, sub=None, x=110, y=58, size=84):
+    """deck title: white Inter Tight bold, top-left, nothing else."""
     if not title: return
     d = ImageDraw.Draw(im); k = ease(tl / 0.35)
     draw_tight(d, (x, y + (1 - k) * 30), title, IT(size, "Bold"), track=-0.035)
-    if sub and tl > 0.15:
-        draw_tight(d, (x + 4, y + size * 1.12 + (1 - ease((tl - 0.15) / 0.35)) * 20), sub, IT(32, "Medium"), track=-0.01)
 
 def r_card(tl, dur, p, T):
     """deck-style text card on the color field; optional real brain."""
@@ -189,20 +186,17 @@ def r_card(tl, dur, p, T):
         draw_tight(d, (x, y0 + len(lines) * lh + 30), p["sub"], f, track=-0.01)
     return im
 
-def paste_brain(im, T, cx, cy, h, glow=(255, 255, 255)):
+def paste_brain(im, T, cx, cy, h):
     fr = mv.brain_frame(T).crop(mv.BRAIN_BOX); w = int(fr.size[0] * h / fr.size[1])
     B = fr.resize((w, int(h)), Image.BICUBIC)
-    mv.comp_brain(im, B, cx - w / 2, cy - h / 2, glow=glow, boost=1.9, glow_k=0.35)
+    mv.comp_brain(im, B, cx - w / 2, cy - h / 2, boost=1.9, glow_k=0.0)  # no glow
 
 def r_brand(tl, dur, p, T):
+    """deck slide 1: real brain centred, "My Little Brain" as one line beneath it."""
     im = field(T, (1.05, 0, 0)); d = ImageDraw.Draw(im)
-    h = 700 * (1 + 0.04 * tl / dur); paste_brain(im, T, W / 2, H / 2 + 10, h)
-    f = IT(150, "Bold"); k = ease(tl / 0.4)
-    draw_tight(d, (150 - (1 - k) * 60, 430), "My Little", f, track=-0.035)
-    tw = tight_len(d, "Brain", f, -0.035); draw_tight(d, (W - 150 - tw + (1 - k) * 60, 430), "Brain", f, track=-0.035)
-    if p.get("sub") and tl > 0.6:
-        f2 = IT(40, "Medium"); tw = tight_len(d, p["sub"], f2, -0.01)
-        draw_tight(d, ((W - tw) / 2, 960), p["sub"], f2, track=-0.01)
+    paste_brain(im, T, W / 2, 400, 600 * (1 + 0.03 * tl / dur))
+    f = IT(140, "Bold"); k = ease(tl / 0.4); t = "My Little Brain"; tw = tight_len(d, t, f, -0.035)
+    draw_tight(d, ((W - tw) / 2, 760 + (1 - k) * 30), t, f, track=-0.035)
     return im
 
 def r_photo(tl, dur, p, T):
@@ -236,81 +230,57 @@ def r_photo(tl, dur, p, T):
             if k <= 0: continue
             tw = tight_len(d, l, f, -0.035)
             draw_tight(d, ((W - tw) / 2, H - 170 - (len(lines) - i) * size * 1.02 + (1 - k) * 30), l, f, track=-0.035)
-    if p.get("credit_tag"):
-        d = ImageDraw.Draw(im); lab = ("generated b-roll" if key.startswith("fal") else "photo · Wikimedia Commons (see credits)")
-        d.text((W - 24 - d.textlength(lab, font=IT(18, "Medium")), H - 34), lab, font=IT(18, "Medium"), fill=(255, 255, 255))
     return im
 
 # annotated real-app recording ------------------------------------------------
-FX0, FY0, FW, FH = 320, 236, 1280, 720  # frame on screen (16:9)
-def pill(d, im, x, y, text, k, align="r", glow=False):
+# The rounded frame and the recording are ONE rigid card: the whole card pushes in slowly
+# against the color field; the recording is never cropped or zoomed inside its frame.
+CW0, CH0 = 1440, 810
+def pill(d, im, x, y, text, k, align="r"):
     f = IT(27, "SemiBold"); tw = tight_len(d, text, f, -0.005); pw, ph = tw + 34, 46
     px = x - pw if align == "r" else x
-    px = min(max(px, 24), W - 24 - pw)  # never off-screen; may overlap the frame (solid pill stays legible)
-    if k < 1: py = y - ph / 2 + (1 - k) * 12
-    else: py = y - ph / 2
+    px = min(max(px, 24), W - 24 - pw)
+    py = y - ph / 2 + (1 - k) * 12
     ov = Image.new("RGBA", (int(pw) + 8, ph + 8), (0, 0, 0, 0)); od = ImageDraw.Draw(ov)
-    od.rounded_rectangle([4, 4, pw + 3, ph + 3], radius=23, fill=(52, 26, 72, int(215 * k)), outline=(255, 255, 255, int(220 * k)), width=2)
+    od.rounded_rectangle([4, 4, pw + 3, ph + 3], radius=23, fill=(52, 26, 72, int(225 * k)))
     im.paste(ov, (int(px) - 4, int(py) - 4), ov)
-    draw_tight(d, (px + 17, py + 7), text, f, fill=(255, 255, 255), track=-0.005, shadow=True)
+    draw_tight(d, (px + 17, py + 7), text, f, fill=(255, 255, 255), track=-0.005)
     return (px, py, pw, ph)
 
 def r_app(tl, dur, p, T):
     im = field(T, p.get("frame", (1.1, -80, 40)))
     key = p["clip"]; rate = p.get("rate", 1.0); ct = p.get("start", 0.0) + tl * rate
     fr = src_frame(key, ct, 30)
-    if fr is None: return r_card(tl, dur, dict(lines=[p.get("title", "")], sub=p.get("sub")), T)
-    # camera: keyframes [(seg_t, cx, cy, zoom)] in clip px
-    kf = p.get("cam", [(0, 800, 450, 1.0)])
-    if tl <= kf[0][0]: cx, cy, z = kf[0][1:]
-    elif tl >= kf[-1][0]: cx, cy, z = kf[-1][1:]
-    else:
-        for a, b in zip(kf, kf[1:]):
-            if a[0] <= tl <= b[0]:
-                u = ease((tl - a[0]) / max(1e-6, b[0] - a[0]))
-                cx, cy, z = [a[i] + (b[i] - a[i]) * u for i in (1, 2, 3)]
-                break
-    cw, ch = 1600 / z, 900 / z
-    x0 = min(max(cx - cw / 2, 0), 1600 - cw); y0 = min(max(cy - ch / 2, 0), 900 - ch)
-    view = fr.crop((int(x0), int(y0), int(x0 + cw), int(y0 + ch))).resize((FW, FH), Image.BICUBIC)
-    def to_screen(px, py): return FX0 + (px - x0) / cw * FW, FY0 + (py - y0) / ch * FH
-    # shadow + rounded frame
-    sh = Image.new("L", (FW + 200, FH + 200), 0); ImageDraw.Draw(sh).rounded_rectangle([100, 130, FW + 100, FH + 130], radius=34, fill=110)
-    im.paste((60, 20, 80), (FX0 - 100, FY0 - 100), sh.filter(ImageFilter.GaussianBlur(36)))
-    mask = Image.new("L", (FW, FH), 0); ImageDraw.Draw(mask).rounded_rectangle([0, 0, FW - 1, FH - 1], radius=28, fill=255)
-    ImageDraw.Draw(im).rounded_rectangle([FX0 - 2, FY0 - 2, FX0 + FW + 1, FY0 + FH + 1], radius=30, outline=(255, 255, 255), width=2)
-    im.paste(view, (FX0, FY0), mask)
+    if fr is None: return r_card(tl, dur, dict(lines=[p.get("title", "")]), T)
+    s = 0.93 + 0.07 * ease(tl / dur) if p.get("push", True) else 1.0
+    cw, ch = int(CW0 * s), int(CH0 * s)
+    cx, cy = W / 2 + p.get("dx", 0), 600
+    x0, y0 = int(cx - cw / 2), int(cy - ch / 2)
+    card = fr.resize((cw, ch), Image.BICUBIC)
+    mask = Image.new("L", (cw, ch), 0); ImageDraw.Draw(mask).rounded_rectangle([0, 0, cw - 1, ch - 1], radius=int(28 * s), fill=255)
+    im.paste(card, (x0, y0), mask)
+    def to_screen(px, py): return x0 + px / 1600 * cw, y0 + py / 900 * ch
     d = ImageDraw.Draw(im)
-    title_block(im, tl, p.get("title"), p.get("sub"))
-    # REAL APP tag
-    tag = "REAL APP · screen recording" + (f"  ·  {rate:.1f}×" if rate > 1.05 else "")
-    d.text((FX0 + FW - d.textlength(tag, font=IT(20, "SemiBold")), FY0 - 32), tag, font=IT(20, "SemiBold"), fill=(255, 255, 255))
-    # annotation pills with lead lines (deck slide 2 style)
+    title_block(im, tl, p.get("title"))
     for a in p.get("pills", []):
         t0 = a["t"]; t1 = a.get("until", dur + 1)
         if not (t0 <= tl < t1): continue
-        k = ease((tl - t0) / 0.3); fade = min(1.0, (t1 - tl) / 0.2)
-        k = min(k, fade)
+        k = min(ease((tl - t0) / 0.3), min(1.0, (t1 - tl) / 0.2))
         tx, ty = to_screen(*a["at"])
-        tx = min(max(tx, FX0 + 10), FX0 + FW - 10); ty = min(max(ty, FY0 + 10), FY0 + FH - 10)
         side = a.get("side", "l"); py = a.get("y", ty)
-        px = FX0 - 30 if side == "l" else FX0 + FW + 30
+        px = x0 - 24 if side == "l" else x0 + cw + 24
         bx = pill(d, im, px, py, a["text"], k, "r" if side == "l" else "l")
         sx = bx[0] + bx[2] if side == "l" else bx[0]
-        ex = sx + (tx - sx) * ease((tl - t0 - 0.1) / 0.35)
-        ey = py + (ty - py) * ease((tl - t0 - 0.1) / 0.35)
+        u = ease((tl - t0 - 0.1) / 0.35)
         if k > 0.2:
-            d.line([(sx, py), (ex, ey)], fill=(255, 255, 255), width=3)
-            r = 8 + 3 * math.sin(tl * 8)
-            if tl - t0 > 0.4:
-                d.ellipse([tx - r - 4, ty - r - 4, tx + r + 4, ty + r + 4], outline=(255, 255, 255), width=3)
-                d.ellipse([tx - 5, ty - 5, tx + 5, ty + 5], fill=(255, 79, 139))
+            d.line([(sx, py), (sx + (tx - sx) * u, py + (ty - py) * u)], fill=(255, 255, 255), width=3)
+            if tl - t0 > 0.4: d.ellipse([tx - 7, ty - 7, tx + 7, ty + 7], fill=(255, 255, 255))
     if p.get("logos") and tl >= p["logos"]:
-        draw_logos(im, d, tl - p["logos"])
+        draw_logos(im, d, tl - p["logos"], x0 + cw + 30, y0)
     if p.get("quote") and tl > 0.2:
         f = IT(30, "Medium"); q = p["quote"]; tw = tight_len(d, q, f, -0.005)
-        y = FY0 + FH + 26; d.rounded_rectangle([(W - tw) / 2 - 24, y, (W + tw) / 2 + 24, y + 52], radius=26, fill=(255, 255, 255))
-        d.text(((W - tw) / 2, y + 8), q, font=f, fill=(40, 30, 60))
+        y = y0 + ch - 80; d.rounded_rectangle([(W - tw) / 2 - 24, y, (W + tw) / 2 + 24, y + 52], radius=26, fill=(52, 26, 72))
+        d.text(((W - tw) / 2, y + 8), q, font=f, fill=WHITE)
     return im
 
 LOGO_CACHE = None
@@ -318,7 +288,7 @@ def logos():
     global LOGO_CACHE
     if LOGO_CACHE is None:
         LOGO_CACHE = []
-        for key, label in [("ionq", "trapped ions"), ("ibm", "superconducting"), ("qbraid", "Rigetti · IQM · AQT · QuEra"), ("extropic", "THRML thermodynamic")]:
+        for key, label in [("ionq", ""), ("ibm", ""), ("qbraid", ""), ("extropic", "")]:
             c = glob.glob(os.path.join(HERE, "logos", f"{key}-white.*"))
             if not c: continue
             pth = c[0]
@@ -328,42 +298,84 @@ def logos():
             if L.size[0] * s > 250: s = 250 / L.size[0]
             LOGO_CACHE.append((L.resize((int(L.size[0] * s), int(L.size[1] * s)), Image.LANCZOS), label))
     return LOGO_CACHE
-def draw_logos(im, d, tl):
-    x = FX0 + FW + 40
+def draw_logos(im, d, tl, x, y0):
     for i, (L, label) in enumerate(logos()):
         k = ease((tl - 0.28 * i) / 0.3)
         if k <= 0: continue
-        y = FY0 + 70 + i * 165
-        Lk = L if k >= 1 else L.resize((max(1, int(L.size[0] * (0.7 + 0.3 * k))), max(1, int(L.size[1] * (0.7 + 0.3 * k)))))
-        a = Lk.split()[3].point(lambda v: int(v * k)); im.paste(Lk, (int(x), int(y)), a)
-        if k > 0.6: d.text((x, y + 76), label, font=IT(22, "Medium"), fill=(255, 255, 255))
+        y = y0 + 40 + i * 150
+        a = L.split()[3].point(lambda v: int(v * k)); im.paste(L, (int(min(x, W - L.size[0] - 20)), int(y)), a)
 
+VIZ_ZOOM = 1.4  # crops away the renders' own small corner labels; keeps the 3D scene
+INK = (42, 24, 56)
 def r_viz(tl, dur, p, T):
     key = p["viz"]; fr = None
     if key in SRC:
         n = len(SRC[key]); rate = p.get("rate", max(1.0, n / 30 / dur))
         fr = src_frame(key, p.get("start", 0) + tl * rate, 30)
-    if fr is None:  # not rendered yet: fall back to the matching home-made animation, deck-framed
-        im = mv.RENDER[p.get("fallback", "hist")](tl, dur, dict(cap=p.get("cap", "")), T)
-        if p.get("caption"):
-            d = ImageDraw.Draw(im); f = IT(110 if p.get("big") else 46, "Bold"); tw = tight_len(d, p["caption"], f, -0.03)
-            draw_tight(d, ((W - tw) / 2, H / 2 - 70 if p.get("big") else 130), p["caption"], f, track=-0.03)
-        return im
-    im = fr.resize((W, H)) if fr.size != (W, H) else fr
-    if p.get("caption"):
-        d = ImageDraw.Draw(im); f = IT(130 if p.get("big") else 46, "Bold"); tw = tight_len(d, p["caption"], f, -0.03)
-        k = ease(tl / 0.3); y = (H / 2 - 80 if p.get("big") else 130) - (1 - k) * 20
-        if p.get("big"):  # the viz renders are pale: dark plum type reads there
-            draw_tight(d, ((W - tw) / 2, y), p["caption"], f, fill=(58, 29, 74), track=-0.03, shadow=False)
-        else:
-            d.rounded_rectangle([(W - tw) / 2 - 34, y - 8, (W + tw) / 2 + 34, y + 66], radius=37, fill=(52, 26, 72))
-            draw_tight(d, ((W - tw) / 2, y), p["caption"], f, fill=(255, 255, 255), track=-0.03, shadow=False)
+    if fr is None:
+        im = mv.RENDER[p.get("fallback", "hist")](tl, dur, dict(cap=""), T)
+    else:
+        im = fr.resize((W, H)) if fr.size != (W, H) else fr
+        z = VIZ_ZOOM; cw, ch = W / z, H / z; cy = p.get("cy", 540)
+        im = im.crop((int((W - cw) / 2), int(cy - ch / 2), int((W + cw) / 2), int(cy + ch / 2))).resize((W, H), Image.BICUBIC)
+    # a few big words, one short line at a time (deck-title style)
+    words = p.get("words", [])
+    if words:
+        d = ImageDraw.Draw(im); i = min(len(words) - 1, int(tl / (dur / len(words)))); lt = tl - i * dur / len(words)
+        f = IT(p.get("size", 120), "Bold"); tw = tight_len(d, words[i], f, -0.035)
+        k = ease(lt / 0.3); y = p.get("ty", 90) + (1 - k) * 24
+        col = INK if fr is not None else WHITE
+        draw_tight(d, (110 if p.get("left") else (W - tw) / 2, y), words[i], f, fill=col, track=-0.035)
     return im
 
 def r_dark(tl, dur, p, T):
-    """the neon 'inside the machine' inserts from v1 (EEG traces, gates popping in)."""
-    im = mv.RENDER[p["kind"]](tl, dur, p.get("args", {}), T)
-    mv.tag(im, T); return im
+    """neon inserts from v1 (EEG traces, gates popping in), with no labels."""
+    return mv.RENDER[p["kind"]](tl, dur, p.get("args", {}), T)
+
+# the agent's real circuit: OpenQASM from research/experiments/campaigns/alpha.json,
+# iterations[2] (job f8fdb905db1b4f259c25, 42 physical gates), "after" side of qasm_diff.
+def agent_qasm():
+    d = json.load(open(os.path.join(REPO, "research/experiments/campaigns/alpha.json")))
+    it = d["iterations"][2]
+    assert any(j["job_id"] == "f8fdb905db1b4f259c25" and j["physical_gates"] == 42 for j in it["jobs_run"])
+    body = [l[1:] for l in it["qasm_diff"].splitlines() if l.startswith("+") and not l.startswith("+++")]
+    return body
+QASM_BODY = agent_qasm()
+QASM_SHOWN = ["OPENQASM 2.0;", "…", "qreg q[8];", "creg meas[8];"] + QASM_BODY + ["barrier q[0],…,q[7];", "…"]
+_circ = {}
+def circuit_png():
+    if "im" not in _circ:
+        path = os.path.join(B3, "agent_circuit.png")
+        if not os.path.exists(path):
+            from qiskit import QuantumCircuit
+            import matplotlib; matplotlib.use("Agg")
+            qc = QuantumCircuit.from_qasm_str('OPENQASM 2.0;\ninclude "qelib1.inc";\nqreg q[8];\n' + "\n".join(QASM_BODY) + "\n")
+            fig = qc.draw("mpl", style="clifford", fold=-1, scale=1.25)
+            fig.savefig(path, dpi=150, facecolor="white", bbox_inches="tight")
+        _circ["im"] = Image.open(path).convert("RGB")
+    return _circ["im"]
+MONO = "/System/Library/Fonts/Menlo.ttc"
+def r_qasm(tl, dur, p, T):
+    im = field(T, (1.15, 140, -40)); d = ImageDraw.Draw(im)
+    title_block(im, tl, "The circuit it wrote")
+    # left: the OpenQASM, typed on
+    px, py, pw, ph = 110, 200, 560, 800
+    d.rounded_rectangle([px, py, px + pw, py + ph], radius=24, fill=(28, 20, 40))
+    f = ImageFont.truetype(MONO, 27)
+    nlines = len(QASM_SHOWN); shown = tl / (dur * 0.55) * nlines
+    for i, line in enumerate(QASM_SHOWN):
+        if i > shown: break
+        txt = line if i + 1 <= shown else line[: max(0, int(len(line) * (shown - i)))]
+        col = (255, 255, 255) if 4 <= i < 4 + len(QASM_BODY) else (170, 160, 190)
+        d.text((px + 34, py + 30 + i * 38), txt, font=f, fill=col)
+    # right: the same circuit drawn by Qiskit, gates revealed left to right as the code types
+    C = circuit_png(); s = min(1080 / C.size[0], 760 / C.size[1]); C = C.resize((int(C.size[0] * s), int(C.size[1] * s)), Image.LANCZOS)
+    cx, cy = 730, 200 + (800 - C.size[1]) // 2
+    d.rounded_rectangle([cx - 20, cy - 20, cx + C.size[0] + 20, cy + C.size[1] + 20], radius=24, fill=WHITE)
+    u = min(1.0, max(0.0, (shown - 4) / len(QASM_BODY)))
+    reveal = int(C.size[0] * (0.12 + 0.88 * u))
+    im.paste(C.crop((0, 0, reveal, C.size[1])), (cx, cy))
+    return im
 
 def r_stat(tl, dur, p, T):
     im = field(T, p.get("frame", (1.2, 0, 0))); d = ImageDraw.Draw(im)
@@ -508,7 +520,7 @@ def r_credits(tl, dur, p, T):
         d.text((112 + c * 860, 275 + j * 32), r, font=f, fill=WHITE)
     return im
 
-RENDER = dict(card=r_card, brand=r_brand, photo=r_photo, app=r_app, viz=r_viz, dark=r_dark, stat=r_stat,
+RENDER = dict(qasm=r_qasm, card=r_card, brand=r_brand, photo=r_photo, app=r_app, viz=r_viz, dark=r_dark, stat=r_stat,
               cascade=r_cascade, highlight=r_highlight, punch=r_punch, logo=r_logo, credits=r_credits)
 
 # ------------------------------------------------------------------ the story (end time in s; snapped to beats)
@@ -520,75 +532,68 @@ def build_edl():
     fal = lambda *ks: [f"fal{k}" for k in ks]
     img = lambda *ks: [f"img{k}" for k in ks]
     E = [
-        # hook
+        # hook (quiet intro, then the beat comes in)
         (6.2, "photo", dict(srcs=fal("10", "07") + img("50", "21", "49"), slow=True, fast=False, text=["what if your brain"])),
         (9.0, "photo", dict(srcs=fal("07", "02", "09") + img("22", "14", "50", "33", "04"), text=["could study itself?"])),
-        (13.4, "photo", dict(srcs=img("15", "38", "23", "28", "01", "35", "18", "36", "53", "30", "25") + fal("05", "06", "03"), credit_tag=True)),
+        (13.4, "photo", dict(srcs=img("15", "38", "23", "28", "01", "35", "18", "36", "53", "30", "25") + fal("05", "06", "03"))),
         # what it is
-        (17.9, "brand", dict(sub="a personal AI that knows you, and your brain")),
-        (26.8, "app", dict(clip="app01", rate=1.33, title="Meet your brain", sub="sign in, and it remembers you",
-                           cam=[(0, 800, 450, 1.0), (2.4, 800, 450, 1.0), (3.4, 760, 430, 1.08)],
-                           pills=[dict(t=0.3, until=2.2, text="sign in with Google", at=(800, 470), side="l", y=420),
-                                  dict(t=3.0, text="a real 3D brain that blinks", at=(740, 330), side="l", y=360),
+        (17.9, "brand", dict()),
+        (26.8, "app", dict(clip="app01", rate=1.33, title="Meet your brain",
+                           pills=[dict(t=0.3, until=2.2, text="sign in with Google", at=(800, 470), side="l", y=470),
+                                  dict(t=3.0, text="a real 3D brain that blinks", at=(740, 330), side="l", y=330),
                                   dict(t=4.4, text="your experiments & jobs", at=(180, 300), side="l", y=560),
                                   dict(t=5.6, text="your spectrogram", at=(1390, 520), side="r", y=470),
                                   dict(t=6.8, text="observed vs simulated EEG", at=(1390, 760), side="r", y=760)])),
-        (34.6, "app", dict(clip="app02", rate=1.25, title="It knows you", sub="ask anything about your own brain",
-                           cam=[(0, 760, 600, 1.15), (4.0, 760, 700, 1.35), (7.8, 820, 720, 1.25)],
+        (34.6, "app", dict(clip="app02", rate=1.25, title="It knows you",
                            quote="“Look at my EEG and run a quantum search to explain my alpha rhythm”",
                            pills=[dict(t=0.3, text="it greets you with ideas", at=(740, 720), side="l", y=420),
                                   dict(t=2.4, text="you just ask", at=(600, 835), side="l", y=640),
                                   dict(t=5.6, text="it starts thinking", at=(848, 726), side="r", y=560)])),
         # it reads you
         (38.5, "photo", dict(srcs=fal("01", "02") + img("04", "01", "02") + fal("03") + img("03"), text=["it reads your brainwaves"], size=110)),
-        (40.7, "dark", dict(kind="eeg", args=dict(cap="LIVE EEG · OpenBCI Cyton · 8 ch · Web Serial in Chrome"))),
-        (51.8, "app", dict(clip="app03", rate=1.3, title="It reasons", sub="Gemini looks at your EEG, then plans the search",
-                           cam=[(0, 760, 600, 1.1), (2.6, 640, 640, 1.45), (6.6, 640, 660, 1.45), (8.0, 1250, 640, 1.35)],
-                           pills=[dict(t=0.4, until=2.6, text="Gemini agent, thinking", at=(450, 836), side="l", y=600),
+        (40.7, "dark", dict(kind="eeg", args=dict(cap=""))),
+        (51.8, "app", dict(clip="app03", rate=1.3, title="It reasons",
+                           pills=[dict(t=0.4, until=2.6, text="Gemini agent, thinking", at=(450, 836), side="l", y=760),
                                   dict(t=2.8, text="looks at your spectrograms", at=(600, 655), side="l", y=420),
                                   dict(t=4.0, text="checks running jobs", at=(560, 605), side="l", y=540),
                                   dict(t=5.2, text="queues a quantum search", at=(600, 760), side="l", y=680),
                                   dict(t=8.4, text="QAOA circuit, compiled", at=(1390, 700), side="r", y=560)])),
         # how it works
-        (53.0, "viz", dict(viz="viz-hero-orbit", start=2.0, rate=1.0, fallback="net", caption="How it works", big=True)),
-        (57.0, "viz", dict(viz="viz-tractometry", start=1.0, rate=2.0, fallback="net", caption="brain activity  →  tractometry")),
-        (58.1, "photo", dict(srcs=fal("09"), fast=False)),
-        (61.5, "viz", dict(viz="viz-extraction", start=0.5, rate=2.6, fallback="hist", caption="4 parameters × 2 bits  →  256 candidate brains")),
-        (65.0, "viz", dict(viz="viz-qaoa", start=0.5, rate=2.6, fallback="hist", caption="QAOA concentrates probability on the answer")),
+        (54.0, "viz", dict(viz="viz-hero-orbit", start=1.0, rate=0.6, fallback="net", words=["How it works"], size=140, ty=H / 2 - 90)),
+        (57.6, "viz", dict(viz="viz-tractometry", start=1.0, rate=1.6, fallback="net", words=["your brain activity", "traced along white matter"])),
+        (61.5, "viz", dict(viz="viz-extraction", start=0.5, rate=2.4, fallback="hist", words=["4 brain parameters", "256 possible brains"], ty=H - 170, size=104, left=True)),
+        (65.0, "viz", dict(viz="viz-qaoa", start=0.5, rate=2.6, fallback="hist", words=["quantum search", "finds the best fit"])),
         (66.2, "card", dict(lines=["then it writes", "the circuit"], frame=(1.2, 160, -40))),
-        (75.0, "app", dict(clip="app04", rate=1.33, title="It writes the circuit", sub="QAOA from the agent's own spec",
-                           cam=[(0, 1100, 520, 1.55), (4.2, 1100, 520, 1.55), (6.0, 1100, 700, 1.5)],
+        (71.2, "app", dict(clip="app04", rate=2.2, title="It writes the circuit",
                            pills=[dict(t=0.4, text="8 qubits = 4 params × 2 bits", at=(1215, 640), side="r", y=420),
-                                  dict(t=1.8, text="ZZ couplings encode the loss", at=(1400, 690), side="r", y=560),
-                                  dict(t=3.2, text="transpiled for IBM heavy-hex", at=(1390, 430), side="r", y=700),
-                                  dict(t=6.4, text="measured samples → best hypothesis", at=(1300, 780), side="l", y=600)])),
-        (77.8, "dark", dict(kind="circuit", args=dict(pre=0.2, title="QAOA · 8 qubits · 256 Wilson–Cowan hypotheses", cap="gates, popping in"))),
-        (80.0, "photo", dict(srcs=fal("05") + img("29", "39", "31") + fal("06") + img("37", "33"))),
-        (88.5, "app", dict(clip="app05", rate=1.18, title="It dispatches the job", sub="one agent, many quantum backends",
-                           cam=[(0, 700, 450, 1.0), (1.4, 520, 500, 1.3)],
+                                  dict(t=1.6, text="transpiled for IBM heavy-hex", at=(1390, 430), side="r", y=560),
+                                  dict(t=3.0, text="measured samples → best hypothesis", at=(1300, 780), side="r", y=760)])),
+        (76.2, "qasm", dict()),
+        (78.4, "dark", dict(kind="circuit", args=dict(pre=0.2, title="", cap=""))),
+        (80.1, "photo", dict(srcs=fal("05") + img("29", "39", "31") + fal("06") + img("37", "33"))),
+        (88.5, "app", dict(clip="app05", rate=1.18, title="It dispatches the job",
                            quote="“Design a better circuit and run it on IonQ's simulator”",
                            pills=[dict(t=1.8, text="it revises its own circuit", at=(150, 452), side="l", y=420),
                                   dict(t=3.0, text="IonQ cloud simulator (trapped-ion noise)", at=(160, 500), side="l", y=560)],
-                           logos=3.6)),
-        (95.0, "app", dict(clip="app06", rate=2.0, title="Results come back", sub="it compares, revises and repeats",
-                           cam=[(0, 800, 450, 1.0), (1.5, 1100, 520, 1.45), (5.5, 1100, 500, 1.45)],
+                           logos=3.6, dx=-110)),
+        (95.0, "app", dict(clip="app06", rate=2.0, title="Results come back",
                            pills=[dict(t=0.3, until=1.6, text="the agent explains what it found", at=(700, 540), side="l", y=480),
                                   dict(t=2.0, text="all 256 hypotheses, scored", at=(1390, 540), side="r", y=420),
-                                  dict(t=4.2, text="model vs your real EEG", at=(1390, 480), side="l", y=620)])),
-        # frontier (quiet breakdown)
-        (97.2, "cascade", dict()),
-        (99.2, "highlight", dict(i=hl_index("the proposed framework does not rely"), show_why=False)),
-        (100.3, "punch", dict(them="quantum-inspired math on classical hardware", us=["Real quantum hardware,", "not quantum-inspired simulation"])),
-        (102.3, "highlight", dict(i=hl_index("do not necessarily reflect"))),
-        (103.4, "punch", dict(them="curated public datasets, trained offline", us=["Your own EEG,", "live in the browser"], frame=(1.2, 140, -60))),
-        (105.3, "highlight", dict(i=hl_index("mostly black-box"))),
-        (106.4, "punch", dict(them="classify EEG with a black box", us=["From classifying EEG", "to inferring brain mechanisms"], frame=(1.1, -60, 80))),
-        # drop: results
-        (108.1, "stat", dict(big="{n} / 256", n=48, small="simulations to recover a hidden brain state")),
-        (109.8, "stat", dict(big="{n} gates", n=42, small="a circuit Gemini wrote itself", frame=(1.25, 120, -40))),
-        (111.5, "stat", dict(big="52 vs 454", small="gates on IonQ vs IBM, same problem", frame=(1.3, -140, 60))),
-        (113.2, "stat", dict(big="τ 16 → 30–55 ms", small="seizure windows point to slower synapses",
+                                  dict(t=4.2, text="model vs your real EEG", at=(1390, 480), side="r", y=620)])),
+        # results, on the energy
+        (97.3, "stat", dict(big="{n} / 256", n=48, small="simulations to recover a hidden brain state")),
+        (99.6, "stat", dict(big="{n} gates", n=42, small="a circuit Gemini wrote itself", frame=(1.25, 120, -40))),
+        (101.8, "stat", dict(big="52 vs 454", small="gates on IonQ vs IBM, same problem", frame=(1.3, -140, 60))),
+        (104.2, "stat", dict(big="τ 16 → 30–55 ms", small="seizure windows point to slower synapses",
                              foot="one CHB-MIT recording (chb01_03): an n-of-1 observation, not a validated biomarker", frame=(1.2, 60, 90))),
+        # frontier, in the quiet breakdown
+        (106.4, "cascade", dict()),
+        (108.6, "highlight", dict(i=hl_index("the proposed framework does not rely"))),
+        (110.3, "punch", dict(them="quantum-inspired math on classical hardware", us=["Real quantum hardware,", "not quantum-inspired simulation"])),
+        (112.5, "highlight", dict(i=hl_index("do not necessarily reflect"))),
+        (114.2, "punch", dict(them="curated public datasets, trained offline", us=["Your own EEG,", "live in the browser"], frame=(1.2, 140, -60))),
+        (116.4, "highlight", dict(i=hl_index("mostly black-box"))),
+        (118.1, "punch", dict(them="classify EEG with a black box", us=["From classifying EEG", "to inferring brain mechanisms"], frame=(1.1, -60, 80))),
         (DUR - 4.4, "logo", dict()),
         (DUR, "credits", dict()),
     ]
@@ -602,15 +607,7 @@ def build_edl():
 
 # ------------------------------------------------------------------ frame + post
 def post(im, kind, tl, T, fi):
-    a = np.asarray(im.convert("RGB"))
-    if kind in ("photo", "dark"):
-        prev = BEATS[BEATS <= T]; since = T - prev[-1] if len(prev) else 1.0
-        sp = int(10 * math.exp(-since * 12)) + int(18 * max(0, 1 - tl / 0.15))
-        if sp:
-            a = a.copy(); a[..., 0] = np.roll(a[..., 0], sp, 1); a[..., 2] = np.roll(a[..., 2], -sp, 1)
-    elif tl < 0.12:  # soft white dip on deck-style cuts
-        a = (a.astype(np.float32) * (1 - 0.35 * (1 - tl / 0.12)) + 255 * 0.35 * (1 - tl / 0.12)).astype(np.uint8)
-    return a
+    return np.asarray(im.convert("RGB"))
 
 def render_frame(fi, edl):
     T = fi / FPS
@@ -632,23 +629,18 @@ def worker(args):
     pr.stdin.close(); pr.wait(); return path
 
 def build_audio(path):
+    """the song, continuous from the start; only a fade-out at the very end."""
     with wave.open(SONG_WAV) as w:
         x = np.frombuffer(w.readframes(w.getnframes()), np.int16).reshape(-1, 2).astype(np.float32) / 32768
-    a, b = int(SPLICE_A * SR), int(SPLICE_B * SR); xf = int(0.06 * SR)
-    ramp = np.linspace(0, 1, xf)[:, None]
-    head = x[:a + xf].copy(); tail = x[b:].copy()
-    head[-xf:] = head[-xf:] * (1 - ramp) + tail[:xf] * ramp
-    y = np.concatenate([head, tail[xf:]])
-    n = int(DUR * SR); y = y[:n]
-    fo = int(3.0 * SR); y[-fo:] *= np.linspace(1, 0, fo)[:, None] ** 1.3
-    fi = int(0.05 * SR); y[:fi] *= np.linspace(0, 1, fi)[:, None]
+    n = int(DUR * SR); y = x[:n].copy()
+    fo = int(3.5 * SR); y[-fo:] *= np.linspace(1, 0, fo)[:, None] ** 1.3
     with wave.open(path, "wb") as w:
         w.setnchannels(2); w.setsampwidth(2); w.setframerate(SR); w.writeframes((np.clip(y, -1, 1) * 32767).astype(np.int16).tobytes())
 
 if __name__ == "__main__":
     prepare()
     edl = build_edl()
-    print(f"beat {BEAT:.3f}s ({60 / BEAT:.1f} BPM); splice {SPLICE_A:.2f}->{SPLICE_B:.2f}; duration {DUR:.2f}s; viz: {sorted(VIZ)}")
+    print(f"beat {BEAT:.3f}s ({60 / BEAT:.1f} BPM); continuous song; duration {DUR:.2f}s; viz: {sorted(VIZ)}")
     for e in edl: print(f"  {e[0]:7.2f}-{e[1]:7.2f}  {e[2]}")
     if "--stills" in sys.argv:
         sd = os.path.join(HERE, "stills"); os.makedirs(sd, exist_ok=True)
