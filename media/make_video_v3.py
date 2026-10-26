@@ -458,9 +458,6 @@ def r_highlight(tl, dur, p, T):
     im = view.resize((W, H), Image.BICUBIC)
     d = ImageDraw.Draw(im)
     # source tag
-    tag = f"QuantumNeuroXAI (Sci Rep 2026) · p. {hl['page']}"
-    f = IT(26, "SemiBold"); tw = d.textlength(tag, font=f)
-    d.rounded_rectangle([W - tw - 80, 40, W - 40, 92], radius=26, fill=(40, 30, 60)); d.text((W - tw - 60, 50), tag, font=f, fill=WHITE)
     if tl > 1.1:
         f2 = IT(34, "SemiBold"); t = "they: " + hl["why"].lower() if p.get("show_why") else None
         if t:
@@ -471,9 +468,6 @@ def r_highlight(tl, dur, p, T):
 def r_punch(tl, dur, p, T):
     im = field(T, p.get("frame", (1.15, -120, 60))); d = ImageDraw.Draw(im)
     f0 = IT(34, "SemiBold"); k = ease(tl / 0.3)
-    them = "they: " + p["them"]
-    tw = tight_len(d, them, f0, -0.01); draw_tight(d, ((W - tw) / 2, 300), them, f0, fill=(255, 240, 245), track=-0.01)
-    d.line([((W - tw) / 2, 322), ((W - tw) / 2 + tw * k, 322)], fill=(255, 255, 255), width=3)  # strike-through
     lines = p["us"]; f = IT(104, "Bold")
     for i, l in enumerate(lines):
         kk = ease((tl - 0.12 - 0.08 * i) / 0.35)
