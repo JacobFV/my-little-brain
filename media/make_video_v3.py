@@ -241,8 +241,8 @@ def r_photo(tl, dur, p, T):
 def hook_shots():
     H_ = lambda k: ("hook" + k, 0.4)
     plan = {
-        "slow": ["hook07", "hook01", "fal07", "hook08", "hook02", "fal02"],                          # 2 beats each
-        "beat": ["hook04", "app01:eyes", "hook03", "fal03", "fal04", "viz-hero-orbit", "viz-tractometry"],  # 1 beat each
+        "slow": ["hook07", "hook01", "hook08"],                                                      # 2 beats each
+        "beat": ["hook02", "hook04", "app01:eyes", "hook03", "fal03", "viz-hero-orbit", "viz-tractometry"],  # 1 beat each
         "half": ["app02:typing", "app03:tools", "viz-extraction", "hook06", "fal06", "app04:circuit",
                  "viz-qaoa", "hook05", "img33", "fal09", "img38", "fal10"],                         # half beats -> brand
     }
@@ -270,6 +270,50 @@ def hook_cuts(t0, t1):
     if t < t1 - 0.01: cuts[-1] = (cuts[-1][0], t1, cuts[-1][2])
     return cuts
 _hook_cache = {}
+_MY, _MX = np.mgrid[0:H // 8, 0:W // 8].astype(np.float32)
+def blob_mask(u, seed, sd):
+    """soft, wobbling blob that grows from a point to beyond the frame over the first part of a shot."""
+    from scipy.ndimage import gaussian_filter
+    rs = np.random.default_rng(seed); cx, cy = (0.35 + 0.3 * rs.random()) * W / 8, (0.35 + 0.3 * rs.random()) * H / 8
+    grow = 0.75 if sd > 0.5 else 0.85  # fraction of the shot spent opening
+    x = min(1.0, u / grow); k = x * x * (3 - 2 * x)  # smoothstep: visibly grows, field stays around it
+    r = (0.07 + 0.66 * k) * W / 8
+    dx, dy = _MX - cx, _MY - cy; th = np.arctan2(dy, dx); ph = rs.random() * 6.28
+    rr = r * (1 + 0.16 * np.sin(3 * th + ph + 4 * u) + 0.09 * np.sin(5 * th - ph + 6 * u))
+    m = np.clip((rr - np.hypot(dx, dy)) / (0.35 * r + 4) + 0.5, 0, 1)
+    m = gaussian_filter(m, 2.0)
+    big = np.asarray(Image.fromarray(m.astype(np.float32), "F").resize((W, H), Image.BILINEAR))
+    return big[..., None]
+
+def r_white(tl, dur, p, T):
+    return Image.new("RGB", (W, H), WHITE)
+
+def r_morph(tl, dur, p, T):
+    """the deck color field distorts its way into presence: blobs bloom from nothing, ripple, settle."""
+    from scipy.ndimage import gaussian_filter, map_coordinates
+    s = 8; u = min(1.0, tl / dur)
+    im = Image.new("RGB", (W // s, H // s), (207, 220, 251)); d = ImageDraw.Draw(im)
+    for i, (x, y, w, h, c) in enumerate(BLOBS):
+        k = ease((u - 0.06 * i) / 0.55)
+        if k <= 0: continue
+        ox = 40 * math.sin(T * 0.35 + i * 1.7); oy = 30 * math.cos(T * 0.28 + i * 2.3)
+        cx, cy = x + w / 2 + ox, y + h / 2 + oy
+        sc = k * (1 + 0.15 * math.sin(k * math.pi))  # bloom with a slight overshoot
+        rw, rh = w * sc / 2, h * sc / 2
+        d.ellipse([(cx - rw) / s, (cy - rh) / s, (cx + rw) / s, (cy + rh) / s], fill=hexc(c))
+    a = np.asarray(im).astype(np.float32)
+    # liquid warp: turbulence-like displacement that calms as the field settles
+    amp = 9.0 * (1 - ease(u / 0.9)) + 0.5
+    yy, xx = np.mgrid[0:H // s, 0:W // s].astype(np.float32)
+    wx = xx + amp * (np.sin(yy / 6.0 + tl * 3.1) + 0.6 * np.sin((xx + yy) / 9.0 - tl * 2.3))
+    wy = yy + amp * (np.cos(xx / 7.0 - tl * 2.7) + 0.6 * np.sin((xx - yy) / 8.0 + tl * 1.9))
+    a = np.stack([map_coordinates(a[..., c], [wy, wx], order=1, mode="nearest") for c in range(3)], -1)
+    sig = (110 / s / 1.6) * (1.8 - 0.8 * ease(u))  # blur eases down to the field's own softness
+    a = gaussian_filter(a, sigma=(sig, sig, 0), mode="nearest")
+    big = np.stack([np.asarray(Image.fromarray(a[..., c], "F").resize((W, H), Image.BICUBIC)) for c in range(3)], -1)
+    wv = 1 - ease(u / 0.7)  # fade up from pure white
+    big = big * (1 - wv) + 255 * wv + DITHER[int(T * 30) % len(DITHER)]
+    return Image.fromarray(big.clip(0, 255).astype(np.uint8))
 def r_hook(tl, dur, p, T):
     key0 = (p["_t0"], dur)
     if key0 not in _hook_cache: _hook_cache[key0] = hook_cuts(p["_t0"], p["_t0"] + dur)
@@ -283,6 +327,7 @@ def r_hook(tl, dur, p, T):
     if ":" in src:
         k, sub = src.split(":"); clip, start, (cx, cy, cw) = APP_CROPS[sub]
         fr = src_frame(clip, start + st, 30); ch = cw * 9 / 16; cw2, ch2 = cw / z, ch / z
+        cx = min(max(cx, cw2 / 2), 1600 - cw2 / 2); cy = min(max(cy, ch2 / 2), 900 - ch2 / 2)
         im = fr.crop((int(cx - cw2 / 2), int(cy - ch2 / 2), int(cx + cw2 / 2), int(cy + ch2 / 2))).resize((W, H), Image.BICUBIC)
     elif src.startswith("viz-"):
         fr = src_frame(src, VIZ_START.get(src, 2) + st * 1.5, 30)
@@ -295,6 +340,11 @@ def r_hook(tl, dur, p, T):
             base = _fit(fr if not src == "fal01" else fr)
         sw, sh = base.size; cw2, ch2 = W / z, H / z
         im = base.crop((int((sw - cw2) / 2), int((sh - ch2) / 2), int((sw + cw2) / 2), int((sh + ch2) / 2))).resize((W, H), Image.BILINEAR)
+    # push through the field: the shot appears inside a soft organic blob that grows from depth
+    m = blob_mask(u, hash(src) % 997, sd)
+    fa = np.asarray(field(T)).astype(np.float32)
+    sa = np.asarray(im).astype(np.float32)
+    im = Image.fromarray((fa * (1 - m) + sa * m).clip(0, 255).astype(np.uint8))
     # the question, one big line at a time
     line = None
     for (a, b, txt) in p.get("lines", []):
@@ -329,6 +379,7 @@ def r_app(tl, dur, p, T):
     s = 0.93 + 0.07 * ease(tl / dur) if p.get("push", True) else 1.0
     cw, ch = int(CW0 * s), int(CH0 * s)
     cx, cy = W / 2 + p.get("dx", 0), 600
+    if p.get("rise"): cy += (1 - ease(tl / 0.8)) * 700
     x0, y0 = int(cx - cw / 2), int(cy - ch / 2)
     card = fr.resize((cw, ch), Image.BICUBIC)
     mask = Image.new("L", (cw, ch), 0); ImageDraw.Draw(mask).rounded_rectangle([0, 0, cw - 1, ch - 1], radius=int(28 * s), fill=255)
@@ -588,7 +639,7 @@ def r_credits(tl, dur, p, T):
         d.text((112 + c * 860, 275 + j * 32), r, font=f, fill=WHITE)
     return im
 
-RENDER = dict(hook=r_hook, qasm=r_qasm, card=r_card, brand=r_brand, photo=r_photo, app=r_app, viz=r_viz, dark=r_dark, stat=r_stat,
+RENDER = dict(white=r_white, morph=r_morph, hook=r_hook, qasm=r_qasm, card=r_card, brand=r_brand, photo=r_photo, app=r_app, viz=r_viz, dark=r_dark, stat=r_stat,
               cascade=r_cascade, highlight=r_highlight, punch=r_punch, logo=r_logo, credits=r_credits)
 
 # ------------------------------------------------------------------ the story (end time in s; snapped to beats)
@@ -601,10 +652,12 @@ def build_edl():
     img = lambda *ks: [f"img{k}" for k in ks]
     E = [
         # hook (quiet intro, then the beat comes in)
-        (13.4, "hook", dict(lines=[(0.5, 4.5, "what if your brain"), (4.6, 8.9, "could study itself?")])),
+        (0.8, "white", dict()),
+        (3.4, "morph", dict()),
+        (13.4, "hook", dict(lines=[(3.9, 6.7, "what if your brain"), (6.8, 9.6, "could study itself?")])),
         # what it is
         (17.9, "brand", dict()),
-        (26.8, "app", dict(clip="app01", rate=1.33, title="Meet your brain",
+        (26.8, "app", dict(clip="app01", rate=1.33, title="Meet your brain", rise=True,
                            pills=[dict(t=0.3, until=2.2, text="sign in with Google", at=(800, 470), side="l", y=470),
                                   dict(t=3.0, text="a real 3D brain that blinks", at=(740, 330), side="l", y=330),
                                   dict(t=4.4, text="your experiments & jobs", at=(180, 300), side="l", y=560),
