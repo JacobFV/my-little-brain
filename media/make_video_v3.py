@@ -124,7 +124,8 @@ def frames_of(path, fps=30, w=None, crop_top=0.0):
     return sorted(glob.glob(os.path.join(d, "f*.jpg")))
 
 APP = {os.path.basename(p)[:2]: p for p in glob.glob(os.path.join(HERE, "app-clips", "*.mp4"))}
-FAL = {os.path.basename(p)[:2]: p for p in glob.glob(os.path.join(HERE, "fal", "*.mp4"))}
+FAL = {os.path.basename(p)[:2]: p for p in glob.glob(os.path.join(HERE, "fal", "*.mp4")) if not os.path.basename(p).startswith("hook")}
+HOOK = {os.path.basename(p)[5:7]: p for p in glob.glob(os.path.join(HERE, "fal", "hook-*.mp4"))}  # new hook clips
 VIZ = {os.path.splitext(os.path.basename(p))[0]: p for p in glob.glob(os.path.join(HERE, "viz", "out", "*.mp4"))}
 BROLL = {os.path.basename(p)[:2]: p for p in glob.glob(os.path.join(HERE, "broll", "*.jpg"))}
 SRC = {}  # key -> list of frame paths (videos) or [image path]
@@ -133,6 +134,7 @@ def prepare():
     for k, p in APP.items(): jobs.append((f"app{k}", p, 30, None, 0.0))
     for k, p in FAL.items(): jobs.append((f"fal{k}", p, 24, None, 0.24 if k == "01" else 0.0))  # 01: drop garbled headband text
     for k, p in VIZ.items(): jobs.append((f"viz-{k}", p, 30, None, 0.0))
+    for k, p in HOOK.items(): jobs.append((f"hook{k}", p, 24, None, 0.0))
     with mp.get_context("fork").Pool(6) as pool:
         res = pool.starmap(frames_of, [(j[1], j[2], j[3], j[4]) for j in jobs])
     for j, r in zip(jobs, res): SRC[j[0]] = r
@@ -230,6 +232,78 @@ def r_photo(tl, dur, p, T):
             if k <= 0: continue
             tw = tight_len(d, l, f, -0.035)
             draw_tight(d, ((W - tw) / 2, H - 170 - (len(lines) - i) * size * 1.02 + (1 - k) * 30), l, f, track=-0.035)
+    return im
+
+# ------------------------------------------------------------------ the hook (0 -> brand card)
+# Every shot is a different source. Cuts build: 2 beats per shot in the quiet intro, 1 beat once the
+# drums come in, then half-beats into the brand reveal. Each shot pushes forward and speed-ramps
+# (fast -> slow), so motion carries across cuts instead of flashes.
+def hook_shots():
+    H_ = lambda k: ("hook" + k, 0.4)
+    plan = {
+        "slow": ["hook07", "hook01", "fal07", "hook08", "hook02", "fal02"],                          # 2 beats each
+        "beat": ["hook04", "app01:eyes", "hook03", "fal03", "fal04", "viz-hero-orbit", "viz-tractometry"],  # 1 beat each
+        "half": ["app02:typing", "app03:tools", "viz-extraction", "hook06", "fal06", "app04:circuit",
+                 "viz-qaoa", "hook05", "img33", "fal09", "img38", "fal10"],                         # half beats -> brand
+    }
+    return plan
+APP_CROPS = {"eyes": ("app01", 7.0, (740, 480, 720)), "typing": ("app02", 3.0, (740, 790, 900)),
+             "tools": ("app03", 6.5, (560, 690, 860)), "circuit": ("app04", 1.5, (1380, 670, 600))}
+VIZ_START = {"viz-hero-orbit": 2.5, "viz-tractometry": 4.5, "viz-extraction": 6.0, "viz-qaoa": 8.5}
+def hook_cuts(t0, t1):
+    """list of (start, end, source) in video time."""
+    b = [x for x in BEATS if t0 - 1e-3 <= x <= t1 + 1e-3]
+    b = [t0] + [x for x in b if x > t0 + 0.05]
+    if b[-1] < t1 - 0.05: b.append(t1)
+    plan = hook_shots(); cuts = []; i = 0
+    slow_end, beat_end = snap(6.2), snap(10.0)
+    srcs = plan["slow"] + plan["beat"] + plan["half"]; si = 0
+    t = t0
+    while t < t1 - 0.05 and si < len(srcs):
+        if t < slow_end - 0.05: step = 2 * BEAT
+        elif t < beat_end - 0.05: step = BEAT
+        else: step = BEAT / 2
+        e = min(t1, t + step)
+        if t < slow_end - 0.05 and e > slow_end: e = slow_end
+        if t < beat_end - 0.05 and e > beat_end: e = beat_end
+        cuts.append((t, e, srcs[si])); si += 1; t = e
+    if t < t1 - 0.01: cuts[-1] = (cuts[-1][0], t1, cuts[-1][2])
+    return cuts
+_hook_cache = {}
+def r_hook(tl, dur, p, T):
+    key0 = (p["_t0"], dur)
+    if key0 not in _hook_cache: _hook_cache[key0] = hook_cuts(p["_t0"], p["_t0"] + dur)
+    cuts = _hook_cuts = _hook_cache[key0]
+    c = next((c for c in cuts if c[0] <= T < c[1]), cuts[-1])
+    l, sd, src = T - c[0], c[1] - c[0], c[2]
+    u = min(1.0, l / max(sd, 1e-3))
+    # speed ramp: fast in, settle (integral of v(u) = 1.9 - 1.1u)
+    st = sd * (1.9 * u - 0.55 * u * u)
+    z = 1.0 + 0.10 * (1 - (1 - u) ** 2)  # forward push on every shot
+    if ":" in src:
+        k, sub = src.split(":"); clip, start, (cx, cy, cw) = APP_CROPS[sub]
+        fr = src_frame(clip, start + st, 30); ch = cw * 9 / 16; cw2, ch2 = cw / z, ch / z
+        im = fr.crop((int(cx - cw2 / 2), int(cy - ch2 / 2), int(cx + cw2 / 2), int(cy + ch2 / 2))).resize((W, H), Image.BICUBIC)
+    elif src.startswith("viz-"):
+        fr = src_frame(src, VIZ_START.get(src, 2) + st * 1.5, 30)
+        zz = VIZ_ZOOM * z; cw2, ch2 = W / zz, H / zz
+        im = fr.resize((W, H)).crop((int((W - cw2) / 2), int((H - ch2) / 2), int((W + cw2) / 2), int((H + ch2) / 2))).resize((W, H), Image.BICUBIC)
+    else:
+        if src.startswith("img"): base = cover(src)
+        else:
+            fr = src_frame(src, 0.6 + st, 24)
+            base = _fit(fr if not src == "fal01" else fr)
+        sw, sh = base.size; cw2, ch2 = W / z, H / z
+        im = base.crop((int((sw - cw2) / 2), int((sh - ch2) / 2), int((sw + cw2) / 2), int((sh + ch2) / 2))).resize((W, H), Image.BILINEAR)
+    # the question, one big line at a time
+    line = None
+    for (a, b, txt) in p.get("lines", []):
+        if a <= T < b: line, la = txt, T - a
+    if line:
+        arr = np.asarray(im).astype(np.float32); g = np.clip((np.arange(H) - H * 0.5) / (H * 0.5), 0, 1)[:, None, None] * 0.55
+        im = Image.fromarray((arr * (1 - g) + np.array([30, 15, 40], np.float32) * g).clip(0, 255).astype(np.uint8))
+        d = ImageDraw.Draw(im); f = IT(130, "Bold"); tw = tight_len(d, line, f, -0.035)
+        draw_tight(d, ((W - tw) / 2, H - 290 + (1 - ease(la / 0.4)) * 24), line, f, track=-0.035)
     return im
 
 # annotated real-app recording ------------------------------------------------
@@ -514,7 +588,7 @@ def r_credits(tl, dur, p, T):
         d.text((112 + c * 860, 275 + j * 32), r, font=f, fill=WHITE)
     return im
 
-RENDER = dict(qasm=r_qasm, card=r_card, brand=r_brand, photo=r_photo, app=r_app, viz=r_viz, dark=r_dark, stat=r_stat,
+RENDER = dict(hook=r_hook, qasm=r_qasm, card=r_card, brand=r_brand, photo=r_photo, app=r_app, viz=r_viz, dark=r_dark, stat=r_stat,
               cascade=r_cascade, highlight=r_highlight, punch=r_punch, logo=r_logo, credits=r_credits)
 
 # ------------------------------------------------------------------ the story (end time in s; snapped to beats)
@@ -527,9 +601,7 @@ def build_edl():
     img = lambda *ks: [f"img{k}" for k in ks]
     E = [
         # hook (quiet intro, then the beat comes in)
-        (6.2, "photo", dict(srcs=fal("10", "07") + img("50", "21", "49"), slow=True, fast=False, text=["what if your brain"])),
-        (9.0, "photo", dict(srcs=fal("07", "02", "09") + img("22", "14", "50", "33", "04"), text=["could study itself?"])),
-        (13.4, "photo", dict(srcs=img("15", "38", "23", "28", "01", "35", "18", "36", "53", "30", "25") + fal("05", "06", "03"))),
+        (13.4, "hook", dict(lines=[(0.5, 4.5, "what if your brain"), (4.6, 8.9, "could study itself?")])),
         # what it is
         (17.9, "brand", dict()),
         (26.8, "app", dict(clip="app01", rate=1.33, title="Meet your brain",
