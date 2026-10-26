@@ -12,6 +12,11 @@ simplified model, not diagnoses.
 **Live:** https://my-little-brain-563778990179.us-central1.run.app (sign in with Google)
 
 <p align="center">
+  <a href="https://youtu.be/c7H80NzR3Tg"><img src="https://img.youtube.com/vi/c7H80NzR3Tg/maxresdefault.jpg" alt="Watch the My Little Brain demo video on YouTube" width="100%"></a>
+  <br><sub>▶ <a href="https://youtu.be/c7H80NzR3Tg">Watch the 2-minute demo</a></sub>
+</p>
+
+<p align="center">
   <img src="media/deck-slide-1.png" alt="My Little Brain — the real 3D brain in a soft color field" width="100%">
 </p>
 <p align="center">
