@@ -140,6 +140,21 @@ ry(-0.55) q[3];
     <div class="small" style="left:0;right:0;top:auto;bottom:30px;text-align:center;font-size:20px;opacity:.75">we encode hypotheses, not raw EEG · each extra bit per dial multiplies the space · no quantum-advantage claim at 256</div>
   </section>
 
+  <!-- 3c · amplify, don't scan -->
+  <section class="slide">
+    <div class="word" style="left:150px;top:96px">Amplify, don’t scan</div>
+    <canvas id="amp" width="1620" height="560" style="position:absolute;left:150px;top:330px;width:1620px;height:560px"></canvas>
+    <style>
+      .amp-h { position:absolute; top:250px; font-size:40px; font-weight:700; letter-spacing:-.02em; }
+      .amp-n { position:absolute; top:900px; font-size:30px; font-weight:500; opacity:.92; }
+    </style>
+    <div class="amp-h" style="left:150px">Classical · check one brain at a time</div>
+    <div class="amp-h" style="left:1010px">Quantum · make the right one louder</div>
+    <div class="amp-n" id="amp-l" style="left:150px">checked 0 / 256 · O(N)</div>
+    <div class="amp-n" id="amp-r" style="left:1010px">round 0 / 12 · O(√N)</div>
+    <div class="small" style="left:0;right:0;top:auto;bottom:30px;text-align:center;font-size:20px;opacity:.75">Grover amplitude amplification, exact for N = 256 · our QAOA uses the same interference heuristically — no speed-up claimed at 256</div>
+  </section>
+
   <!-- 4 · behind the scenes -->
   <section class="slide">
     <div class="word" style="left:150px;top:96px">Behind the scenes</div>
@@ -219,7 +234,7 @@ const stage = document.getElementById('stage'), field = document.getElementById(
 const slides = [...document.querySelectorAll('.slide')];
 let cur = 0, t0 = 0;
 const frames = ['translate(0,0) scale(1)', 'translate(-120px,40px) scale(1.08) rotate(-4deg)', 'translate(80px,-60px) scale(1.12) rotate(5deg)',
-                'translate(-100px,-30px) scale(1.06) rotate(-3deg)',
+                'translate(-100px,-30px) scale(1.06) rotate(-3deg)', 'translate(70px,-50px) scale(1.09) rotate(4deg)',
                 'translate(-60px,-80px) scale(1.1) rotate(-6deg)', 'translate(40px,60px) scale(1.05) rotate(3deg)'];
 // Team: fill in names / roles; photos go in media/team/ (square crops look best).
 const TEAM = [
@@ -286,8 +301,36 @@ function drawCollapse(t) {
     }
   });
 }
+// classical sequential search vs Grover amplitude amplification over N = 256 (exact amplitudes)
+const amp = document.getElementById('amp').getContext('2d');
+const N = 256, TARGET = 137, ROUNDS = 12, TH = Math.asin(1 / Math.sqrt(N));
+function drawAmp(t) {
+  const s = (t - t0) / 1000;
+  amp.clearRect(0, 0, 1620, 560);
+  // left: 16×16 grid ticked in order
+  const checked = Math.min(N, Math.floor(Math.max(0, s - 0.5) * 22));
+  for (let i = 0; i < N; i++) {
+    const x = (i % 16) * 46, y = Math.floor(i / 16) * 34;
+    const hit = i === TARGET && checked > TARGET;
+    amp.fillStyle = hit ? '#ffffff' : i < checked ? 'rgba(255,255,255,.55)' : 'rgba(255,255,255,.16)';
+    amp.beginPath(); amp.roundRect(x, y, 38, 26, 6); amp.fill();
+    if (i === TARGET && !hit) { amp.strokeStyle = 'rgba(255,255,255,.9)'; amp.lineWidth = 2; amp.stroke(); }
+  }
+  // right: probability amplitudes after k Grover rounds
+  const k = Math.min(ROUNDS, Math.floor(Math.max(0, s - 0.5) / 0.55));
+  const a = Math.sin((2 * k + 1) * TH), b = Math.cos((2 * k + 1) * TH) / Math.sqrt(N - 1);
+  for (let i = 0; i < N; i++) {
+    const h = Math.max(3, Math.abs(i === TARGET ? a : b) * 520);
+    const w = i === TARGET ? 14 : 2.2, x0 = 860 + i * 2.9 - (i === TARGET ? 6 : 0);
+    amp.fillStyle = i === TARGET ? '#ffffff' : 'rgba(255,255,255,.4)';
+    amp.fillRect(x0, 540 - Math.min(520, h), w, Math.min(520, h));
+  }
+  document.getElementById('amp-l').textContent = `checked ${checked} / 256 · O(N)`;
+  document.getElementById('amp-r').textContent = `round ${k} / 12 · P(right) = ${(a * a * 100).toFixed(0)}% · O(√N)`;
+}
 function frame(t) {
   if (cur === 2) drawCollapse(t);
+  if (cur === 4) drawAmp(t);
   requestAnimationFrame(frame);
 }
 fit(); go(0); requestAnimationFrame(frame);

@@ -22,8 +22,11 @@ simplified model, not diagnoses.
   <img src="media/deck-slide-4.png" alt="EEG → quantum state — EEG → 10 band powers → 4 brain parameters × 2 bits = 8 qubits = 256-dimensional Hilbert space; the EEG mismatch becomes an Ising energy and QAOA amplifies the best-fitting brains" width="100%">
 </p>
 <p align="center">
-  <img src="media/deck-slide-5.png" alt="Behind the scenes — OpenBCI in Chrome, app, Gemini 4 Argon agent on Cloud Run, QAOA on IonQ/IBM/qBraid, Extropic THRML, forward simulations" width="49%">
-  <img src="media/deck-slide-6.png" alt="The team — Jacob Valdez, Hanah Rahman, Rohit Korrapolu" width="49%">
+  <img src="media/deck-slide-5.png" alt="Amplify, don't scan — classical sequential search over 256 brains vs Grover amplitude amplification in 12 rounds" width="100%">
+</p>
+<p align="center">
+  <img src="media/deck-slide-6.png" alt="Behind the scenes — OpenBCI in Chrome, app, Gemini 4 Argon agent on Cloud Run, QAOA on IonQ/IBM/qBraid, Extropic THRML, forward simulations" width="49%">
+  <img src="media/deck-slide-7.png" alt="The team — Jacob Valdez, Hanah Rahman, Rohit Korrapolu" width="49%">
 </p>
 <p align="center"><sub>Pitch deck: <a href="media/deck.html">media/deck.html</a> (live, animated) · <a href="media/my-little-brain-deck.pdf">PDF</a></sub></p>
 
