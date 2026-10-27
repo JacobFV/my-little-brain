@@ -797,6 +797,22 @@ export default function ResearchLab() {
                       </IconButton>
                     </div>
                   ) : null}
+                  {signedIn && me?.hardware && (
+                    <p className="cx-quota">
+                      Real quantum hardware:{' '}
+                      <strong>
+                        {me.hardware.limit < 0
+                          ? 'unlimited'
+                          : `${me.hardware.used} / ${me.hardware.limit} jobs today`}
+                      </strong>
+                      <br />
+                      Need more? Email{' '}
+                      <a href={`mailto:${me.hardware.contact}?subject=My%20Little%20Brain%20QPU%20quota`}>
+                        {me.hardware.contact}
+                      </a>{' '}
+                      to request a higher limit.
+                    </p>
+                  )}
                 </section>
                 {signedIn && newOpen && (
                   <section className="cx-section">

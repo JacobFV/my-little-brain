@@ -306,9 +306,7 @@ class ChatTurn:
             if not self.hardware_ok:
                 return {"denied": "physical QPU hardware only when the user explicitly asks for it in their message; "
                                   "use a simulator (aer_noisy / ionq_simulator) instead"}, None
-            if not limits.hardware_allowed(self.user.get("email")):
-                return {"denied": "this account may not use physical QPUs (HARDWARE_EMAILS)"}, None
-            limits.consume(self.uid, "hardware_job")
+            limits.consume_hardware(self.uid, self.user.get("email"))
         if spec is not None and len(json.dumps(spec)) > 8000:
             return {"error": "spec too large"}, None
         limits.consume(self.uid, "job")

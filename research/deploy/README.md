@@ -43,7 +43,8 @@ mounted into both services. Optional plain env: `QBRAID_SIM_DEVICE`, `QBRAID_QPU
 | setting | default | effect |
 |---|---|---|
 | `ALLOWED_EMAILS` | empty (any verified Google account) | comma-separated sign-in allowlist. **Set this for a demo.** |
-| `HARDWARE_EMAILS` | empty (everyone, capped) | who may submit to paid QPUs (IBM, IonQ) or enable autonomous QPU use |
+| `HARDWARE_QUOTAS` | `jacobfv123@gmail.com:4` | per-account daily physical-QPU quota (`email:n,…`); everyone else gets `LIMIT_HARDWARE_JOB` (0) |
+| `HARDWARE_CONTACT` | `jacobfv123@gmail.com` | shown to users as who to email for a higher quota |
 | `LIMIT_<ACTION>` | see below | per-user quota per window. `0` disables the action and a negative value removes the limit |
 | `CAP_AUTONOMOUS_JOBS` / `CAP_QPU_JOBS` | 50 / 4 | ceilings on the self-service agent budgets in `/v1/session` |
 | `MAX_BODY_BYTES` | 6 MiB | requests with a larger declared `Content-Length` are rejected |
@@ -53,7 +54,7 @@ Default quotas, per user:
 | action | limit |
 |---|---|
 | `job` | 120/h |
-| `hardware_job` | 4/day |
+| `hardware_job` | 0/day (see `HARDWARE_QUOTAS`) |
 | `agent_iteration` | 40/day |
 | `agent_message` | 60/h |
 | `preview` | 30/min |

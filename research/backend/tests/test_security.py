@@ -144,18 +144,21 @@ def test_limit_zero_disables_and_negative_unlimits(monkeypatch):
         limits.consume("u0", "snapshot")
 
 
-def test_hardware_allowlist_and_daily_cap(monkeypatch):
-    monkeypatch.setenv("HARDWARE_EMAILS", "pi@lab.org")
+def test_hardware_quota_per_account(monkeypatch):
+    monkeypatch.setenv("HARDWARE_QUOTAS", "pi@lab.org:1")
     as_user("student", "student@lab.org")
+    monkeypatch.setattr(runner, "provider_availability", lambda: [{"id": "ibm_quantum", "available": True}])
     exp = c.post("/v1/experiments", json={"source": "synthetic", "random_seed": 2}).json()["experiment"]
-    assert c.post(f"/v1/experiments/{exp['id']}/jobs", json={"provider": "ibm_quantum"}).status_code == 403
+    assert c.post(f"/v1/experiments/{exp['id']}/jobs", json={"provider": "ibm_quantum"}).status_code == 429
     assert c.post("/v1/session", json={"allow_autonomous_qpu": True}).status_code == 403
-    monkeypatch.setenv("LIMIT_HARDWARE_JOB", "1")
+    assert c.get("/v1/me").json()["hardware"]["limit"] == 0
     as_user("pi", "pi@lab.org")
     exp = c.post("/v1/experiments", json={"source": "synthetic", "random_seed": 2}).json()["experiment"]
     first = c.post(f"/v1/experiments/{exp['id']}/jobs", json={"provider": "ibm_quantum"})
-    assert first.status_code == 503                  # allowed + counted, but IBM is not configured in tests
-    assert c.post(f"/v1/experiments/{exp['id']}/jobs", json={"provider": "ibm_quantum"}).status_code == 429
+    assert first.status_code in (200, 503)           # allowed + counted (queued, or refused later by the unconfigured backend)
+    again = c.post(f"/v1/experiments/{exp['id']}/jobs", json={"provider": "ibm_quantum"})
+    assert again.status_code == 429 and "jacobfv123@gmail.com" in again.json()["detail"]
+    assert c.get("/v1/me").json()["hardware"] == {**c.get("/v1/me").json()["hardware"], "used": 1, "limit": 1}
 
 
 def test_self_service_budgets_are_capped(monkeypatch):

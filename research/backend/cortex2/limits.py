@@ -5,8 +5,8 @@ Each action has a fixed window and a maximum; counters live in the `quotas` coll
 Cloud Run instances. Every limit is overridable with an env var `LIMIT_<ACTION>` (an integer;
 0 disables the action, a negative value removes the limit).
 
-Physical-QPU submissions additionally honour `HARDWARE_EMAILS` (comma-separated allowlist;
-empty = any signed-in user, still capped by LIMIT_HARDWARE_JOB).
+Physical-QPU submissions are per-account: everyone gets LIMIT_HARDWARE_JOB (default 0/day) unless
+`HARDWARE_QUOTAS` (comma-separated `email:n`) grants more. Users request increases from HARDWARE_CONTACT.
 """
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ from .store import now, store
 DEFAULTS = {
     #  action           (window seconds, max)
     "job":              (3600, 120),     # sampling jobs created by the user
-    "hardware_job":     (86400, 4),      # physical QPU submissions (IBM / IonQ)
+    "hardware_job":     (86400, 0),      # physical QPU submissions (IBM / IonQ / qBraid); see HARDWARE_QUOTAS
     "agent_iteration":  (86400, 40),     # agent design iterations (model calls)
     "agent_message":    (3600, 60),      # chat/triage messages (model calls)
     "preview":          (60, 30),        # synchronous circuit compiles (CPU heavy)
@@ -54,9 +54,11 @@ def limit_for(action: str) -> Limit:
     return Limit(window, maximum)
 
 
-def consume(uid: str, action: str, amount: int = 1) -> int:
+def consume(uid: str, action: str, amount: int = 1, maximum: int | None = None) -> int:
     """Count one use of `action` by `uid`; raises RateLimited if over the limit. Returns uses so far."""
     lim = limit_for(action)
+    if maximum is not None:
+        lim.maximum = maximum
     if lim.maximum < 0:
         return 0
     t = int(time.time())
@@ -82,6 +84,36 @@ def consume(uid: str, action: str, amount: int = 1) -> int:
     return result["n"]
 
 
-def hardware_allowed(email: str | None) -> bool:
-    allow = {e.strip().lower() for e in os.environ.get("HARDWARE_EMAILS", "").split(",") if e.strip()}
-    return not allow or (email or "").lower() in allow
+HARDWARE_CONTACT = os.environ.get("HARDWARE_CONTACT", "jacobfv123@gmail.com")
+
+
+class HardwareQuota(RateLimited):
+    def __init__(self, limit: int, retry_after: int):
+        super().__init__("hardware_job", limit, 86400, retry_after)
+        self.args = (f"physical-QPU quota reached ({limit}/day for this account); "
+                     f"email {HARDWARE_CONTACT} to request a higher limit",)
+
+
+def hardware_quota(email: str | None) -> int:
+    """Daily physical-QPU submissions allowed for this account."""
+    for item in os.environ.get("HARDWARE_QUOTAS", f"{HARDWARE_CONTACT}:4").split(","):
+        addr, _, n = item.strip().rpartition(":")
+        if addr and addr.lower() == (email or "").lower():
+            return int(n)
+    return limit_for("hardware_job").maximum
+
+
+def hardware_usage(uid: str, email: str | None) -> dict:
+    window = DEFAULTS["hardware_job"][0]
+    t = int(time.time())
+    start = t - t % window
+    used = int((store().get("quotas", f"{uid}:hardware_job:{start}") or {}).get("count", 0))
+    return {"used": used, "limit": hardware_quota(email), "window_seconds": window,
+            "resets_in": start + window - t, "contact": HARDWARE_CONTACT}
+
+
+def consume_hardware(uid: str, email: str | None) -> int:
+    try:
+        return consume(uid, "hardware_job", maximum=hardware_quota(email))
+    except RateLimited as exc:
+        raise HardwareQuota(exc.limit, exc.retry_after) from None

@@ -10,7 +10,7 @@ os.environ.pop("CORTEX_STORE", None)
 os.environ.pop("CORTEX_TASKS", None)
 os.environ.pop("AGENT_ORACLE", None)
 os.environ.pop("SERVICE_ROLE", None)
-os.environ.pop("HARDWARE_EMAILS", None)
+os.environ.pop("HARDWARE_QUOTAS", None)
 for k in list(os.environ):
     # no live model, QPU or vendor credentials in tests, whatever the developer's shell exports
     if k.startswith(("GEMINI_API_KEY", "OPENAI_API_KEY", "IBM_QUANTUM", "IONQ_", "LIMIT_")) or k == "AGENT_PROVIDERS":

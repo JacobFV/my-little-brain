@@ -25,7 +25,7 @@ from typing import Any
 
 import numpy as np
 
-from . import inverse as inv, llm, neural as nm, quantum as qm, runner
+from . import inverse as inv, limits, llm, neural as nm, quantum as qm, runner
 from .store import artifacts, now, store
 
 log = logging.getLogger("cortex2.agent")
@@ -58,7 +58,7 @@ def session(uid: str) -> dict:
 
 
 def update_session(uid: str, patch: dict) -> dict:
-    allowed = {"max_autonomous_jobs": int, "allow_autonomous_qpu": bool, "qpu_jobs_budget": int}
+    allowed = {"max_autonomous_jobs": int, "allow_autonomous_qpu": bool, "qpu_jobs_budget": int, "email": str}
     clean = {k: allowed[k](v) for k, v in patch.items() if k in allowed}
     if "max_autonomous_jobs" in clean:
         clean["max_autonomous_jobs"] = max(0, min(clean["max_autonomous_jobs"], 200))
@@ -393,6 +393,10 @@ class DesignSession:
             return {"denied": (avail or {}).get("reason") or f"{provider} is not a hardware provider"}, None
         if not reserve_budget(self.uid, qpu=True):
             return {"denied": "autonomous QPU use is disabled or its budget is exhausted; the user can submit from the UI"}, None
+        try:
+            limits.consume_hardware(self.uid, session(self.uid).get("email"))
+        except limits.RateLimited as exc:
+            return {"denied": str(exc)}, None
         job = runner.create_job(self.uid, self.exp["id"], self._job_body(provider, approximation, baseline, trust_weight, spec, qasm, shots),
                                 created_by="agent", autonomous=True)
         self.ran.append(job["id"])

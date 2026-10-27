@@ -41,6 +41,7 @@ export interface Me {
   email?: string;
   name?: string;
   picture?: string;
+  hardware?: { used: number; limit: number; window_seconds: number; resets_in: number; contact: string };
 }
 export interface Dataset {
   id: string;

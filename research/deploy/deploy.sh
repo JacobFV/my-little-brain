@@ -102,7 +102,7 @@ export IONQ_QPU_BACKEND=${IONQ_QPU_BACKEND:-qpu.forte-1} IONQ_NOISE_MODEL=${IONQ
 python3 - "$ENVFILE" <<'PY'
 import json, os, sys
 names = ["GOOGLE_CLOUD_PROJECT", "REGION", "TASK_QUEUE", "WORKER_URL", "TASK_SERVICE_ACCOUNT", "ARTIFACT_BUCKET",
-         "GOOGLE_OAUTH_CLIENT_ID", "ALLOWED_EMAILS", "HARDWARE_EMAILS", "AGENT_PROVIDERS", "GEMINI_MODEL", "OPENAI_MODEL",
+         "GOOGLE_OAUTH_CLIENT_ID", "ALLOWED_EMAILS", "HARDWARE_QUOTAS", "HARDWARE_CONTACT", "AGENT_PROVIDERS", "GEMINI_MODEL", "OPENAI_MODEL",
          "AGENT_REASONING_EFFORT", "IBM_QUANTUM_INSTANCE", "IBM_BACKEND", "IONQ_QPU_BACKEND", "IONQ_NOISE_MODEL", "QBRAID_SIM_DEVICE", "QBRAID_QPU_DEVICE", "THRML_SERVICE_URL",
          "MAX_BODY_BYTES", "CAP_QPU_JOBS", "INGEST_MIN_INTERVAL", "LOG_LEVEL"]
 names += sorted(k for k in os.environ if k.startswith("LIMIT_"))
@@ -140,6 +140,5 @@ if [[ -z "${GOOGLE_OAUTH_CLIENT_ID:-}" ]]; then
 EOF
 fi
 [[ -z "${ALLOWED_EMAILS:-}" ]] && echo "! ALLOWED_EMAILS is empty: any verified Google account can sign in (quotas still apply)."
-[[ -z "${HARDWARE_EMAILS:-}" ]] && echo "! HARDWARE_EMAILS is empty: every signed-in user may submit to paid QPUs (capped by LIMIT_HARDWARE_JOB)."
 [[ -z "${GEMINI_API_KEY:-}${OPENAI_API_KEY:-}" ]] && echo "! agent disabled until a model key (GEMINI_API_KEY / AGENT_PROVIDERS) is set"
 exit 0

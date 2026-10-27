@@ -87,6 +87,16 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.cx-quota {
+  margin: 6px 4px 0;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--cx-soft);
+}
+.cx-quota a {
+  color: inherit;
+  text-decoration: underline;
+}
 .cx-me small {
   font-size: 10px;
   color: var(--cx-soft);

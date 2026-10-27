@@ -226,7 +226,8 @@ def healthz():
 
 @app.get("/v1/me")
 def me(user=Depends(current_user)):
-    return {**user, "hardware_allowed": limits.hardware_allowed(user.get("email"))}
+    hw = limits.hardware_usage(user["uid"], user.get("email"))
+    return {**user, "hardware_allowed": hw["limit"] != 0, "hardware": hw}
 
 
 @app.get("/v1/session")
@@ -236,11 +237,11 @@ def get_session(user=Depends(current_user)):
 
 @app.post("/v1/session")
 def post_session(body: dict, user=Depends(current_user)):
-    clean = dict(body)
+    clean = {**body, "email": user.get("email") or ""}
     if "qpu_jobs_budget" in clean:
         clean["qpu_jobs_budget"] = min(int(clean["qpu_jobs_budget"]), CAP_QPU_JOBS)
-    if clean.get("allow_autonomous_qpu") and not limits.hardware_allowed(user.get("email")):
-        raise HTTPException(403, "this account may not use physical QPUs (HARDWARE_EMAILS)")
+    if clean.get("allow_autonomous_qpu") and limits.hardware_quota(user.get("email")) == 0:
+        raise HTTPException(403, f"this account has no physical-QPU quota; email {limits.HARDWARE_CONTACT} to request one")
     return agent.update_session(user["uid"], clean)
 
 
@@ -321,9 +322,10 @@ def new_job(exp_id: str, req: JobRequest, user=Depends(current_user)):
     check_spec(req.spec)
     guard(runner.owned, "experiments", exp_id, user["uid"])
     if req.provider in runner.HARDWARE_PROVIDERS:
-        if not limits.hardware_allowed(user.get("email")):
-            raise HTTPException(403, "this account may not use physical QPUs (HARDWARE_EMAILS)")
-        limits.consume(user["uid"], "hardware_job")
+        avail = {p["id"]: p for p in runner.provider_availability()}.get(req.provider)
+        if avail and not avail["available"]:     # don't burn quota on a provider that can't run
+            raise HTTPException(503, avail.get("reason") or f"{req.provider} is not available")
+        limits.consume_hardware(user["uid"], user.get("email"))
     limits.consume(user["uid"], "job")
     return {"job": public_job(guard(runner.create_job, user["uid"], exp_id, req.model_dump(exclude_none=True)))}
 
