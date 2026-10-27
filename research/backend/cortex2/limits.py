@@ -84,7 +84,7 @@ def consume(uid: str, action: str, amount: int = 1, maximum: int | None = None) 
     return result["n"]
 
 
-HARDWARE_CONTACT = os.environ.get("HARDWARE_CONTACT", "jacobfv123@gmail.com")
+HARDWARE_CONTACT = os.environ.get("HARDWARE_CONTACT") or "jacobfv123@gmail.com"
 
 
 class HardwareQuota(RateLimited):
@@ -96,7 +96,7 @@ class HardwareQuota(RateLimited):
 
 def hardware_quota(email: str | None) -> int:
     """Daily physical-QPU submissions allowed for this account."""
-    for item in os.environ.get("HARDWARE_QUOTAS", f"{HARDWARE_CONTACT}:4").split(","):
+    for item in (os.environ.get("HARDWARE_QUOTAS") or f"{HARDWARE_CONTACT}:4").split(","):
         addr, _, n = item.strip().rpartition(":")
         if addr and addr.lower() == (email or "").lower():
             return int(n)
