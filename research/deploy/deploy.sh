@@ -22,7 +22,7 @@ WORKER_URL=$PUBLIC_URL        # one service: Cloud Tasks call back into it (OIDC
 VERSION=$(git rev-parse --short HEAD)$(git diff --quiet || echo -dirty)
 IMAGE=$R-docker.pkg.dev/$P/cortex2/cortex2:$VERSION-$(date +%s)
 # One service sized to the default 20-vCPU regional Cloud Run quota: 4 vCPU × ≤4 instances.
-CPU=${CPU:-4};  MEMORY=${MEMORY:-8Gi};  MIN=${MIN_INSTANCES:-1};  MAX=${MAX_INSTANCES:-4}
+CPU=${CPU:-4};  MEMORY=${MEMORY:-8Gi};  MIN=${MIN_INSTANCES:-0};  MAX=${MAX_INSTANCES:-4}
 
 echo "▸ project $P ($NUM) region $R"
 $G services enable run.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com firestore.googleapis.com \
@@ -121,7 +121,7 @@ $G scheduler jobs describe cortex2-heartbeat --location $R >/dev/null 2>&1 && $G
 echo "▸ deploying $SERVICE (${CPU} vCPU × ${MIN}–${MAX})"
 $G run deploy $SERVICE --image "$IMAGE" --region $R --service-account $API_SA \
   --allow-unauthenticated --cpu "$CPU" --memory "$MEMORY" --concurrency 8 --timeout 1800 \
-  --min-instances "$MIN" --max-instances "$MAX" --cpu-boost --no-cpu-throttling \
+  --min-instances "$MIN" --max-instances "$MAX" --cpu-boost --cpu-throttling \
   --env-vars-file "$ENVFILE" ${SECRET_ARG[@]+"${SECRET_ARG[@]}"} >/dev/null
 $G run services add-iam-policy-binding $SERVICE --region $R --member=serviceAccount:$TASK_SA --role=roles/run.invoker >/dev/null
 
